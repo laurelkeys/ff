@@ -1,9 +1,9 @@
 from sys import path
 path.append("..")
-# import setup_my_path
-import setup_path
+from multirotor import setup_path
 import airsim
-print(airsim.__file__)
+print("setup_path:", setup_path.__file__, "\nairsim:", airsim.__file__)
+
 import os
 import sys
 import math
@@ -17,7 +17,8 @@ class Position:
         self.z = pos.z_val
 
 class OrbitNavigator:
-    def __init__(self, radius=2, altitude=10, speed=2, iterations=1, center=[1, 0], snapshots=None, vehicle_name=""):
+    def __init__(self, radius=2, altitude=10, speed=2, iterations=1, center=[1, 0], snapshots=None, 
+                 vehicle_name="", client=None):
         assert(len(center) == 2), "Expecting '[x,y]' for the center direction vector"
 
         self.radius     = radius
@@ -43,8 +44,11 @@ class OrbitNavigator:
 
         self.vehicle_name = vehicle_name
 
-        self.client = airsim.MultirotorClient()
-        self.client.confirmConnection()
+        if client is not None:
+            self.client = client
+        else:
+            self.client = airsim.MultirotorClient()
+            self.client.confirmConnection()
         self.client.enableApiControl(True, self.vehicle_name)
 
         self.home = self.client.getMultirotorState(self.vehicle_name).kinematics_estimated.position
@@ -56,18 +60,19 @@ class OrbitNavigator:
         print("arming the drone...")
         self.client.armDisarm(True, self.vehicle_name)
         
-        # AirSim uses NED coordinates so negative axis is up.
-        start = self.client.getMultirotorState(self.vehicle_name).kinematics_estimated.position
-        landed = self.client.getMultirotorState(self.vehicle_name).landed_state
-        if not self.takeoff and landed == airsim.LandedState.Landed: 
+        # AirSim uses NED coordinates so negative axis is up
+        state = self.client.getMultirotorState(self.vehicle_name)
+        landed = state.landed_state
+        if not self.takeoff and landed == airsim.LandedState.Landed:
             self.takeoff = True
             print("taking off...")
-            self.client.takeoffAsync(vehicle_name=self.vehicle_name).join() # timeout_sec=20 by default
+            self.client.takeoffAsync(timeout_sec=10, vehicle_name=self.vehicle_name).join() # timeout_sec=20 by default
             start = self.client.getMultirotorState(self.vehicle_name).kinematics_estimated.position
             z = -self.altitude + self.home.z_val
         else:
-            print("already flying so we will orbit at current altitude {}".format(start.z_val))
+            start = state.kinematics_estimated.position
             z = start.z_val # use current altitude then
+            print("already flying so we will orbit at current altitude {}".format(z))
 
         print("climbing to position: {},{},{}".format(start.x_val, start.y_val, z))
         self.client.moveToPositionAsync(start.x_val, start.y_val, z, self.speed, vehicle_name=self.vehicle_name).join()
@@ -104,7 +109,7 @@ class OrbitNavigator:
             actual_radius = math.sqrt((dx*dx) + (dy*dy))
             angle_to_center = math.atan2(dy, dx)
 
-            camera_heading = (angle_to_center - math.pi) * 180 / math.pi 
+            camera_heading = math.degrees(angle_to_center - math.pi)
 
             # compute lookahead
             lookahead_x = self.center.x_val + self.radius * math.cos(angle_to_center + lookahead_angle)
@@ -113,12 +118,15 @@ class OrbitNavigator:
             vx = lookahead_x - pos.x_val
             vy = lookahead_y - pos.y_val
 
-            if self.track_orbits(angle_to_center * 180 / math.pi):
+            if self.track_orbits(math.degrees(angle_to_center)):
                 count += 1
                 print("completed {} orbits".format(count))
             
             self.camera_heading = camera_heading
-            self.client.moveByVelocityZAsync(vx, vy, z, 1, airsim.DrivetrainType.MaxDegreeOfFreedom, airsim.YawMode(False, camera_heading))
+            self.client.moveByVelocityZAsync(vx, vy, z, duration=1, 
+                                             drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom, 
+                                             yaw_mode=airsim.YawMode(False, camera_heading), 
+                                             vehicle_name=self.vehicle_name) # FIXME shouldn't we wait with .join()?
 
 
         self.client.moveToPositionAsync(start.x_val, start.y_val, z, 
@@ -132,7 +140,7 @@ class OrbitNavigator:
                                                 velocity=2, vehicle_name=self.vehicle_name).join()
 
             print("landing...")
-            self.client.landAsync(vehicle_name=self.vehicle_name).join() # timeout_sec=60 by default
+            self.client.landAsync(timeout_sec=40, vehicle_name=self.vehicle_name).join() # timeout_sec=60 by default
 
             print("disarming.")
             self.client.armDisarm(False, self.vehicle_name)
@@ -141,8 +149,8 @@ class OrbitNavigator:
         return -1 if s < 0 else 1
 
     def track_orbits(self, angle):
-        # tracking # of completed orbits is surprisingly tricky to get right in order to handle random wobbles
-        # about the starting point.  So we watch for complete 1/2 orbits to avoid that problem.
+        # tracking the number of completed orbits is surprisingly tricky to get right in order to 
+        # handle random wobbles about the starting point, so we watch for complete 1/2 orbits to avoid that problem
         if angle < 0:
             angle += 360
 
@@ -208,7 +216,7 @@ class OrbitNavigator:
         responses = self.client.simGetImages([airsim.ImageRequest(1, airsim.ImageType.Scene)], 
                                              self.vehicle_name) #scene vision image in png format
         response = responses[0]
-        filename = "photo_" + str(self.snapshot_index)
+        filename = f"photo_{self.snapshot_index}_{self.vehicle_name}"
         self.snapshot_index += 1
         airsim.write_file(os.path.normpath(filename + '.png'), response.image_data_uint8)        
         print("Saved snapshot: {}".format(filename))
@@ -237,11 +245,13 @@ if __name__ == "__main__":
                             help="number of FPV snapshots to take during orbit "
                                  "(default: %(default).0f)", default=0)
     args = arg_parser.parse_args(args)
-    nav = OrbitNavigator(args.radius, 
-                         args.altitude, 
-                         args.speed, 
-                         args.iterations, 
+
+    nav1 = OrbitNavigator(args.radius, args.altitude, args.speed, args.iterations, 
                          [float(c) for c in args.center.split(',')], # convert strings to float
-                         args.snapshots, 
-                         "Drone2")
-    nav.start()
+                         args.snapshots, "Drone1")
+    client = nav1.client
+    nav2 = OrbitNavigator(args.radius, args.altitude, args.speed, args.iterations, 
+                         [float(c) for c in args.center.split(',')], # convert strings to float
+                         args.snapshots, "Drone2", client)
+    nav1.start() # FIXME nav2.start() waits for nav1.start() to complete before being called
+    nav2.start()
