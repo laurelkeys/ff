@@ -42,32 +42,32 @@ class OrbitNavigator:
         cx = (cx / length) * self.radius
         cy = (cy / length) * self.radius
 
-        self.vehicle_name = vehicle_name
+        self.name = vehicle_name
 
         if client is not None:
             self.client = client
         else:
             self.client = airsim.MultirotorClient()
             self.client.confirmConnection()
-        self.client.enableApiControl(True, self.vehicle_name)
+        self.client.enableApiControl(True, self.name)
 
-        self.home = self.client.getMultirotorState(self.vehicle_name).kinematics_estimated.position
-        self.center = self.client.getMultirotorState(self.vehicle_name).kinematics_estimated.position
+        self.home = self.client.getMultirotorState(self.name).kinematics_estimated.position
+        self.center = self.client.getMultirotorState(self.name).kinematics_estimated.position
         self.center.x_val += cx
         self.center.y_val += cy
 
     def start(self):
         print("arming the drone...")
-        self.client.armDisarm(True, self.vehicle_name)
+        self.client.armDisarm(True, self.name)
         
         # AirSim uses NED coordinates so negative axis is up
-        state = self.client.getMultirotorState(self.vehicle_name)
+        state = self.client.getMultirotorState(self.name)
         landed = state.landed_state
         if not self.takeoff and landed == airsim.LandedState.Landed:
             self.takeoff = True
             print("taking off...")
-            self.client.takeoffAsync(timeout_sec=10, vehicle_name=self.vehicle_name).join() # timeout_sec=20 by default
-            start = self.client.getMultirotorState(self.vehicle_name).kinematics_estimated.position
+            self.client.takeoffAsync(timeout_sec=10, vehicle_name=self.name).join() # timeout_sec=20 by default
+            start = self.client.getMultirotorState(self.name).kinematics_estimated.position
             z = -self.altitude + self.home.z_val
         else:
             start = state.kinematics_estimated.position
@@ -75,7 +75,7 @@ class OrbitNavigator:
             print("already flying so we will orbit at current altitude {}".format(z))
 
         print("climbing to position: {},{},{}".format(start.x_val, start.y_val, z))
-        self.client.moveToPositionAsync(start.x_val, start.y_val, z, self.speed, vehicle_name=self.vehicle_name).join()
+        self.client.moveToPositionAsync(start.x_val, start.y_val, z, self.speed, vehicle_name=self.name).join()
         self.z = z
         
         print("ramping up to speed...")
@@ -103,7 +103,7 @@ class OrbitNavigator:
             lookahead_angle = speed / self.radius            
 
             # compute current angle
-            pos = self.client.getMultirotorState(self.vehicle_name).kinematics_estimated.position
+            pos = self.client.getMultirotorState(self.name).kinematics_estimated.position
             dx = pos.x_val - self.center.x_val
             dy = pos.y_val - self.center.y_val
             actual_radius = math.sqrt((dx*dx) + (dy*dy))
@@ -126,24 +126,24 @@ class OrbitNavigator:
             self.client.moveByVelocityZAsync(vx, vy, z, duration=1, 
                                              drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom, 
                                              yaw_mode=airsim.YawMode(False, camera_heading), 
-                                             vehicle_name=self.vehicle_name) # FIXME shouldn't we wait with .join()?
+                                             vehicle_name=self.name) # FIXME shouldn't we wait with .join()?
 
 
         self.client.moveToPositionAsync(start.x_val, start.y_val, z, 
-                                        velocity=2, vehicle_name=self.vehicle_name).join()
+                                        velocity=2, vehicle_name=self.name).join()
 
         if self.takeoff:            
             # if we did the takeoff then also do the landing.
             if z < self.home.z_val:
                 print("descending")
                 self.client.moveToPositionAsync(start.x_val, start.y_val, self.home.z_val - 5, 
-                                                velocity=2, vehicle_name=self.vehicle_name).join()
+                                                velocity=2, vehicle_name=self.name).join()
 
             print("landing...")
-            self.client.landAsync(timeout_sec=40, vehicle_name=self.vehicle_name).join() # timeout_sec=60 by default
+            self.client.landAsync(timeout_sec=40, vehicle_name=self.name).join() # timeout_sec=60 by default
 
             print("disarming.")
-            self.client.armDisarm(False, self.vehicle_name)
+            self.client.armDisarm(False, self.name)
 
     def sign(self, s):
         return -1 if s < 0 else 1
@@ -207,20 +207,78 @@ class OrbitNavigator:
 
     def take_snapshot(self):
         # first hold our current position so drone doesn't try and keep flying while we take the picture.
-        pos = self.client.getMultirotorState(self.vehicle_name).kinematics_estimated.position
+        pos = self.client.getMultirotorState(self.name).kinematics_estimated.position
         self.client.moveToPositionAsync(pos.x_val, pos.y_val, self.z, 
                                         velocity=0.5, timeout_sec=10, 
                                         drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom, 
                                         yaw_mode=airsim.YawMode(False, self.camera_heading), 
-                                        vehicle_name=self.vehicle_name).join()
+                                        vehicle_name=self.name).join()
         responses = self.client.simGetImages([airsim.ImageRequest(1, airsim.ImageType.Scene)], 
-                                             self.vehicle_name) #scene vision image in png format
+                                             self.name) #scene vision image in png format
         response = responses[0]
-        filename = f"photo_{self.snapshot_index}_{self.vehicle_name}"
+        filename = f"photo_{self.snapshot_index}_{self.name}"
         self.snapshot_index += 1
         airsim.write_file(os.path.normpath(filename + '.png'), response.image_data_uint8)        
         print("Saved snapshot: {}".format(filename))
         self.start_time = time.time() # cause smooth ramp up to happen again after photo is taken.
+
+def start(client, navigators):
+    for nav in navigators:
+        print(f"arming the drone ({nav.name})...")
+        client.armDisarm(True, nav.name)
+    
+    # AirSim uses NED coordinates so negative axis is up
+    state_list = [client.getMultirotorState(nav.name) for nav in navigators]
+    landed_list = [state.landed_state for state in state_list]
+
+    # for simplicity we'll consider no drone has already tookoff
+    async_call_list = []
+    for nav in navigators:
+        async_call_list.append(client.takeoffAsync(timeout_sec=10, vehicle_name=nav.name))
+    for task in async_call_list:
+        task.join() # waits for the task to complete
+
+    airsim.wait_key('Press any key to move the drones')
+    async_call_list = []
+    z_list = []
+    state_list = [client.getMultirotorState(nav.name) for nav in navigators]
+    for idx, nav in enumerate(navigators):
+        z = -nav.altitude + nav.home.z_val
+        start = state_list[idx].kinematics_estimated.position
+        z_list.append(z)
+        print("{} climbing to position: {},{},{}".format(nav.name, start.x_val, start.y_val, z))
+        async_call_list.append(client.moveToPositionAsync(start.x_val, start.y_val, z, nav.speed, 
+                                                          vehicle_name=nav.name))
+    for idx, task in enumerate(async_call_list):
+        task.join() # waits for the task to complete
+        navigators[idx].z = z_list[idx] # FIXME
+    
+    # TODO orbit and take images
+    
+    airsim.wait_key('Press any key to reset to original state')
+    for nav in navigators:
+        client.armDisarm(False, nav.name)
+    client.reset()
+    for nav in navigators:
+        client.enableApiControl(False, nav.name)
+    
+    # async_call_list = []
+    # land_list = []
+    # for nav in navigators:
+    #     if nav.z < nav.home.z_val:
+    #         print(f"{nav.name} descending")
+    #         async_call_list.append(self.client.moveToPositionAsync(start.x_val, start.y_val, self.home.z_val - 5, 
+    #                                                                velocity=2, vehicle_name=self.name))
+    #         land_list.append(nav)
+    # for task in async_call_list:
+    #     task.join() # waits for the task to complete
+    # async_call_list = []
+    # for nav in land_list:
+    #     async_call_list.append(client.landAsync(timeout_sec=40, vehicle_name=nav.name))
+    # for task in async_call_list:
+    #     task.join() # waits for the task to complete
+    # for nav in navigators:
+    #     client.armDisarm(False, nav.name)
 
 if __name__ == "__main__":
     args = sys.argv
@@ -246,12 +304,14 @@ if __name__ == "__main__":
                                  "(default: %(default).0f)", default=0)
     args = arg_parser.parse_args(args)
 
+    client = airsim.MultirotorClient()
+    client.confirmConnection()
     nav1 = OrbitNavigator(args.radius, args.altitude, args.speed, args.iterations, 
                          [float(c) for c in args.center.split(',')], # convert strings to float
-                         args.snapshots, "Drone1")
-    client = nav1.client
+                         args.snapshots, "Drone1", client)
     nav2 = OrbitNavigator(args.radius, args.altitude, args.speed, args.iterations, 
                          [float(c) for c in args.center.split(',')], # convert strings to float
                          args.snapshots, "Drone2", client)
-    nav1.start() # FIXME nav2.start() waits for nav1.start() to complete before being called
-    nav2.start()
+    start(client, [nav1, nav2])
+    # nav1.start()
+    # nav2.start()
