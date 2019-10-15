@@ -242,10 +242,12 @@ def start(client, navigators):
     async_call_list = []
     z_list = []
     state_list = [client.getMultirotorState(nav.name) for nav in navigators]
+    start_list = []
     for idx, nav in enumerate(navigators):
         z = -nav.altitude + nav.home.z_val
-        start = state_list[idx].kinematics_estimated.position
         z_list.append(z)
+        start = state_list[idx].kinematics_estimated.position
+        start_list.append(start)
         print("{} climbing to position: {},{},{}".format(nav.name, start.x_val, start.y_val, z))
         async_call_list.append(client.moveToPositionAsync(start.x_val, start.y_val, z, nav.speed, 
                                                           vehicle_name=nav.name))
@@ -255,30 +257,25 @@ def start(client, navigators):
     
     # TODO orbit and take images
     
-    airsim.wait_key('Press any key to reset to original state')
+    airsim.wait_key('Press any key to reset to original state')    
+    async_call_list = []
+    land_list = []
+    for idx, nav in enumerate(navigators):
+        if nav.z < nav.home.z_val:
+            print(f"{nav.name} descending")
+            async_call_list.append(
+                client.moveToPositionAsync(start_list[idx].x_val, start_list[idx].y_val, nav.home.z_val - 5, 
+                                           velocity=2, vehicle_name=nav.name))
+            land_list.append(nav)
+    for task in async_call_list:
+        task.join() # waits for the task to complete
+    async_call_list = []
+    for nav in land_list:
+        async_call_list.append(client.landAsync(timeout_sec=40, vehicle_name=nav.name))
+    for task in async_call_list:
+        task.join() # waits for the task to complete
     for nav in navigators:
         client.armDisarm(False, nav.name)
-    client.reset()
-    for nav in navigators:
-        client.enableApiControl(False, nav.name)
-    
-    # async_call_list = []
-    # land_list = []
-    # for nav in navigators:
-    #     if nav.z < nav.home.z_val:
-    #         print(f"{nav.name} descending")
-    #         async_call_list.append(self.client.moveToPositionAsync(start.x_val, start.y_val, self.home.z_val - 5, 
-    #                                                                velocity=2, vehicle_name=self.name))
-    #         land_list.append(nav)
-    # for task in async_call_list:
-    #     task.join() # waits for the task to complete
-    # async_call_list = []
-    # for nav in land_list:
-    #     async_call_list.append(client.landAsync(timeout_sec=40, vehicle_name=nav.name))
-    # for task in async_call_list:
-    #     task.join() # waits for the task to complete
-    # for nav in navigators:
-    #     client.armDisarm(False, nav.name)
 
 if __name__ == "__main__":
     args = sys.argv
