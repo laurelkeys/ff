@@ -222,15 +222,12 @@ class OrbitNavigator:
         print("Saved snapshot: {}".format(filename))
         self.start_time = time.time() # cause smooth ramp up to happen again after photo is taken.
 
-def start(client, navigators):
+def start(client, navigators, iterations=1, snapshots=3):
     for nav in navigators:
         print(f"arming the drone ({nav.name})...")
         client.armDisarm(True, nav.name)
     
     # AirSim uses NED coordinates so negative axis is up
-    state_list = [client.getMultirotorState(nav.name) for nav in navigators]
-    landed_list = [state.landed_state for state in state_list]
-
     # for simplicity we'll consider no drone has already tookoff
     async_call_list = []
     for nav in navigators:

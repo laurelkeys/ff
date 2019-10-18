@@ -1,12 +1,13 @@
 from sys import path
 path.append("..")
-
+from multirotor import setup_path
 import airsim
+print("setup_path:", setup_path.__file__, "\nairsim:", airsim.__file__)
+
 import cv2
 import numpy as np
 import os
 import pprint
-import setup_path 
 import tempfile
 
 # Use below in settings.json with Blocks environment
