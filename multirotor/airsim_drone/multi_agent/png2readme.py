@@ -20,6 +20,7 @@ entries = [(stat[ST_CTIME], path) for stat, path in entries if S_ISREG(stat[ST_M
 
 # NOTE: on Windows `ST_CTIME` is the creation date
 entries = sorted(entries)
+entries = [entry for entry in entries if not entry[1].__contains__("front_center")]
 
 # the README table has 3 columns by default
 cols = int(sys.argv[1]) if len(sys.argv) == 2 else 4
