@@ -93,7 +93,7 @@ del_keys_inplace(sfm, unused_keys)
 #    |-> width                     |-> center         |-> observations
 #    |-> height                |-> locked                 |-> observationId
 
-def obj2ply(obj):
+def obj2ply(obj, camera_color=(0, 255, 0)):
     ply = (
         "property float x\n"
         "property float y\n"
@@ -103,9 +103,45 @@ def obj2ply(obj):
         "property uchar blue\n"
         "end_header\n"
     )
+
     vertex_count = 0
+    obj_centers = [pose['pose']['transform']['center'] for pose in obj.poses]
+    obj_paths = [view['path'] for view in obj.views]
+    for center, path in zip(obj_centers, obj_paths):
+        ply += f"{' '.join(map('{:.8f}'.format, map(float, center)))} {' '.join(map(str, camera_color))}\n"
+        vertex_count += 1
+
     ply = f"ply\nformat ascii 1.0\nelement vertex {vertex_count}\n" + ply
     return ply
 
-# print(obj2ply(obj))
+_cameras = dict2obj(cameras)
+# camera_centers = [pose['pose']['transform']['center'] for pose in _cameras.poses]
+# camera_paths = [view['path'] for view in _cameras.views]
+# print(camera_centers)
+# print(camera_paths)
+print(obj2ply(_cameras))
 
+
+# -> views: List[dict]
+#    |-> viewId: str(int)
+#    |-> poseId: str(int)
+#    |-> intrinsicId: str(int)
+#    |-> path: str
+#    |-> width: str(int)
+#    |-> height: str(int)
+# -> poses: List[dict]
+#    |-> poseId: str(int)
+#    |-> pose: dict
+#        |-> transform: dict
+#            |-> rotation: List[str(int)]
+#            |-> center: List[str(int)]
+#        |-> locked: str(int)
+# -> structure: List[dict]
+#    |-> landmarkId: str(int)
+#    |-> descType: str
+#    |-> color: List[str(int)]
+#    |-> X: List[str(float)]
+#    |-> observations *
+#        |-> observationId **
+#
+# *, ** e.g.: "observations": [{ "observationId": "536766085" }, { "observationId": "1571755330" }]
