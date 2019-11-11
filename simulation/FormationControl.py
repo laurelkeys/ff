@@ -53,8 +53,8 @@ for i in range(numUAV):
 #%% Find formaiton control gains
 
 # Formation control gains
-Am = meng.FindGains_Ver1_4(qs,Adjm, nargout=1)
-# print(Am)
+Am = meng.FindGains_Ver1_4(qs, Adjm, nargout=1)
+print("Am:", Am)
 
 # Conver Am to numpy array
 A = np.asarray(Am)
@@ -115,23 +115,38 @@ gain = 1.0/3    # Control gain
 alt = -20.0     # UAV altitude
 duration = 0.5  # Max duration for applying input
 vmax = 0.1      # Saturation velocity
-save = 0        # Set to 1 to save onboard images, otherwise set to 0
+save = 1        # Set to 1 to save onboard images, otherwise set to 0
 
 
 # Initial Pause time
 time.sleep(0.5) 
 
 # Get Image data (Initialization)
-for i in range(numUAV):    
-    name = "UAV" + str(i+1)        
-    imgs = client.simGetImages([
-        airsim.ImageRequest("0", airsim.ImageType.Scene, False, False)], vehicle_name = name)  # Scene vision image in uncompressed RGBA array
-#        print('Retrieved images of', name)        
-    img = imgs[0]        
+for i in range(numUAV):
+    name = "UAV" + str(i+1)
+    # Scene vision image in uncompressed RGBA array
+    img = client.simGetImages([
+                airsim.ImageRequest("0", airsim.ImageType.Scene, 
+                False, compress = False)], vehicle_name = name)[0] # airsim.types.ImageResponse
+    print('Retrieved images of', name)
+
+    img1d = np.fromstring(img.image_data_uint8, dtype=np.uint8)
+    img_rgb = np.flipud(img1d.reshape(img.height, img.width, -1))
+    print(f"img1d: {img1d.shape}, img_rgb: {img_rgb.shape}, img...uint8: {len(img.image_data_uint8)}")
+    airsim.write_png(f'out0-{i}.png', img_rgb)
+    airsim.write_file(f'out1-{i}.png', img.image_data_uint8)
+    
+    # (flattened) array of image bytes
     if i == 0:
         imgArray = img.image_data_uint8
     else:
-        imgArray = imgArray + img.image_data_uint8    
+        imgArray = imgArray + img.image_data_uint8
+    print(f"imgArray: {len(imgArray)}")
+    
+    # Scene vision image in compressed RGBA array
+    img_compr = client.simGetImage("0", airsim.ImageType.Scene, vehicle_name = name) # bytes
+    airsim.write_file(f'out2-{i}.png', airsim.string_to_uint8_array(img_compr))
+
 imgWidth = img.width
 imgHeight = img.height
 
@@ -143,7 +158,7 @@ while True:
     itr = itr + 1
     print("itr = ", itr)
     if itr == 1:
-        print("Starting a prallel pool...")
+        print("Starting a parallel pool...")
     
     # Get UAV positions for collision avoidance
     q = np.zeros(3*numUAV) # Preallocate state vectors
@@ -166,23 +181,54 @@ while True:
         qo[4*i:4*i+4] =  qoi.copy()
     
     
-    # Estimate relative positions using onboard images    
+    # Estimate relative positions using onboard images
     for i in range(numUAV):
         name = "UAV" + str(i+1)
-        imgs = client.simGetImages([
-            airsim.ImageRequest("0", airsim.ImageType.Scene, False, False)], vehicle_name = name)  # Scene vision image in uncompressed RGBA array
-#        print('Retrieved images of', name)        
-        img = imgs[0]
+        # Scene vision image in uncompressed RGBA array
+        img = client.simGetImages([
+                airsim.ImageRequest("0", airsim.ImageType.Scene, 
+                False, False)], vehicle_name = name)[0] # airsim.types.ImageResponse
+        print('Retrieved images of', name)
+        
+        img1d = np.fromstring(img.image_data_uint8, dtype=np.uint8)
+        img_rgb = np.flipud(img1d.reshape(img.height, img.width, -1))
+        print(f"img1d: {img1d.shape}, img_rgb: {img_rgb.shape}, img...uint8: {len(img.image_data_uint8)}")
+        airsim.write_png(f'out3-{i}.png', img_rgb)
+        airsim.write_file(f'out4-{i}.png', img.image_data_uint8)
+        
+        # (flattened) array of image bytes
         if i == 0:
             imgArray = img.image_data_uint8
         else:
             imgArray = imgArray + img.image_data_uint8
-    
-    # meng.edit('GetRelativePose_Ver1_7')
-    Qm, Tm, flagm = meng.GetRelativePose_Ver1_7(imgArray, imgWidth, imgHeight, save, Adjm, itr, nargout=3)
-    T = np.asarray(Tm)
-    flag = np.asarray(flagm).flatten()
-#    print(T)
+        print(f"imgArray: {len(imgArray)}")
+
+    # ref.: https://www.mathworks.com/help/matlab/matlab_external/pass-data-to-matlab-from-python.html
+    try:
+        # meng.edit('GetRelativePose_Ver1_7')
+        print("===========--=======--")
+        npImgArray = np.frombuffer(imgArray, dtype='uint8')
+        print(type(imgArray), len(imgArray), npImgArray.shape, npImgArray.dtype)
+        # _imgArray = npImgArray.tobytes()
+        # _imgArray = npImgArray.tolist()
+        _imgArray = bytearray(npImgArray)
+        print(type(_imgArray), len(_imgArray))
+        print("imgWidth:", imgWidth)
+        print("imgHeight:", imgHeight)
+        print("save:", save)
+        print("Adjm:", Adjm)
+        print("itr:", itr)
+        print("===========--=======--")
+        Qm, Tm, flagm = meng.GetRelativePose_Ver1_7(_imgArray, imgWidth, imgHeight, save, Adjm, itr, nargout=3)
+        T = np.asarray(Tm)
+        flag = np.asarray(flagm).flatten()
+        print('T:')
+        print(T)
+    except Exception as e:
+        meng.quit()
+        client.reset()
+        print("Exception:", e)
+        exit(0)
     
     
     # Transform recovered coordinates to world frame in order to apply the control.
