@@ -1,0 +1,311 @@
+{
+    "version": [
+        "1",
+        "0",
+        "0"
+    ],
+    "featuresFolders": [
+        "..\\..\\FeatureExtraction\\dde43f7aeb19575b136bf22f0625466eb52697db"
+    ],
+    "matchesFolders": [
+        "..\\..\\FeatureMatching\\9b02d2b606552128ed9c95d5535e1ccf7ae25e67"
+    ],
+    "views": [
+        {
+            "viewId": "536766085",
+            "poseId": "536766085",
+            "intrinsicId": "4250952705",
+            "path": "D:\/Users\/Tiago\/Unicamp\/ic\/Software\/Meshroom\/Photos\/monstree\/IMG_1026.jpg",
+            "width": "4032",
+            "height": "3024",
+            "metadata": {
+                "AliceVision:SensorWidth": "4.890000",
+                "DateTime": "2017:07:18 15:31:32",
+                "Exif:ApertureValue": "1.69599",
+                "Exif:BrightnessValue": "5.00969",
+                "Exif:ColorSpace": "65535",
+                "Exif:CustomRendered": "2",
+                "Exif:DateTimeDigitized": "2017:07:18 15:31:32",
+                "Exif:DateTimeOriginal": "2017:07:18 15:31:32",
+                "Exif:ExifVersion": "0221",
+                "Exif:ExposureBiasValue": "0",
+                "Exif:ExposureMode": "0",
+                "Exif:ExposureProgram": "2",
+                "Exif:Flash": "24",
+                "Exif:FlashPixVersion": "0100",
+                "Exif:FocalLength": "3.99",
+                "Exif:FocalLengthIn35mmFilm": "28",
+                "Exif:LensMake": "Apple",
+                "Exif:LensModel": "iPhone 7 back camera 3.99mm f\/1.8",
+                "Exif:LensSpecification": "3.99, 3.99, 1.8, 1.8",
+                "Exif:MeteringMode": "5",
+                "Exif:PhotographicSensitivity": "25",
+                "Exif:PixelXDimension": "4032",
+                "Exif:PixelYDimension": "3024",
+                "Exif:SceneCaptureType": "0",
+                "Exif:SensingMethod": "2",
+                "Exif:ShutterSpeedValue": "5.90695",
+                "Exif:SubsecTimeDigitized": "966",
+                "Exif:SubsecTimeOriginal": "966",
+                "Exif:WhiteBalance": "0",
+                "Exif:YCbCrPositioning": "1",
+                "ExposureTime": "0.0166667",
+                "FNumber": "1.8",
+                "GPS:Altitude": "1224.68",
+                "GPS:AltitudeRef": "0",
+                "GPS:DateStamp": "2017:07:18",
+                "GPS:DestBearing": "346.362",
+                "GPS:DestBearingRef": "T",
+                "GPS:HPositioningError": "8",
+                "GPS:ImgDirection": "346.362",
+                "GPS:ImgDirectionRef": "T",
+                "GPS:Latitude": "37, 43, 23.81",
+                "GPS:LatitudeRef": "N",
+                "GPS:Longitude": "119, 36, 57.29",
+                "GPS:LongitudeRef": "W",
+                "GPS:Speed": "0.188065",
+                "GPS:SpeedRef": "K",
+                "GPS:TimeStamp": "22, 31, 32",
+                "ICCProfile": "0, 0, 2, 36, 97, 112, 112, 108, 4, 0, 0, 0, 109, 110, 116, 114, 82, 71, 66, 32, 88, 89, 90, 32, 7, 223, 0, 10, 0, 14, 0, 13, 0, 8, 0, 57, 97, 99, 115, 112, 65, 80, 80, 76, 0, 0, 0, 0, 65, 80, 80, 76, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ... [548 x uint8]",
+                "Make": "Apple",
+                "Model": "iPhone 7",
+                "Orientation": "6",
+                "ResolutionUnit": "none",
+                "Software": "10.3.2",
+                "XResolution": "72",
+                "YResolution": "72",
+                "jpeg:subsampling": "4:2:0",
+                "oiio:ColorSpace": "sRGB"
+            }
+        },
+        {
+            "viewId": "1571755330",
+            "poseId": "1571755330",
+            "intrinsicId": "4250952705",
+            "path": "D:\/Users\/Tiago\/Unicamp\/ic\/Software\/Meshroom\/Photos\/monstree\/IMG_1024.jpg",
+            "width": "4032",
+            "height": "3024",
+            "metadata": {
+                "AliceVision:SensorWidth": "4.890000",
+                "DateTime": "2017:07:18 15:31:28",
+                "Exif:ApertureValue": "1.69599",
+                "Exif:BrightnessValue": "5.17327",
+                "Exif:ColorSpace": "65535",
+                "Exif:DateTimeDigitized": "2017:07:18 15:31:28",
+                "Exif:DateTimeOriginal": "2017:07:18 15:31:28",
+                "Exif:ExifVersion": "0221",
+                "Exif:ExposureBiasValue": "0",
+                "Exif:ExposureMode": "0",
+                "Exif:ExposureProgram": "2",
+                "Exif:Flash": "24",
+                "Exif:FlashPixVersion": "0100",
+                "Exif:FocalLength": "3.99",
+                "Exif:FocalLengthIn35mmFilm": "28",
+                "Exif:LensMake": "Apple",
+                "Exif:LensModel": "iPhone 7 back camera 3.99mm f\/1.8",
+                "Exif:LensSpecification": "3.99, 3.99, 1.8, 1.8",
+                "Exif:MeteringMode": "5",
+                "Exif:PhotographicSensitivity": "40",
+                "Exif:PixelXDimension": "4032",
+                "Exif:PixelYDimension": "3024",
+                "Exif:SceneCaptureType": "0",
+                "Exif:SensingMethod": "2",
+                "Exif:ShutterSpeedValue": "6.90799",
+                "Exif:SubsecTimeDigitized": "462",
+                "Exif:SubsecTimeOriginal": "462",
+                "Exif:WhiteBalance": "0",
+                "Exif:YCbCrPositioning": "1",
+                "ExposureTime": "0.00833333",
+                "FNumber": "1.8",
+                "GPS:Altitude": "1224.42",
+                "GPS:AltitudeRef": "0",
+                "GPS:DateStamp": "2017:07:18",
+                "GPS:DestBearing": "7.97446",
+                "GPS:DestBearingRef": "T",
+                "GPS:HPositioningError": "8",
+                "GPS:ImgDirection": "7.97446",
+                "GPS:ImgDirectionRef": "T",
+                "GPS:Latitude": "37, 43, 23.86",
+                "GPS:LatitudeRef": "N",
+                "GPS:Longitude": "119, 36, 57.18",
+                "GPS:LongitudeRef": "W",
+                "GPS:Speed": "0.0605214",
+                "GPS:SpeedRef": "K",
+                "GPS:TimeStamp": "22, 31, 28",
+                "ICCProfile": "0, 0, 2, 36, 97, 112, 112, 108, 4, 0, 0, 0, 109, 110, 116, 114, 82, 71, 66, 32, 88, 89, 90, 32, 7, 223, 0, 10, 0, 14, 0, 13, 0, 8, 0, 57, 97, 99, 115, 112, 65, 80, 80, 76, 0, 0, 0, 0, 65, 80, 80, 76, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ... [548 x uint8]",
+                "Make": "Apple",
+                "Model": "iPhone 7",
+                "Orientation": "6",
+                "ResolutionUnit": "none",
+                "Software": "10.3.2",
+                "XResolution": "72",
+                "YResolution": "72",
+                "jpeg:subsampling": "4:2:0",
+                "oiio:ColorSpace": "sRGB"
+            }
+        },
+        {
+            "viewId": "2004185071",
+            "poseId": "2004185071",
+            "intrinsicId": "4250952705",
+            "resectionId": "0",
+            "path": "D:\/Users\/Tiago\/Unicamp\/ic\/Software\/Meshroom\/Photos\/monstree\/IMG_1025.jpg",
+            "width": "4032",
+            "height": "3024",
+            "metadata": {
+                "AliceVision:SensorWidth": "4.890000",
+                "DateTime": "2017:07:18 15:31:30",
+                "Exif:ApertureValue": "1.69599",
+                "Exif:BrightnessValue": "4.96804",
+                "Exif:ColorSpace": "65535",
+                "Exif:DateTimeDigitized": "2017:07:18 15:31:30",
+                "Exif:DateTimeOriginal": "2017:07:18 15:31:30",
+                "Exif:ExifVersion": "0221",
+                "Exif:ExposureBiasValue": "0",
+                "Exif:ExposureMode": "0",
+                "Exif:ExposureProgram": "2",
+                "Exif:Flash": "24",
+                "Exif:FlashPixVersion": "0100",
+                "Exif:FocalLength": "3.99",
+                "Exif:FocalLengthIn35mmFilm": "28",
+                "Exif:LensMake": "Apple",
+                "Exif:LensModel": "iPhone 7 back camera 3.99mm f\/1.8",
+                "Exif:LensSpecification": "3.99, 3.99, 1.8, 1.8",
+                "Exif:MeteringMode": "5",
+                "Exif:PhotographicSensitivity": "20",
+                "Exif:PixelXDimension": "4032",
+                "Exif:PixelYDimension": "3024",
+                "Exif:SceneCaptureType": "0",
+                "Exif:SensingMethod": "2",
+                "Exif:ShutterSpeedValue": "5.90695",
+                "Exif:SubsecTimeDigitized": "730",
+                "Exif:SubsecTimeOriginal": "730",
+                "Exif:WhiteBalance": "0",
+                "Exif:YCbCrPositioning": "1",
+                "ExposureTime": "0.0166667",
+                "FNumber": "1.8",
+                "GPS:Altitude": "1223.82",
+                "GPS:AltitudeRef": "0",
+                "GPS:DateStamp": "2017:07:18",
+                "GPS:DestBearing": "359.233",
+                "GPS:DestBearingRef": "T",
+                "GPS:HPositioningError": "6",
+                "GPS:ImgDirection": "359.233",
+                "GPS:ImgDirectionRef": "T",
+                "GPS:Latitude": "37, 43, 23.81",
+                "GPS:LatitudeRef": "N",
+                "GPS:Longitude": "119, 36, 57.26",
+                "GPS:LongitudeRef": "W",
+                "GPS:Speed": "0.00532005",
+                "GPS:SpeedRef": "K",
+                "GPS:TimeStamp": "22, 31, 30",
+                "ICCProfile": "0, 0, 2, 36, 97, 112, 112, 108, 4, 0, 0, 0, 109, 110, 116, 114, 82, 71, 66, 32, 88, 89, 90, 32, 7, 223, 0, 10, 0, 14, 0, 13, 0, 8, 0, 57, 97, 99, 115, 112, 65, 80, 80, 76, 0, 0, 0, 0, 65, 80, 80, 76, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ... [548 x uint8]",
+                "Make": "Apple",
+                "Model": "iPhone 7",
+                "Orientation": "6",
+                "ResolutionUnit": "none",
+                "Software": "10.3.2",
+                "XResolution": "72",
+                "YResolution": "72",
+                "jpeg:subsampling": "4:2:0",
+                "oiio:ColorSpace": "sRGB"
+            }
+        }
+    ],
+    "intrinsics": [
+        {
+            "intrinsicId": "4250952705",
+            "width": "4032",
+            "height": "3024",
+            "serialNumber": "D:\/Users\/Tiago\/Unicamp\/ic\/Software\/Meshroom\/Photos\/monstree_Apple_iPhone 7",
+            "type": "radial3",
+            "initializationMode": "estimated",
+            "pxInitialFocalLength": "3289.9141104294481",
+            "pxFocalLength": "3176.9515302903728",
+            "principalPoint": [
+                "2016",
+                "1512"
+            ],
+            "distortionParams": [
+                "-0.025868867503464052",
+                "0.11668465922076987",
+                "-0.1339763705319684"
+            ],
+            "locked": "0"
+        }
+    ],
+    "poses": [
+        {
+            "poseId": "536766085",
+            "pose": {
+                "transform": {
+                    "rotation": [
+                        "0.99999999378546367",
+                        "-0.00010106896166110061",
+                        "4.7054624034974316e-05",
+                        "0.00010143921834078175",
+                        "0.99996850194492959",
+                        "-0.0079362981356799513",
+                        "-4.6251028493829341e-05",
+                        "0.0079363028595438208",
+                        "0.9999685059829454"
+                    ],
+                    "center": [
+                        "-0.0021252577899781152",
+                        "0.020882197466037658",
+                        "0.038999759070520064"
+                    ]
+                },
+                "locked": "0"
+            }
+        },
+        {
+            "poseId": "1571755330",
+            "pose": {
+                "transform": {
+                    "rotation": [
+                        "0.99329426446542712",
+                        "-0.10847218840598553",
+                        "0.040003606368707416",
+                        "0.11559157748313507",
+                        "0.92500828297631421",
+                        "-0.36193682271934058",
+                        "0.0022564119850977254",
+                        "0.36413385007113441",
+                        "0.93134389343428137"
+                    ],
+                    "center": [
+                        "-0.089888667330232749",
+                        "0.92551431055263134",
+                        "0.30920202111565342"
+                    ]
+                },
+                "locked": "0"
+            }
+        },
+        {
+            "poseId": "2004185071",
+            "pose": {
+                "transform": {
+                    "rotation": [
+                        "0.99916032079225581",
+                        "-0.040942713343341708",
+                        "-0.0015321809297098761",
+                        "0.039900585243168085",
+                        "0.98086037415400928",
+                        "-0.19058034975230173",
+                        "0.0093057321887691693",
+                        "0.19035918847941627",
+                        "0.98167040431597452"
+                    ],
+                    "center": [
+                        "-0.038132070470041884",
+                        "0.51832820178751582",
+                        "0.18074647272036296"
+                    ]
+                },
+                "locked": "0"
+            }
+        }
+    ]
+}
