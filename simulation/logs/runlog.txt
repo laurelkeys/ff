@@ -1,0 +1,143 @@
+
+---------------------------------------------------------------------------
+CVX: Software for Disciplined Convex Programming       (c)2014 CVX Research
+Version 2.1, Build 1123 (cff5298)                  Sun Dec 17 18:58:10 2017
+---------------------------------------------------------------------------
+Installation info:
+    Path: D:\Users\Tiago\Unicamp\ic\Software\AirSim\Simulation\CVX
+    MATLAB version: 9.7 (R2019b)
+    OS: Windows 10 amd64 version 10.0
+    Java version: 1.8.0_202
+Verfying CVX directory contents:
+    No missing files.
+Preferences: 
+    Path: C:\Users\tiago\AppData\Roaming\MathWorks\MATLAB\cvx_prefs.mat
+---------------------------------------------------------------------------
+Setting CVX paths...done.
+Saving updated path...done.
+Searching for solvers...3 shims found.
+2 solvers initialized (* = default):
+ *  SDPT3    4.0     {cvx}\sdpt3
+    SeDuMi   1.34    {cvx}\sedumi
+1 solver skipped:
+    GLPK             
+        Could not find a GLPK installation.
+Saving updated preferences...done.
+Testing with a simple model...done!
+---------------------------------------------------------------------------
+To change the default solver, type "cvx_solver <solver_name>".
+To save this change for future sessions, type "cvx_save_prefs".
+Please consult the users' guide for more information.
+---------------------------------------------------------------------------
+
+ 
+Calling SDPT3 4.0: 39 variables, 3 equality constraints
+   For improved efficiency, SDPT3 is solving the dual problem.
+------------------------------------------------------------
+
+ num. of constraints =  3
+ dim. of sdp    var  = 12,   num. of sdp  blk  =  1
+ dim. of linear var  =  2
+ dim. of free   var  =  1 *** convert ublk to lblk
+*******************************************************************
+   SDPT3: Infeasible path-following algorithms
+*******************************************************************
+ version  predcorr  gam  expon  scale_data
+   HKM      1      0.000   1        0    
+it pstep dstep pinfeas dinfeas  gap      prim-obj      dual-obj    cputime
+-------------------------------------------------------------------
+ 0|0.000|0.000|2.1e+01|3.3e+00|3.2e+03| 1.000000e+02  0.000000e+00| 0:0:00| chol  1  1 
+ 1|1.000|0.640|7.4e-06|1.2e+00|5.1e+02| 2.783443e+02 -6.392596e+00| 0:0:00| chol  1  1 
+ 2|1.000|0.999|2.3e-07|4.9e-03|5.8e+01| 5.893477e+01  1.210055e+00| 0:0:00| chol  1  1 
+ 3|1.000|1.000|6.5e-08|3.6e-04|5.6e+00| 1.369045e+01  8.156904e+00| 0:0:00| chol  1  1 
+ 4|0.978|0.982|1.6e-08|4.2e-05|1.2e-01| 1.006812e+01  9.947782e+00| 0:0:00| chol  1  1 
+ 5|0.989|0.989|9.5e-10|4.1e-06|1.4e-03| 1.000078e+01  9.999444e+00| 0:0:00| chol  1  1 
+ 6|0.989|0.989|2.5e-10|5.5e-06|1.9e-05| 1.000001e+01  9.999994e+00| 0:0:00| chol  1  1 
+ 7|0.989|0.989|6.4e-12|7.6e-08|1.8e-07| 1.000000e+01  1.000000e+01| 0:0:00| chol  1  1 
+ 8|1.000|0.989|2.1e-14|7.1e-10|2.5e-09| 1.000000e+01  1.000000e+01| 0:0:00|
+  stop: max(relative gap, infeasibilities) < 1.49e-08
+-------------------------------------------------------------------
+ number of iterations   =  8
+ primal objective value =  1.00000000e+01
+ dual   objective value =  1.00000000e+01
+ gap := trace(XZ)       = 2.53e-09
+ relative gap           = 1.21e-10
+ actual relative gap    = 1.16e-10
+ rel. primal infeas (scaled problem)   = 2.09e-14
+ rel. dual     "        "       "      = 7.12e-10
+ rel. primal infeas (unscaled problem) = 0.00e+00
+ rel. dual     "        "       "      = 0.00e+00
+ norm(X), norm(y), norm(Z) = 2.0e+00, 1.0e+01, 2.0e+01
+ norm(A), norm(b), norm(C) = 6.7e+00, 6.3e+00, 1.1e+01
+ Total CPU time (secs)  = 0.31  
+ CPU time per iteration = 0.04  
+ termination code       =  0
+ DIMACS: 2.1e-14  0.0e+00  7.1e-10  0.0e+00  1.2e-10  1.2e-10
+-------------------------------------------------------------------
+ 
+------------------------------------------------------------
+Status: Solved
+Optimal value (cvx_optval): +10
+ 
+Starting parallel pool (parpool) using the 'local' profile ...
+Connected to the parallel pool (number of workers: 3).
+    "numel(imgArrayInp):"    "691200"
+
+    "imgHeight:"    "240"    "imgWidth:"    "320"    "n:"    "3"
+
+    "numel(imgs):"    "691200"    "numel(imgArray):"    "691200"
+
+    "size(imgs):"    "240"    "320"    "3"    "3"    "size(imgArray):"    "1"    "691200"
+
+    "isscalar(imgs)"    "false"    "isscalar(imgArray)"    "false"
+
+    "class(imgs)"    "uint8"    "class(imgArray)"    "uint8"
+
+Am: [[-3.095238094929451,-0.0,1.1904761903574812,2.857142856857955,1.90476190457197,-2.857142856857955],[0.0,-3.095238094929451,-2.857142856857955,1.1904761903574812,2.857142856857955,1.90476190457197],[1.1904761903574812,-2.857142856857955,-3.095238094929451,-0.0,1.90476190457197,2.857142856857955],[2.857142856857955,1.1904761903574812,0.0,-3.095238094929451,-2.857142856857955,1.90476190457197],[1.90476190457197,2.857142856857955,1.90476190457197,-2.857142856857955,-3.80952380914394,-0.0],[-2.857142856857955,1.90476190457197,2.857142856857955,1.90476190457197,0.0,-3.80952380914394]]
+Gain matrix calculated.
+Connected!
+Client Ver:1 (Min Req: 1), Server Ver:1 (Min Req: 1)
+
+All UAVs have been initialized.
+taking off...
+Hovering UAV1
+Hovering UAV2
+Hovering UAV3
+All UAVs are hovering.
+Moving UAV1
+Moving UAV2
+Moving UAV3
+UAVs reached desired altitude
+Retrieved images of UAV1
+img1d: (230400,), img_rgb: (240, 320, 3), img...uint8: 230400
+imgArray: 230400
+Retrieved images of UAV2
+img1d: (230400,), img_rgb: (240, 320, 3), img...uint8: 230400
+imgArray: 460800
+Retrieved images of UAV3
+img1d: (230400,), img_rgb: (240, 320, 3), img...uint8: 230400
+imgArray: 691200
+itr =  1
+Starting a parallel pool...
+Retrieved images of UAV1
+img1d: (230400,), img_rgb: (240, 320, 3), img...uint8: 230400
+imgArray: 230400
+Retrieved images of UAV2
+img1d: (230400,), img_rgb: (240, 320, 3), img...uint8: 230400
+imgArray: 460800
+Retrieved images of UAV3
+img1d: (230400,), img_rgb: (240, 320, 3), img...uint8: 230400
+imgArray: 691200
+===========--=======--
+<class 'bytes'> 691200 (691200,) uint8
+<class 'bytearray'> 691200
+imgWidth: 320
+imgHeight: 240
+save: 1
+Adjm: [[0.0,1.0,1.0],[1.0,0.0,1.0],[1.0,1.0,0.0]]
+itr: 1
+===========--=======--
+Exception: 
+  File D:\Users\Tiago\Unicamp\ic\Software\AirSim\Simulation\GetRelativePose_Ver1_7.m, line 104, in GetRelativePose_Ver1_7
+Undefined function 'detectSURFFeatures' for input arguments of type 'uint8'.
+

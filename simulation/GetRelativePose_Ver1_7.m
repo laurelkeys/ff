@@ -61,10 +61,10 @@ function [Q, T, flag] = GetRelativePose_Ver1_7(imgArrayInp, imgWidthInp, imgHeig
     disp(["isscalar(imgs)", isscalar(imgs), "isscalar(imgArray)", isscalar(imgArray)]);
     disp(["class(imgs)", class(imgs), "class(imgArray)", class(imgArray)]);
     for i = 1 : n
-        % imgs(:,:,i) = reshape( imgArray((i-1)*arrayLength+1 : i*arrayLength), imgWidth, imgHeight).';
-        imgs(:,:,1,i) = reshape( imgArray((i-1)*4*arrayLength+1 : 4 : i*4*arrayLength), imgWidth, imgHeight).';
-        imgs(:,:,2,i) = reshape( imgArray((i-1)*4*arrayLength+2 : 4 : i*4*arrayLength), imgWidth, imgHeight).';
-        imgs(:,:,3,i) = reshape( imgArray((i-1)*4*arrayLength+3 : 4 : i*4*arrayLength), imgWidth, imgHeight).';
+        imgs(:,:,i) = reshape( imgArray((i-1)*arrayLength+1 : i*arrayLength), imgWidth, imgHeight).';
+        % imgs(:,:,1,i) = reshape( imgArray((i-1)*4*arrayLength+1 : 4 : i*4*arrayLength), imgWidth, imgHeight).';
+        % imgs(:,:,2,i) = reshape( imgArray((i-1)*4*arrayLength+2 : 4 : i*4*arrayLength), imgWidth, imgHeight).';
+        % imgs(:,:,3,i) = reshape( imgArray((i-1)*4*arrayLength+3 : 4 : i*4*arrayLength), imgWidth, imgHeight).';
     end
     
     
