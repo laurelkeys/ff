@@ -93,34 +93,64 @@ del_keys_inplace(sfm, unused_keys)
 #    |-> width                     |-> center         |-> observations
 #    |-> height                |-> locked                 |-> observationId
 
-def obj2ply(obj, camera_color=(0, 255, 0)):
-    ply = (
+def camera2ply(obj, camera_color=(0, 255, 0)):
+    header = (
         "property float x\n"
         "property float y\n"
         "property float z\n"
         "property uchar red\n"
         "property uchar green\n"
         "property uchar blue\n"
-        "end_header\n"
     )
 
+    obj_paths = [_views['path'] for _views in obj.views]
+    for path in obj_paths:
+        header += f"comment {path}\n"
+
+    ply = ""
     vertex_count = 0
-    obj_centers = [pose['pose']['transform']['center'] for pose in obj.poses]
-    obj_paths = [view['path'] for view in obj.views]
-    for center, path in zip(obj_centers, obj_paths):
+    obj_centers = [_poses['pose']['transform']['center'] for _poses in obj.poses]
+    for center in obj_centers:
         ply += f"{' '.join(map('{:.8f}'.format, map(float, center)))} {' '.join(map(str, camera_color))}\n"
         vertex_count += 1
 
-    ply = f"ply\nformat ascii 1.0\nelement vertex {vertex_count}\n" + ply
-    return ply
+    header = f"ply\nformat ascii 1.0\nelement vertex {vertex_count}\n" + header + "end_header\n"
+    return header + ply
+
+def sfm2ply(obj, camera_color=(0, 255, 0)):
+    header = (
+        "property float x\n"
+        "property float y\n"
+        "property float z\n"
+        "property uchar red\n"
+        "property uchar green\n"
+        "property uchar blue\n"
+    )
+
+    obj_paths = [_views['path'] for _views in obj.views]
+    for path in obj_paths:
+        header += f"comment {path}\n"
+
+    ply = ""
+    vertex_count = 0
+    obj_centers = [_poses['pose']['transform']['center'] for _poses in obj.poses]
+    for center in obj_centers:
+        ply += f"{' '.join(map('{:.8f}'.format, map(float, center)))} {' '.join(map(str, camera_color))}\n"
+        vertex_count += 1
+    
+    obj_points = [(_structure['X'], _structure['color']) for _structure in obj.structure]
+    for point, color in obj_points:
+        ply += f"{' '.join(map('{:.8f}'.format, map(float, point)))} {' '.join(color)}\n"
+        vertex_count += 1
+
+    header = f"ply\nformat ascii 1.0\nelement vertex {vertex_count}\n" + header + "end_header\n"
+    return header + ply
 
 _cameras = dict2obj(cameras)
-# camera_centers = [pose['pose']['transform']['center'] for pose in _cameras.poses]
-# camera_paths = [view['path'] for view in _cameras.views]
-# print(camera_centers)
-# print(camera_paths)
-print(obj2ply(_cameras))
+# print(camera2ply(_cameras))
 
+_sfm = dict2obj(sfm)
+print(sfm2ply(_sfm))
 
 # -> views: List[dict]
 #    |-> viewId: str(int)
