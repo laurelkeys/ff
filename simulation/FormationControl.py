@@ -132,7 +132,7 @@ for i in range(numUAV):
 
     img1d = np.fromstring(img.image_data_uint8, dtype=np.uint8)
     img_rgb = np.flipud(img1d.reshape(img.height, img.width, -1))
-    print(f"img1d: {img1d.shape}, img_rgb: {img_rgb.shape}, img...uint8: {len(img.image_data_uint8)}")
+    # print(f"img1d: {img1d.shape}, img_rgb: {img_rgb.shape}, img...uint8: {len(img.image_data_uint8)}")
     airsim.write_png(f'out0-{i}.png', img_rgb)
     airsim.write_file(f'out1-{i}.png', img.image_data_uint8)
     
@@ -141,7 +141,7 @@ for i in range(numUAV):
         imgArray = img.image_data_uint8
     else:
         imgArray = imgArray + img.image_data_uint8
-    print(f"imgArray: {len(imgArray)}")
+    # print(f"imgArray: {len(imgArray)}")
     
     # Scene vision image in compressed RGBA array
     img_compr = client.simGetImage("0", airsim.ImageType.Scene, vehicle_name = name) # bytes
@@ -192,7 +192,7 @@ while True:
         
         img1d = np.fromstring(img.image_data_uint8, dtype=np.uint8)
         img_rgb = np.flipud(img1d.reshape(img.height, img.width, -1))
-        print(f"img1d: {img1d.shape}, img_rgb: {img_rgb.shape}, img...uint8: {len(img.image_data_uint8)}")
+        # print(f"img1d: {img1d.shape}, img_rgb: {img_rgb.shape}, img...uint8: {len(img.image_data_uint8)}")
         airsim.write_png(f'out3-{i}.png', img_rgb)
         airsim.write_file(f'out4-{i}.png', img.image_data_uint8)
         
@@ -201,34 +201,28 @@ while True:
             imgArray = img.image_data_uint8
         else:
             imgArray = imgArray + img.image_data_uint8
-        print(f"imgArray: {len(imgArray)}")
+        # print(f"imgArray: {len(imgArray)}")
 
     # ref.: https://www.mathworks.com/help/matlab/matlab_external/pass-data-to-matlab-from-python.html
-    try:
-        # meng.edit('GetRelativePose_Ver1_7')
-        print("===========--=======--")
-        npImgArray = np.frombuffer(imgArray, dtype='uint8')
-        print(type(imgArray), len(imgArray), npImgArray.shape, npImgArray.dtype)
-        # _imgArray = npImgArray.tobytes()
-        # _imgArray = npImgArray.tolist()
-        _imgArray = bytearray(npImgArray)
-        print(type(_imgArray), len(_imgArray))
-        print("imgWidth:", imgWidth)
-        print("imgHeight:", imgHeight)
-        print("save:", save)
-        print("Adjm:", Adjm)
-        print("itr:", itr)
-        print("===========--=======--")
-        Qm, Tm, flagm = meng.GetRelativePose_Ver1_7(_imgArray, imgWidth, imgHeight, save, Adjm, itr, nargout=3)
-        T = np.asarray(Tm)
-        flag = np.asarray(flagm).flatten()
-        print('T:')
-        print(T)
-    except Exception as e:
-        meng.quit()
-        client.reset()
-        print("Exception:", e)
-        exit(0)
+    # meng.edit('GetRelativePose_Ver1_7')
+    # print("===========--=======--")
+    npImgArray = np.frombuffer(imgArray, dtype='uint8')
+    # print(type(imgArray), len(imgArray), npImgArray.shape, npImgArray.dtype)
+    # _imgArray = npImgArray.tobytes()
+    # _imgArray = npImgArray.tolist()
+    _imgArray = bytearray(npImgArray)
+    # print(type(_imgArray), len(_imgArray))
+    # print("imgWidth:", imgWidth)
+    # print("imgHeight:", imgHeight)
+    # print("save:", save)
+    # print("Adjm:", Adjm)
+    # print("itr:", itr)
+    # print("===========--=======--")
+    Qm, Tm, flagm = meng.GetRelativePose_Ver1_7(_imgArray, imgWidth, imgHeight, save, Adjm, itr, nargout=3)
+    T = np.asarray(Tm)
+    flag = np.asarray(flagm).flatten()
+    # print('T:')
+    # print(T)
     
     
     # Transform recovered coordinates to world frame in order to apply the control.

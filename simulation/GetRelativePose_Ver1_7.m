@@ -36,7 +36,7 @@ function [Q, T, flag] = GetRelativePose_Ver1_7(imgArrayInp, imgWidthInp, imgHeig
     %%
     % Transform matrix to vector
     imgArray = imgArrayInp;
-    disp(["numel(imgArrayInp):", numel(imgArrayInp)]);
+    % disp(["numel(imgArrayInp):", numel(imgArrayInp)]);
     
     imgWidth = double(imgWidthInp);
     imgHeight = double(imgHeightInp);
@@ -54,12 +54,12 @@ function [Q, T, flag] = GetRelativePose_Ver1_7(imgArrayInp, imgWidthInp, imgHeig
     % Reshape images into a matrix
     imgs = zeros(imgHeight, imgWidth, 3, n, 'uint8');
     % imgArray = reshape(imgArray, imgHeight*imgWidth*3*n);
-    disp(["imgHeight:", imgHeight, "imgWidth:", imgWidth, "n:", n]);
-    disp(["numel(imgs):", numel(imgs), "numel(imgArray):", numel(imgArray)]);
-    % disp(["size(imgs):", size(imgs)]);
-    disp(["size(imgs):", size(imgs), "size(imgArray):", size(imgArray)]);
-    disp(["isscalar(imgs)", isscalar(imgs), "isscalar(imgArray)", isscalar(imgArray)]);
-    disp(["class(imgs)", class(imgs), "class(imgArray)", class(imgArray)]);
+    % disp(["imgHeight:", imgHeight, "imgWidth:", imgWidth, "n:", n]);
+    % disp(["numel(imgs):", numel(imgs), "numel(imgArray):", numel(imgArray)]);
+    % % disp(["size(imgs):", size(imgs)]);
+    % disp(["size(imgs):", size(imgs), "size(imgArray):", size(imgArray)]);
+    % disp(["isscalar(imgs)", isscalar(imgs), "isscalar(imgArray)", isscalar(imgArray)]);
+    % disp(["class(imgs)", class(imgs), "class(imgArray)", class(imgArray)]);
     for i = 1 : n
         imgs(:,:,i) = reshape( imgArray((i-1)*arrayLength+1 : i*arrayLength), imgWidth, imgHeight).';
         % imgs(:,:,1,i) = reshape( imgArray((i-1)*4*arrayLength+1 : 4 : i*4*arrayLength), imgWidth, imgHeight).';
