@@ -2,8 +2,8 @@ import sys
 import numpy as np
 import open3d as o3d
 
-if __name__ == "__main__":
-    pcd = o3d.io.read_point_cloud(sys.argv[1])
+def main(fname, bbox_scale=1):
+    pcd = o3d.io.read_point_cloud()
     aabb = pcd.get_axis_aligned_bounding_box()
 
     # coordinate axis
@@ -12,10 +12,13 @@ if __name__ == "__main__":
     print("min:", pcd.get_min_bound())
     print("max:", pcd.get_max_bound())
     
-    try:    bbox_scale = float(sys.argv[2])
-    except: bbox_scale = 1
 
     o3d.visualization.draw_geometries([pcd, mesh_frame, aabb.scale(bbox_scale)])
+
+if __name__ == "__main__":
+    try:    bbox_scale = float(sys.argv[2])
+    except: bbox_scale = 1
+    main(sys.argv[1], bbox_scale)
 
 # ref.: http://www.open3d.org/docs/release/tutorial/Basic/visualization.html
 # {
