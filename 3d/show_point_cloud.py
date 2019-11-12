@@ -3,7 +3,7 @@ import numpy as np
 import open3d as o3d
 
 def main(fname, bbox_scale=1):
-    pcd = o3d.io.read_point_cloud()
+    pcd = o3d.io.read_point_cloud(fname)
     aabb = pcd.get_axis_aligned_bounding_box()
 
     # coordinate axis
