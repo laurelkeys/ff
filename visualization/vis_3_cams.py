@@ -63,7 +63,10 @@ def vis3(camIdx):
                         [observation['observationId'] for observation in structure['observations']]) 
                         for structure in sfm['structure']]
     for color, center, observationIds in point_structures:
-        point_color = ' '.join(color) if camera_ids[camIdx] not in observationIds else camera_colors[camIdx]
+        if camIdx is not None:
+            point_color = ' '.join(color) if camera_ids[camIdx] not in observationIds else camera_colors[camIdx]
+        else:
+            point_color = ' '.join(color)
         ply += f"{' '.join(map('{:.8f}'.format, map(float, center)))} {point_color}\n"
         vertex_count += 1
 
@@ -71,9 +74,11 @@ def vis3(camIdx):
     return header + ply
 
 if __name__ == "__main__":
-    with open("vis3_cam0_cyan.ply", 'w') as ply_file:
-        ply_file.write(vis3(0))
-    with open("vis3_cam1_yellow.ply", 'w') as ply_file:
-        ply_file.write(vis3(1))
-    with open("vis3_cam2_magenta.ply", 'w') as ply_file:
-        ply_file.write(vis3(2))
+    with open("vis3_cams.ply", 'w') as ply_file:
+        ply_file.write(vis3(None))
+    # with open("vis3_cam0_cyan.ply", 'w') as ply_file:
+    #     ply_file.write(vis3(0))
+    # with open("vis3_cam1_yellow.ply", 'w') as ply_file:
+    #     ply_file.write(vis3(1))
+    # with open("vis3_cam2_magenta.ply", 'w') as ply_file:
+    #     ply_file.write(vis3(2))
