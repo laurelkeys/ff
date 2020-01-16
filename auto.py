@@ -1,10 +1,6 @@
-import os
 import argparse
 import subprocess
 
-import numpy as np
-
-from time import time
 from os.path import join
 
 
@@ -51,9 +47,7 @@ if __name__ == "__main__":
 
     print(f"AirSim root: {args.airsim_root}")
     print(f"Environment: {args.environment}")
-    print(f"SimMode:     \"{args.sim_mode}\"")
-
-    pass
+    print(f'SimMode:     "{args.sim_mode}"')
 
 
 ###############################################################################
