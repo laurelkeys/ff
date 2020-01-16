@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import matplotlib.pyplot as plt
 import open3d as o3d
 
 def main(fname, bbox_scale=1):
@@ -8,11 +9,11 @@ def main(fname, bbox_scale=1):
 
     # coordinate axis
     mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
+    hull = pcd.compute_convex_hull()
     
     print("min:", pcd.get_min_bound())
     print("max:", pcd.get_max_bound())
     
-
     o3d.visualization.draw_geometries([pcd, mesh_frame, aabb.scale(bbox_scale)])
 
 if __name__ == "__main__":
