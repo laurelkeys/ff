@@ -8,7 +8,7 @@ CAMERA_NAME = [
     "front_center",
     "front_right",
     "front_left",
-    "bottom_center",  # NOTE "fpv" if the SimMode is Car
+    "bottom_center",
     "back_center",
 ]
 
@@ -25,10 +25,32 @@ IMAGE_TYPE = [
 
 
 def env_settings(args) -> str:
-    settings_path = join(args.envs_root, "settings.json")
+    settings_path = join(args.settings_root, "settings.json")
     with open(settings_path) as settings_file:
         settings = settings_file.read()
     return settings
+
+
+def build_settings(args, default_args):
+    _args = args.__dict__
+    _default_args = default_args.__dict__
+
+    json_dict = {"SettingsVersion": 1.2}
+
+    def set_property(airsim_property):
+        import re  # convert CamelCase to snake_case with RegEx
+
+        argument = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", airsim_property)
+        argument = re.sub("([a-z0-9])([A-Z])", r"\1_\2", argument).lower()
+        if _args[argument] != _default_args[argument]:
+            json_dict[airsim_property] = _args[argument]
+
+    set_property("SimMode")
+    set_property("LocalHostIp")
+    set_property("ClockSpeed")
+    set_property("ViewMode")
+
+    return json.dumps(json_dict)
 
 
 def get_parser():
@@ -39,6 +61,12 @@ def get_parser():
         "--verbose", "-v", action="store_true", help="Increase verbosity"
     )
     parser.add_argument(
+        "--settings_root",
+        type=str,
+        default="D:\\Documents\\AirSim",
+        help="Path to settings.json's parent folder  (default: %(default)s)",
+    )
+    parser.add_argument(
         "--envs_root",
         type=str,
         default="D:\\Documents\\AirSim",
@@ -47,9 +75,15 @@ def get_parser():
     parser.add_argument(
         "--sim_mode",  # SimMode
         type=str,
-        choices=["ComputerVision", "Multirotor", "Car"],
+        choices=["ComputerVision", "Multirotor"],
         default="Multirotor",
         help="Which simulation mode will be used  (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--local_host_ip",  # LocalHostIp
+        type=str,
+        default="127.0.0.1",
+        help="Set this if you'll be connecting to remote machines  (default: %(default)s)",
     )
     parser.add_argument(
         "--clock_speed",  # ClockSpeed
@@ -61,41 +95,25 @@ def get_parser():
         "--view_mode",  # ViewMode
         type=str,
         choices=[
-            "FlyWithMe",       # Chase the vehicle from behind with 6 degrees of freedom
+            "FlyWithMe",  # Chase the vehicle from behind with 6 degrees of freedom
             "GroundObserver",  # Chase the vehicle from 6' above the ground but with full freedom in XY plane
-            "Fpv",             # View the scene from the vehicle's vehicle front camera
-            "Manual",          # Use the arrow keys and WASD to move the camera manually
+            "Fpv",  # View the scene from the vehicle's vehicle front camera
+            "Manual",  # Use the arrow keys and WASD to move the camera manually
             "SpringArmChase",  # Chase the vehicle with a camera that has some latency in movement
-            "NoDisplay",       # Freeze rendering for main screen but keep subwindows, recording and APIs active
+            "NoDisplay",  # Freeze rendering for main screen but keep subwindows, recording and APIs active
         ],
         default="FlyWithMe",
         help="Which camera to use and how it will follow the vehicle  (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--record_on_move",  # RecordOnMove,
-        action="store_true",
-        help="Do not register the frame if the vehicle hasn't moved",
-    )
-    parser.add_argument(
-        "--record_interval",  # RecordInterval
-        type=float,
-        default=0.05,
-        help="Minimum interval in seconds between capturing two images  (default: %(default)s)",
     )
     return parser
 
 
 if __name__ == "__main__":
-    args = get_parser().parse_args()
+    parser = get_parser()
+    args = parser.parse_args()
 
-    settings = {}
-    settings["SettingsVersion"] = 1.2
-    settings["SimMode"] = args.sim_mode
-    settings["ClockSpeed"] = args.clock_speed
-    settings["ViewMode"] = args.view_mode
-    # FIXME specify 'Cameras' before setting 'Recording'
+    settings_json = build_settings(args, default_args=parser.parse_args([]))
 
-    settings_json = json.dumps(settings, indent=2)
     if args.verbose:
         print("Current settings.json:")
         print(env_settings(args))
@@ -109,80 +127,4 @@ if __name__ == "__main__":
 #   - configure subwindows (docs/settings.md#subwindows)
 #   - specify cameras used for recording (docs/settings.md#recording)
 #   - configure CaptureSettings (docs/settings.md#capturesettings)
-
-# Format example with default values:
-# {
-#     "SimMode": "",
-#     "ClockSpeed": 1,
-#     "RecordUIVisible": true, // ?
-#     "LogMessagesVisible": true, // ?
-#     "ViewMode": "",
-#     "Recording": {
-#         "RecordOnMove": false,
-#         "RecordInterval": 0.05,
-#         "Cameras": [
-#             {
-#                 "CameraName": "0",
-#                 "ImageType": 0,
-#                 "PixelsAsFloat": false,
-#                 "Compress": true
-#             }
-#         ]
-#     },
-#     "CameraDefaults": {
-#         "CaptureSettings": [
-#             {
-#                 "ImageType": 0,
-#                 "Width": 256,
-#                 "Height": 144,
-#                 "FOV_Degrees": 90,
-#                 "AutoExposureSpeed": 100,
-#                 "AutoExposureBias": 0,
-#                 "AutoExposureMaxBrightness": 0.64,
-#                 "AutoExposureMinBrightness": 0.03,
-#                 "MotionBlurAmount": 0,
-#                 "TargetGamma": 1.0,
-#                 "ProjectionMode": "",
-#                 "OrthoWidth": 5.12
-#             }
-#         ],
-#         "X": NaN,
-#         "Y": NaN,
-#         "Z": NaN,
-#         "Pitch": NaN,
-#         "Roll": NaN,
-#         "Yaw": NaN
-#     },
-#     "OriginGeopoint": {
-#         "Latitude": 47.641468,
-#         "Longitude": -122.140165,
-#         "Altitude": 122
-#     },
-#     "TimeOfDay": {
-#         "Enabled": false,
-#         "StartDateTime": "",
-#         "CelestialClockSpeed": 1,
-#         "StartDateTimeDst": false,
-#         "UpdateIntervalSecs": 60
-#     },
-#     "SubWindows": [
-#         {
-#             "WindowID": 0,
-#             "CameraName": "0",
-#             "ImageType": 3,
-#             "Visible": false
-#         },
-#         {
-#             "WindowID": 1,
-#             "CameraName": "0",
-#             "ImageType": 5,
-#             "Visible": false
-#         },
-#         {
-#             "WindowID": 2,
-#             "CameraName": "0",
-#             "ImageType": 0,
-#             "Visible": false
-#         }
-#     ]
-# }
+#   - allow RecordUIVisible and LogMessagesVisible to be set false
