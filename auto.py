@@ -40,14 +40,14 @@ def get_parser():
     return parser
 
 
-if __name__ == "__main__":
-    args = get_parser().parse_args()
+###############################################################################
+# AirSim BAT Files ###########################################################
+###############################################################################
 
-    args.environment = join(args.envs_root, args.env_name)
 
-    print(f"AirSim root: {args.airsim_root}")
-    print(f"Environment: {args.environment}")
-    print(f'SimMode:     "{args.sim_mode}"')
+def build_cmd_list(cmds, conditional_execution=False):
+    separator = "&&" if conditional_execution else ";"
+    return [arg for cmd in cmds for arg in (cmd.split(" ") + [separator])][:-1]
 
 
 ###############################################################################
@@ -115,3 +115,20 @@ def sync_blocks_sln(args) -> None:
         creationflags=subprocess.CREATE_NEW_CONSOLE,
         cwd=args.airsim_root,
     )
+
+
+###############################################################################
+###############################################################################
+###############################################################################
+
+
+if __name__ == "__main__":
+    args = get_parser().parse_args()
+
+    args.environment = join(args.envs_root, args.env_name)
+
+    print(f"AirSim root: {args.airsim_root}")
+    print(f"Environment: {args.environment}")
+    print(f'SimMode:     "{args.sim_mode}"')
+
+    bat_clean(args)
