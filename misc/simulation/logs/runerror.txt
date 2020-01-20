@@ -1,4 +1,0 @@
-'detectSURFFeatures' requires Computer Vision Toolbox.
-
-Error in GetRelativePose_Ver1_7 (line 104)
-    points = detectSURFFeatures(imgsg{i}, 'MetricThreshold', surfThresh);   % Detect feature points

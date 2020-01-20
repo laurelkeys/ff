@@ -1,3 +1,3 @@
 # ff
 
-![](misc/workflow.png)
+![](docs/workflow.png)
