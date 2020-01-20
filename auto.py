@@ -16,9 +16,17 @@ def get_parser():
         help="AirSim directory  (default: %(default)s)",
     )
     parser.add_argument(
+        "--settings_root",
+        type=str,
+        default="D:\\Documents\\AirSim",
+        help="Directory where settings.json is stored  (default: %(default)s)",
+    )
+    parser.add_argument(
         "--envs_root",
         type=str,
         default="D:\\Documents\\AirSim",
+        # default="D:\\dev\\AirSim\\Unreal\\Environments",
+        # default="D:\\dev\\UE4\\Custom Environments",
         help="Downloaded environments directory  (default: %(default)s)",
     )
     parser.add_argument(
@@ -56,15 +64,21 @@ def build_cmd_list(cmds, conditional_execution=False):
 
 
 def env_settings(args) -> str:
-    settings_path = join(args.envs_root, "settings.json")
+    """ Return settings.json as a string """
+    settings_path = join(args.settings_root, "settings.json")
     with open(settings_path) as settings_file:
         settings = settings_file.read()
     return settings
 
 
-def run_env(args) -> None:
+def run_env(args, width: int = None, height: int = None) -> None:
     """ Run a downloaded environment in windowed mode """
-    subprocess.run(["run.bat"], cwd=args.environment, shell=True)
+    cmds = ["start", args.env_name]
+    if width:
+        cmds += [f"ResX={width}"]
+        cmds += [f"ResY={height}" if height is not None else int(3 * width / 4)]
+    cmds += ["-windowed"]
+    subprocess.run(cmds, cwd=args.environment, shell=True)
 
 
 ###############################################################################
@@ -130,5 +144,6 @@ if __name__ == "__main__":
     print(f"AirSim root: {args.airsim_root}")
     print(f"Environment: {args.environment}")
     print(f'SimMode:     "{args.sim_mode}"')
+    if args.verbose:
+        print(f"settings.json: {env_settings(args)}")
 
-    bat_clean(args)
