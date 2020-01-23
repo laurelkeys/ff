@@ -8,6 +8,7 @@ client_path = os.path.join(airsim_path, "client.py")
 
 if os.path.exists(client_path):
     sys.path.insert(0, os.path.dirname(airsim_path))
+    logging.warning(f"\n'airsim' inserted into sys.path\n")
 else:
     logging.warning(
         f"\n'airsim' module not found in folder '{os.path.dirname(airsim_path)}'\n"
