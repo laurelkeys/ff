@@ -1,15 +1,16 @@
 ## Schedule
-
 |                        | **1-2** | **3-4** | **5-6** | **7-8** | **9-10** | **11-12** |
-|:----------------------:|:-------:|:-------:|:-------:|:-------:|:--------:|:---------:|
-| literature review      |    ⬛    |    ⬜    |    ⬜    |    ⬜    |    ⬜     |           |
+| :--------------------: | :-----: | :-----: | :-----: | :-----: | :------: | :-------: |
+|   literature review    |    ⬛    |    ⬜    |    ⬜    |    ⬜    |    ⬜     |           |
 | pipeline configuration |    ⬛    |    ⬜    |         |    ⬜    |          |           |
-| baseline assembly      |    ⬜    |    ⬜    |         |         |          |           |
-| obstacle avoidance     |         |    ⬜    |    ⬜    |    ⬜    |          |           |
-| trajectory update      |         |    ⬜    |    ⬜    |    ⬜    |    ⬜     |           |
-| free flight            |         |         |         |    ⬜    |    ⬜     |    ⬜      |
-| results dissemination  |         |         |         |         |    ⬜     |    ⬜      |
+|   baseline assembly    |    ⬜    |    ⬜    |         |         |          |           |
+|   obstacle avoidance   |         |    ⬜    |    ⬜    |    ⬜    |          |           |
+|   trajectory update    |         |    ⬜    |    ⬜    |    ⬜    |    ⬜     |           |
+|      free flight       |         |         |         |    ⬜    |    ⬜     |     ⬜     |
+| results dissemination  |         |         |         |         |    ⬜     |     ⬜     |
 
+
+<p>
 <details>
 <summary>Revisão bibliográfica (`literature review`)</summary>
 Esta etapa consiste em continuar nossos estudos sobre trabalhos estado-da-arte relacionados ao projeto, 
@@ -75,3 +76,4 @@ desenvolvido de forma aberta (<em>open-source</em>).
 </p>
 </details>
 <p>
+</p>
