@@ -1,6 +1,5 @@
 import os
 import sys
-import atexit
 import argparse
 
 try:
@@ -22,16 +21,16 @@ client.confirmConnection()
 client.enableApiControl(True)
 client.armDisarm(True)
 
-# reset the drone if we close the script with Ctrl+C
-atexit.register(lambda: client.reset()) # FIXME UE4 is still raising 'fatal error'
+try:
+    landed = client.getMultirotorState().landed_state
+    if landed == airsim.LandedState.Landed:
+        print("taking off...")
+        client.takeoffAsync().join()
+    else:
+        print("already flying...")
+        client.hoverAsync().join()
 
-landed = client.getMultirotorState().landed_state
-if landed == airsim.LandedState.Landed:
-    print("taking off...")
-    client.takeoffAsync().join()
-else:
-    print("already flying...")
-    client.hoverAsync().join()
-
-client.armDisarm(False)
-# client.enableApiControl(False)
+    client.armDisarm(False)
+except KeyboardInterrupt:
+    client.reset()
+    # client.enableApiControl(False)
