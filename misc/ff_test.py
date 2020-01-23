@@ -5,28 +5,30 @@ import subprocess
 
 ###############################################################################
 
-def import_airsim(create_symbolic_link=False,
-                  airsim_path="D:\\dev\\AirSim\\PythonClient\\airsim"):
+
+def import_airsim(
+    create_symbolic_link=False, airsim_path="D:\\dev\\AirSim\\PythonClient\\airsim"
+):
     global airsim
     try:
         import airsim
     except ModuleNotFoundError:
+        client_path = os.path.join(airsim_path, "client.py")
+        if not os.path.exists(client_path):
+            print(f"\nWARNING: expected '{client_path}' does not exist\n")
+
         if create_symbolic_link:
-            try:
-                subprocess.check_call(["ln", "-s", airsim_path, "airsim"])
-                sys.path.insert(0, os.getcwd())
-            except subprocess.CalledProcessError:
-                print(f"\nInvalid path to link to 'airsim' module: '{airsim_path}'\n")
+            airsim_client_root = os.getcwd()
+            subprocess.run(["ln", "-s", airsim_path, "airsim"])
         else:
-            client_path = os.path.join(airsim_path, "client.py")
-            if os.path.exists(client_path):
-                sys.path.insert(0, os.path.dirname(airsim_path))
-            else:
-                print(f"\nInvalid path to 'airsim' module: '{os.path.dirname(airsim_path)}'"
-                      f"\nCould not find: '{client_path}'\n")
-        import airsim  # NOTE this will raise a ModuleNotFoundError if the path is incorrect
+            airsim_client_root = os.path.dirname(airsim_path)
+
+        sys.path.insert(0, airsim_client_root)
+        import airsim  # NOTE this will raise another ModuleNotFoundError if the path is incorrect
+
 
 ###############################################################################
+
 
 def __test_import_was_successful():
     client = airsim.MultirotorClient()
