@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import psutil
 import argparse
 import warnings
 import subprocess
@@ -20,34 +21,20 @@ ENV_ROOT = {
     "custom": "D:\\dev\\UE4\\Custom Environments",   # .sln files
 }
 
-
-class Rect:
-    def __init__(self, center: Tuple[float, float], width: float, height: float):
-        self.center = center
-        self.half_x = width / 2
-        self.half_y = height / 2
-
-    def coordinates(self) -> List[Tuple[float, float]]:
-        return [
-            (self.center + x, self.center + y)
-            for (x, y) in [
-                (-self.half_x, -self.half_y),
-                (+self.half_x, -self.half_y),
-                (-self.half_x, +self.half_y),
-                (+self.half_x, +self.half_y),
-            ]
-        ]
-
-
 #######################################################
 # NOTE do stuff here ##################################
 #######################################################
 def fly(client: airsim.MultirotorClient, args) -> None:
-    initial_pose = client.simGetVehiclePose()
-
-    print(f"[ff] Taking off from {initial_pose.position}")
-    client.takeoffAsync(timeout_sec=10).join()
-    print(client.simGetVehiclePose())
+    if args.verbose:
+        print(f"[ff] SceneObjects:\n{client.simListSceneObjects()}\n")
+        print(f"[ff] HomeGeoPoint:\n{client.getHomeGeoPoint()}\n")
+        print(f"[ff] VehiclePose:\n{client.simGetVehiclePose()}\n")
+        # print(f"[ff] MultirotorState:\n{client.getMultirotorState()}\n")
+        # print(f"[ff] GroundTruthEnvironment:\n{client.simGetGroundTruthEnvironment()}\n")
+        # print(f"[ff] GroundTruthKinematics:\n{client.simGetGroundTruthKinematics()}\n")
+    
+    print(f"[ff] Taking off")
+    client.takeoffAsync(timeout_sec=8).join()
 
     ned_coordinates = []
     z = 4
@@ -56,10 +43,13 @@ def fly(client: airsim.MultirotorClient, args) -> None:
             ned_coordinates.append((y, x, -z))  # North, East, Down
 
     for coord in ned_coordinates:
-        print(f"Moving to {coord}")
+        print(f"[ff] Moving to {coord}")
+        client.simPrintLogMessage("NED coordinates: ", message_param=str(coord))
         client.moveToPositionAsync(*coord, velocity=5).join()
 
-    client.reset()
+    client.goHomeAsync().join()
+    print(f"[ff] Done")
+    # client.reset()
 
 
 ###############################################################################
@@ -103,15 +93,20 @@ def connect_to_airsim(vehicle_name: str = None) -> airsim.MultirotorClient:
 
 
 def run_env(env_name: str, env_dir: str, res_x: int = None, res_y: int = None) -> None:
-    path = os.path.join(env_dir, env_name)
-    if os.path.isfile(f"{path}.exe"):
-        cmds = ["start", env_name]
-        if res_x is not None:
-            cmds.append(f"ResX={res_x}")
-            cmds.append(f"ResY={res_y}" if res_y is not None else int(3 * res_x / 4))
-        cmds.append("-windowed")
-        subprocess.run(cmds, cwd=env_dir, shell=True)
-    elif os.path.isfile(f"{path}.sln"):
+    fpath = os.path.join(env_dir, env_name)
+    if os.path.isfile(f"{fpath}.exe"):
+        already_running = [p for p in psutil.process_iter() if p.name() == f"{env_name}.exe"]
+        if not already_running:
+            cmds = ["start", env_name]
+            if res_x is not None:
+                cmds.append(f"ResX={res_x}")
+                cmds.append(f"ResY={res_y}" if res_y is not None else int(3 * res_x / 4))
+            cmds.append("-windowed")
+            subprocess.run(cmds, cwd=env_dir, shell=True)
+            time.sleep(4)  # wait for the drone to spawn
+        else:
+            print(f"{env_name}.exe is already running")
+    elif os.path.isfile(f"{fpath}.sln"):
         # TODO
         pass
     else:
@@ -142,7 +137,6 @@ def main(args: argparse.Namespace) -> None:
                 args.env_name,
             ),
         )
-        time.sleep(4)  # wait for the drone to spawn
 
     client = connect_to_airsim()
     try:
