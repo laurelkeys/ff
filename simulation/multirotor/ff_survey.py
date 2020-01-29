@@ -26,12 +26,9 @@ ENV_ROOT = {
 #######################################################
 def fly(client: airsim.MultirotorClient, args) -> None:
     if args.verbose:
-        print(f"[ff] SceneObjects:\n{client.simListSceneObjects()}\n")
         print(f"[ff] HomeGeoPoint:\n{client.getHomeGeoPoint()}\n")
         print(f"[ff] VehiclePose:\n{client.simGetVehiclePose()}\n")
-        # print(f"[ff] MultirotorState:\n{client.getMultirotorState()}\n")
-        # print(f"[ff] GroundTruthEnvironment:\n{client.simGetGroundTruthEnvironment()}\n")
-        # print(f"[ff] GroundTruthKinematics:\n{client.simGetGroundTruthKinematics()}\n")
+        #print(f"[ff] MultirotorState:\n{client.getMultirotorState()}\n")
     
     print(f"[ff] Taking off")
     client.takeoffAsync(timeout_sec=8).join()
