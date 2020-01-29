@@ -1,6 +1,8 @@
 import os
 import sys
+import time
 import argparse
+import warnings
 import subprocess
 
 from typing import List, Tuple
@@ -11,15 +13,11 @@ except:
     pass  # don't worry, it'll be imported later
 
 
-###############################################################################
-# specific ####################################################################
-###############################################################################
-
-# Aliases for directories with downloaded environments
-ENVS_ROOT = {
-    "doc": "D:\\Documents\\AirSim",
-    "dev": "D:\\dev\\AirSim\\Unreal\\Environments",
-    "custom": "D:\\dev\\UE4\\Custom Environments",
+# aliases for directories with downloaded environments
+ENV_ROOT = {
+    "doc": "D:\\Documents\\AirSim",  # .exe files
+    "dev": "D:\\dev\\AirSim\\Unreal\\Environments",  # .sln files
+    "custom": "D:\\dev\\UE4\\Custom Environments",   # .sln files
 }
 
 
@@ -41,17 +39,13 @@ class Rect:
         ]
 
 
-###############################################################################
-# airsim (specific) ###########################################################
-###############################################################################
-
-
+#######################################################
+# NOTE do stuff here ##################################
+#######################################################
 def fly(client: airsim.MultirotorClient, args) -> None:
-    initial_pose: airsim.Pose = client.simGetVehiclePose()
+    initial_pose = client.simGetVehiclePose()
 
-    print(
-        f"[ff] Taking off from ({initial_pose.position.x_val}, {initial_pose.position.y_val}, {initial_pose.position.z_val})"
-    )
+    print(f"[ff] Taking off from {initial_pose.position}")
     client.takeoffAsync(timeout_sec=10).join()
     print(client.simGetVehiclePose())
 
@@ -107,13 +101,22 @@ def connect_to_airsim(vehicle_name: str = None) -> airsim.MultirotorClient:
         client.armDisarm(True)
     return client
 
-def run_env(env_name: str, env_dir: str, res_x: int = None, height: int = None) -> None:
-    cmds = ["start", env_name]
-    if width is not None:
-        cmds.append(f"ResX={width}")
-        cmds.append(f"ResY={height}" if height is not None else int(3 * width / 4))
-    cmds.append("-windowed")
-    subprocess.run(cmds, cwd=os.path.join(env_dir, env_name), shell=True)
+
+def run_env(env_name: str, env_dir: str, res_x: int = None, res_y: int = None) -> None:
+    path = os.path.join(env_dir, env_name)
+    if os.path.isfile(f"{path}.exe"):
+        cmds = ["start", env_name]
+        if res_x is not None:
+            cmds.append(f"ResX={res_x}")
+            cmds.append(f"ResY={res_y}" if res_y is not None else int(3 * res_x / 4))
+        cmds.append("-windowed")
+        subprocess.run(cmds, cwd=env_dir, shell=True)
+    elif os.path.isfile(f"{path}.sln"):
+        # TODO
+        pass
+    else:
+        print(f"\nWARNING: no environment .exe or .sln found in '{env_dir}'\n")
+
 
 ###############################################################################
 # main ########################################################################
@@ -131,9 +134,15 @@ def main(args: argparse.Namespace) -> None:
             path_str = f"'airsim' path: {airsim.__path__[0]}"
             print("-" * len(path_str), path_str, "-" * len(path_str), sep="\n")
 
-    if args.launch is not None:
-        run_env(env_name=args.launch, env_dir=args.from)
-
+    if args.env_name is not None:
+        run_env(
+            args.env_name,
+            env_dir=os.path.join(
+                ENV_ROOT[args.env_root] if args.env_root in ENV_ROOT else args.env_root,
+                args.env_name,
+            ),
+        )
+        time.sleep(4)  # wait for the drone to spawn
 
     client = connect_to_airsim()
     try:
@@ -152,44 +161,44 @@ def main(args: argparse.Namespace) -> None:
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="")
+
     parser.add_argument(
         "--airsim_root",
-        type=str,
-        default="D:\\dev\\AirSim",
-        help="AirSim directory  (default: %(default)s)",
+        type=str, default="D:\\dev\\AirSim",
+        help="AirSim directory  (default: %(default)s)"
     )
+
     parser.add_argument(
         "--symbolic_link",
         "-ln",
         action="store_true",
-        help="Create a symbolic link to AirSim in the current directory.",
+        help="Create a symbolic link to AirSim in the current directory."
     )
+
     parser.add_argument(
         "--launch",
-        type=str,
-        nargs="?",
-        metavar="ENV",
-        const="Blocks",
-        help="Run the specified environment  (default: %(const)s).",
+        dest="env_name", metavar="ENV_NAME",
+        type=str, nargs="?", const="Blocks",
+        help="Run the specified environment  (default: %(const)s)."
     )
+
     parser.add_argument(
         "--from",
-        type=str,
-        metavar="ENV_DIR",
-        default="D:\\Documents\\AirSim",
-        help="Environment directory  (default: %(default)s)."
-        "\nAliases: {"
-        + ", ".join([f"'{alias}': {env_dir}" for alias, env_dir in ENVS_ROOT.items()])
-        + "}.",
+        dest="env_root", metavar="ENV_ROOT",
+        type=str, default="D:\\Documents\\AirSim",
+        help="Directory that contains the environment folder  (default: %(default)s)."
+             "\nAliases: {"
+             + ", ".join([f"'{alias}': {env_root}" for alias, env_root in ENV_ROOT.items()])
+             + "}."
     )
+
     parser.add_argument(
         "--disable_api_on_exit",
         action="store_true",
         help="Disable API control on exit by calling client.enableApiControl(False).",
     )
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Increase verbosity"
-    )
+
+    parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")
     return parser
 
 
