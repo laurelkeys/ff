@@ -137,7 +137,7 @@ def sync_blocks_sln(args) -> None:
 
 
 if __name__ == "__main__":
-    args = get_parser().parse_args()
+    args, unknown_args = get_parser().parse_known_args()
 
     args.environment = join(args.envs_root, args.env_name)
 
@@ -146,4 +146,7 @@ if __name__ == "__main__":
     print(f'SimMode:     "{args.sim_mode}"')
     if args.verbose:
         print(f"settings.json: {env_settings(args)}")
+    
+    if "run" in unknown_args:
+        run_env(args)  # TODO set ResX and ResY
 

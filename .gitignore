@@ -1,2 +1,9 @@
 .vscode
 __pycache__/
+
+# symbolic links
+**/airsim/__init__.py
+**/airsim/client.py
+**/airsim/pfm.py
+**/airsim/types.py
+**/airsim/utils.py
