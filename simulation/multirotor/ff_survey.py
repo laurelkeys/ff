@@ -1,5 +1,6 @@
 import os
 import sys
+import glob
 import time
 import psutil
 import argparse
@@ -17,19 +18,20 @@ except:
 # aliases for directories with downloaded environments
 ENV_ROOT = {
     "doc": "D:\\Documents\\AirSim",  # .exe files
-    "dev": "D:\\dev\\AirSim\\Unreal\\Environments",  # .sln files
-    "custom": "D:\\dev\\UE4\\Custom Environments",   # .sln files
+    "dev": "D:\\dev\\AirSim\\Unreal\\Environments",  # .sln and .uproject files
+    "custom": "D:\\dev\\UE4\\Custom Environments",   # .sln and .uproject files
 }
 
 #######################################################
-# NOTE do stuff here ##################################
 #######################################################
+
+
 def fly(client: airsim.MultirotorClient, args) -> None:
     if args.verbose:
         print(f"[ff] HomeGeoPoint:\n{client.getHomeGeoPoint()}\n")
         print(f"[ff] VehiclePose:\n{client.simGetVehiclePose()}\n")
         #print(f"[ff] MultirotorState:\n{client.getMultirotorState()}\n")
-    
+
     print(f"[ff] Taking off")
     client.takeoffAsync(timeout_sec=8).join()
 
@@ -89,25 +91,38 @@ def connect_to_airsim(vehicle_name: str = None) -> airsim.MultirotorClient:
     return client
 
 
-def run_env(env_name: str, env_dir: str, res_x: int = None, res_y: int = None) -> None:
-    fpath = os.path.join(env_dir, env_name)
-    if os.path.isfile(f"{fpath}.exe"):
-        already_running = [p for p in psutil.process_iter() if p.name() == f"{env_name}.exe"]
-        if not already_running:
-            cmds = ["start", env_name]
-            if res_x is not None:
-                cmds.append(f"ResX={res_x}")
-                cmds.append(f"ResY={res_y}" if res_y is not None else int(3 * res_x / 4))
-            cmds.append("-windowed")
-            subprocess.run(cmds, cwd=env_dir, shell=True)
-            time.sleep(4)  # wait for the drone to spawn
-        else:
-            print(f"{env_name}.exe is already running")
-    elif os.path.isfile(f"{fpath}.sln"):
-        # TODO
-        pass
+def run_env(env_name: str, env_dir: str, ue4editor_path: str, res_x: int = 800, res_y: int = 600) -> None:
+    env_file = [f for f in glob.glob(f"{os.path.join(env_dir, env_name)}.*")
+                  if os.path.splitext(f)[1] in [".exe", ".uproject"]]
+
+    if not env_file:
+        print(f"\nWARNING: no environment '{env_name}' found in '{env_dir}'\n")
     else:
-        print(f"\nWARNING: no environment .exe or .sln found in '{env_dir}'\n")
+        env_file = env_file[0]
+
+        already_running = [p for p in psutil.process_iter() 
+                             if p.name() in [f"{env_name}.exe", "UE4Editor.exe"]]
+
+        if not already_running:
+            _, env_ext = os.path.splitext(env_file)
+
+            if env_ext == ".uproject":
+                cmds = [ue4editor_path, env_file, "-game"]
+            else:  # .exe
+                cmds = ["start", env_file]
+
+            if res_x is not None:
+                if res_y is None:
+                    res_y = int(3 * res_x / 4)  # 4:3 aspect ratio
+                cmds.extend([f"-ResX={res_x}", f"-ResY={res_y}"])
+                if env_ext == ".uproject":
+                    cmds.extend([f"-WinX={res_x}", f"-WinY={res_y}"])
+
+            cmds.append("-windowed")
+            subprocess.run(cmds, shell=True)
+            time.sleep(5)  # wait for the drone to spawn
+        else:
+            print(f"{env_name} is already running {already_running}")
 
 
 ###############################################################################
@@ -133,11 +148,13 @@ def main(args: argparse.Namespace) -> None:
                 ENV_ROOT[args.env_root] if args.env_root in ENV_ROOT else args.env_root,
                 args.env_name,
             ),
+            ue4editor_path=args.unreal_editor_exe,
         )
 
     client = connect_to_airsim()
     try:
         fly(client, args)  # do stuff
+        pass
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting the script with Ctrl+C
     finally:
@@ -155,32 +172,46 @@ def get_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--airsim_root",
-        type=str, default="D:\\dev\\AirSim",
-        help="AirSim directory  (default: %(default)s)"
+        type=str,
+        default="D:\\dev\\AirSim",
+        help="AirSim directory  (default: %(default)s)",
     )
 
     parser.add_argument(
         "--symbolic_link",
         "-ln",
         action="store_true",
-        help="Create a symbolic link to AirSim in the current directory."
+        help="Create a symbolic link to AirSim in the current directory.",
     )
 
     parser.add_argument(
         "--launch",
-        dest="env_name", metavar="ENV_NAME",
-        type=str, nargs="?", const="Blocks",
-        help="Run the specified environment  (default: %(const)s)."
+        dest="env_name",
+        metavar="ENV_NAME",
+        type=str,
+        nargs="?",
+        const="Blocks",
+        help="Run the specified environment  (default: %(const)s).",
     )
 
     parser.add_argument(
         "--from",
-        dest="env_root", metavar="ENV_ROOT",
-        type=str, default="D:\\Documents\\AirSim",
+        dest="env_root",
+        metavar="ENV_ROOT",
+        type=str,
+        default="D:\\Documents\\AirSim",
         help="Directory that contains the environment folder  (default: %(default)s)."
-             "\nAliases: {"
-             + ", ".join([f"'{alias}': {env_root}" for alias, env_root in ENV_ROOT.items()])
-             + "}."
+        "\nAliases: {"
+        + ", ".join([f"'{alias}': {env_root}" for alias, env_root in ENV_ROOT.items()])
+        + "}.",
+    )
+
+    parser.add_argument(
+        "--unreal_editor_exe",
+        "-ue4",
+        type=str,
+        default="D:\\Program Files\\Epic Games\\UE_4.18\\Engine\\Binaries\\Win64\\UE4Editor.exe",
+        help="Path to UE4Editor.exe, needed to launch .sln environments  (default: %(default)s)",
     )
 
     parser.add_argument(
