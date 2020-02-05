@@ -125,6 +125,19 @@ def run_env(env_name: str, env_dir: str, ue4editor_path: str, res_x: int = 800, 
             print(f"{env_name} is already running {already_running}")
 
 
+def edit_env(env_name: str, env_dir: str) -> None:
+    env_file = [f for f in glob.glob(f"{os.path.join(env_dir, env_name)}.sln")]
+
+    if not env_file:
+        print(f"\nWARNING: no environment '{env_name}' found in '{env_dir}'\n")
+    else:
+        env_file = env_file[0]
+        # already_running = False
+        
+        cmds = ["start", env_file]
+        subprocess.run(cmds, shell=True)
+        time.sleep(5)  # wait for the drone to spawn
+
 ###############################################################################
 # main ########################################################################
 ###############################################################################
@@ -142,19 +155,18 @@ def main(args: argparse.Namespace) -> None:
             print("-" * len(path_str), path_str, "-" * len(path_str), sep="\n")
 
     if args.env_name is not None:
-        run_env(
-            args.env_name,
-            env_dir=os.path.join(
-                ENV_ROOT[args.env_root] if args.env_root in ENV_ROOT else args.env_root,
-                args.env_name,
-            ),
-            ue4editor_path=args.unreal_editor_exe,
-        )
+        env_dir = os.path.join(
+                    ENV_ROOT[args.env_root] if args.env_root in ENV_ROOT else args.env_root,
+                    args.env_name,
+                )
+        if args.edit:
+            edit_env(args.env_name, env_dir)
+        else:
+            run_env(args.env_name, env_dir, ue4editor_path=args.unreal_editor_exe)
 
     client = connect_to_airsim()
     try:
         fly(client, args)  # do stuff
-        pass
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting the script with Ctrl+C
     finally:
@@ -191,7 +203,14 @@ def get_parser() -> argparse.ArgumentParser:
         type=str,
         nargs="?",
         const="Blocks",
-        help="Run the specified environment  (default: %(const)s).",
+        help="Run the specified environment .exe or .uproject  (default: %(const)s).",
+    )
+
+    parser.add_argument(
+        "--edit",
+        "-vs",
+        action="store_true",
+        help="Launch the specified environment .sln in Visual Studio instead of running its .uproject.",
     )
 
     parser.add_argument(
@@ -201,9 +220,9 @@ def get_parser() -> argparse.ArgumentParser:
         type=str,
         default="D:\\Documents\\AirSim",
         help="Directory that contains the environment folder  (default: %(default)s)."
-        "\nAliases: {"
-        + ", ".join([f"'{alias}': {env_root}" for alias, env_root in ENV_ROOT.items()])
-        + "}.",
+             "\nAliases: {"
+             + ", ".join([f"'{alias}': {env_root}" for alias, env_root in ENV_ROOT.items()])
+             + "}.",
     )
 
     parser.add_argument(
