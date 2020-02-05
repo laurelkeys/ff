@@ -2,6 +2,7 @@ import os
 import sys
 import glob
 import time
+import random
 import psutil
 import argparse
 import warnings
@@ -62,8 +63,7 @@ def import_airsim(airsim_path: str, create_symbolic_link: bool = False) -> None:
         import airsim
     except ModuleNotFoundError:
         client_path = os.path.join(airsim_path, "client.py")
-        if not os.path.exists(client_path):
-            print(f"\nWARNING: expected '{client_path}' does not exist\n")
+        assert(os.path.exists(client_path)), f"\nexpected '{client_path}' doesn't exist\n"
 
         if create_symbolic_link:
             symlink_cmd = ["ln", "-s", airsim_path, "airsim"]
@@ -91,52 +91,45 @@ def connect_to_airsim(vehicle_name: str = None) -> airsim.MultirotorClient:
     return client
 
 
-def run_env(env_name: str, env_dir: str, ue4editor_path: str, res_x: int = 800, res_y: int = 600) -> None:
-    env_file = [f for f in glob.glob(f"{os.path.join(env_dir, env_name)}.*")
-                  if os.path.splitext(f)[1] in [".exe", ".uproject"]]
-
-    if not env_file:
-        print(f"\nWARNING: no environment '{env_name}' found in '{env_dir}'\n")
-    else:
-        env_file = env_file[0]
-
-        already_running = [p for p in psutil.process_iter() 
-                             if p.name() in [f"{env_name}.exe", "UE4Editor.exe"]]
-
-        if not already_running:
-            _, env_ext = os.path.splitext(env_file)
-
-            if env_ext == ".uproject":
-                cmds = [ue4editor_path, env_file, "-game"]
-            else:  # .exe
-                cmds = ["start", env_file]
-
-            if res_x is not None:
-                if res_y is None:
-                    res_y = int(3 * res_x / 4)  # 4:3 aspect ratio
-                cmds.extend([f"-ResX={res_x}", f"-ResY={res_y}"])
-                if env_ext == ".uproject":
-                    cmds.extend([f"-WinX={res_x}", f"-WinY={res_y}"])
-
-            cmds.append("-windowed")
-            subprocess.run(cmds, shell=True)
-            time.sleep(5)  # wait for the drone to spawn
-        else:
-            print(f"{env_name} is already running {already_running}")
+def build_run_cmds(env_path: str, res: Tuple[int, int]=(1280, 720), ue4editor_path: str=None) -> List[str]:
+    _, env_ext = os.path.splitext(os.path.basename(env_path))
+    assert(env_ext in [".exe", ".sln", ".uproject"]), f"\ninvalid extension '{env_ext}'\n"
+    
+    if env_ext == ".exe":
+        cmds = ["start", env_path]
+        if res is not None:
+            cmds.extend([f"-ResX={res[0]}", f"-ResY={res[1]}"])
+        cmds.append("-windowed")
+    
+    elif env_ext == ".sln":
+        cmds = ["start", env_path]
+        # TODO use Visual Studio's devenv command to run after launch
+    
+    else:  # ".uproject"
+        assert(os.path.isfile(ue4editor_path)), f"\nUnreal Editor '{ue4editor_path}' doesn't exist\n"
+        cmds = [ue4editor_path, env_path, "-game"]
+        if res is not None:
+            cmds.extend([f"-ResX={res[0]}", f"-ResY={res[1]}", 
+                         f"-WinX={res[0]}", f"-WinY={res[1]}"])
+        cmds.append("-windowed")  
+    
+    return cmds
 
 
-def edit_env(env_name: str, env_dir: str) -> None:
-    env_file = [f for f in glob.glob(f"{os.path.join(env_dir, env_name)}.sln")]
+def run_env(env_path: str, env_proc: str, **kwargs) -> None:
+    env_name, _ = os.path.splitext(os.path.basename(env_path))
+    assert(os.path.isfile(env_path)), f"\n'{env_path}' doesn't exist\n"
+    
+    already_running = [p for p in psutil.process_iter() if p.name() == env_proc]
+    if already_running:
+        print(f"{env_name} is already running:")
+        for p in already_running:  # there should (usually) only be one
+            print(f" - name={p.name()}, pid={p.pid()}")  # p.name() == env_proc
+        return
 
-    if not env_file:
-        print(f"\nWARNING: no environment '{env_name}' found in '{env_dir}'\n")
-    else:
-        env_file = env_file[0]
-        # already_running = False
-        
-        cmds = ["start", env_file]
-        subprocess.run(cmds, shell=True)
-        time.sleep(5)  # wait for the drone to spawn
+    subprocess.run(build_launch_cmds(env_path, **kwargs), shell=True)
+    time.sleep(5)  # wait for the drone to spawn
+
 
 ###############################################################################
 # main ########################################################################
@@ -154,15 +147,9 @@ def main(args: argparse.Namespace) -> None:
             path_str = f"'airsim' path: {airsim.__path__[0]}"
             print("-" * len(path_str), path_str, "-" * len(path_str), sep="\n")
 
-    if args.env_name is not None:
-        env_dir = os.path.join(
-                    ENV_ROOT[args.env_root] if args.env_root in ENV_ROOT else args.env_root,
-                    args.env_name,
-                )
-        if args.edit:
-            edit_env(args.env_name, env_dir)
-        else:
-            run_env(args.env_name, env_dir, ue4editor_path=args.unreal_editor_exe)
+    if args.env_name is not None:  # --launch option was passed    
+        launch_env(args)
+    quit()
 
     client = connect_to_airsim()
     try:
@@ -173,6 +160,38 @@ def main(args: argparse.Namespace) -> None:
         if args.disable_api_on_exit:
             client.enableApiControl(False)
 
+
+def possible_env_folders(env_root: str) -> List[str]:
+    env_folders = []
+    for ext in ["*.exe", "*.sln", "*.uproject"]:
+        env_folders.extend(glob.glob(os.path.join(args.env_root, "*", ext)))
+    return env_folders
+
+
+def launch_env(args: argparse.Namespace) -> None:
+    if args.env_root in ENV_ROOT:  # root alias
+        args.env_root = ENV_ROOT[args.env_root]
+    
+    if len(args.env_name) == 0:
+        env_folders = possible_env_folders(args.env_root)
+        assert(env_folders), f"\nno environment folder was found in '{args.env_root}'\n"
+        args.env_name = random.choice(env_folders)
+        if args.verbose and len(env_folders) > 1:
+            print("Possible environment folders found:\n - ", ('\n - ').join(env_folders))
+            print(f"Randomly selected: {args.env_name}")
+    
+    env_dir = os.path.join(args.env_root, args.env_name)
+    
+    # FIXME the environment's folder name might be different from its .exe file name
+    if args.edit:
+        launch_env(env_path=os.path.join(env_dir, args.env_name + ".sln"),
+                    env_proc="devenv.exe")
+    elif glob.glob(os.path.join(env_dir, args.env_name + ".exe")):
+        launch_env(env_path=os.path.join(env_dir, args.env_name + ".exe"),
+                   env_proc=args.env_name + ".exe")
+    else:  # assume it's a .uproject file
+        launch_env(env_path=os.path.join(env_dir, args.env_name + ".uproject"),
+                   env_proc="UE4Editor.exe", ue4editor_path=args.unreal_editor_exe)
 
 ###############################################################################
 # argument parsing ############################################################
@@ -202,15 +221,8 @@ def get_parser() -> argparse.ArgumentParser:
         metavar="ENV_NAME",
         type=str,
         nargs="?",
-        const="Blocks",
-        help="Run the specified environment .exe or .uproject  (default: %(const)s).",
-    )
-
-    parser.add_argument(
-        "--edit",
-        "-vs",
-        action="store_true",
-        help="Launch the specified environment .sln in Visual Studio instead of running its .uproject.",
+        const="",  # (randomly) selects a valid environment folder in env_root
+        help="Name of the folder that contains the environment (.exe or .uproject file) to run.",
     )
 
     parser.add_argument(
@@ -223,6 +235,13 @@ def get_parser() -> argparse.ArgumentParser:
              "\nAliases: {"
              + ", ".join([f"'{alias}': {env_root}" for alias, env_root in ENV_ROOT.items()])
              + "}.",
+    )
+
+    parser.add_argument(
+        "--edit",
+        "-vs",
+        action="store_true",
+        help="Launch the specified environment's .sln in Visual Studio (instead of running its .uproject).",
     )
 
     parser.add_argument(
