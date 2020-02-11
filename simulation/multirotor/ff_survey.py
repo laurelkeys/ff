@@ -176,9 +176,7 @@ def main(args: argparse.Namespace) -> None:
         fly(client, args)  # do stuff
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting the script with Ctrl+C
-    finally:
-        if args.disable_api_on_exit:
-            client.enableApiControl(False)
+        # NOTE client.enableApiControl(True) must be called after reset
 
 
 def launch_env(args: argparse.Namespace) -> None:
@@ -219,7 +217,7 @@ def launch_env(args: argparse.Namespace) -> None:
         else:  # assume it's a .uproject file
             assert os.path.isfile(
                 args.unreal_editor_exe
-            ), f"\n'{ue4editor_path}' doesn't exist\n"
+            ), f"\n'{args.unreal_editor_exe}' doesn't exist\n"
             run_env(
                 env_path=os.path.join(env_dir, args.env_name + ".uproject"),
                 env_proc="UE4Editor.exe",
@@ -289,12 +287,6 @@ def get_parser() -> argparse.ArgumentParser:
         type=str,
         default="D:\\Program Files\\Epic Games\\UE_4.18\\Engine\\Binaries\\Win64\\UE4Editor.exe",
         help="Path to UE4Editor.exe, needed to launch .uproject environments  (default: %(default)s)",
-    )
-
-    parser.add_argument(
-        "--disable_api_on_exit",
-        action="store_true",
-        help="Disable API control on exit by calling client.enableApiControl(False).",
     )
 
     parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")

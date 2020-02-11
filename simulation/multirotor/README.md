@@ -45,12 +45,6 @@ def get_parser() -> argparse.ArgumentParser:
         help="Create a symbolic link to AirSim in the current directory.",
     )
 
-    parser.add_argument(
-        "--disable_api_on_exit",
-        action="store_true",
-        help="Disable API control on exit by calling client.enableApiControl(False).",
-    )
-
     parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")
     return parser
 
@@ -101,9 +95,7 @@ def main(args: argparse.Namespace) -> None:
         fly(client, args)  # do stuff
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting the script with Ctrl+C
-    finally:
-        if args.disable_api_on_exit:
-            client.enableApiControl(False)
+        # NOTE client.enableApiControl(True) must be called after reset
 
 
 if __name__ == "__main__":

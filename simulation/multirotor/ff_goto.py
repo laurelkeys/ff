@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import argparse
 import subprocess
 
@@ -15,6 +16,7 @@ except ModuleNotFoundError:
 
 
 def preflight(args: argparse.Namespace) -> None:
+    args.wait = 4  # s
     args.velocity = 2  # m/s
     args.timeout_sec = 10
     pass
@@ -26,6 +28,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     ) -> airsim.Vector3r:
         if multirotor_state is None:
             multirotor_state = client.getMultirotorState()
+        #return client.simGetVehiclePose().position
         return multirotor_state.kinematics_estimated.position
 
     def get_UE4_coords(
@@ -58,18 +61,36 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             args.z = home_position.z_val  # keep the same altitude
         xyz = (args.x, args.y, args.z)
 
-    print(f"[ff] Moving to {xyz}.. ", end="")
-    client.moveToPositionAsync(*xyz, args.velocity, args.timeout_sec).join()
+    if args.teleport:
+        print(f"[ff] Teleporting to {xyz}.. ", end="")
+        pose = airsim.Pose()
+        pose.position = airsim.Vector3r(*xyz)
+        client.simSetVehiclePose(pose, ignore_collison=True)
+        time.sleep(args.wait)
+    else:
+        print(f"[ff] Moving to {xyz}.. ", end="")
+        client.moveToPositionAsync(*xyz, args.velocity, args.timeout_sec).join()
     print("done.")
 
     final_xyz = get_NED_coords()
     final_xyz = (final_xyz.x_val, final_xyz.y_val, final_xyz.z_val)
     print(f"[ff] Reached {final_xyz}.")
 
+    time.sleep(args.wait)
+    client.hoverAsync()
+
     if args.verbose:
         state = client.getMultirotorState()
         print("\nKinematics estimated position:", state.kinematics_estimated.position)
-        print("GPS location (UE4 coordinates):", state.gps_location)
+        print("GPS location (UE4 coordinates):", state.gps_location, "\n")
+
+    if not args.stay:
+        print(f"[ff] Teleporting back to start position.. ", end="")
+        pose = airsim.Pose()
+        pose.position = home_position
+        client.simSetVehiclePose(pose, ignore_collison=True)
+        time.sleep(args.wait)
+        print("done.")
 
 
 ###############################################################################
@@ -94,7 +115,18 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--relative",
         action="store_true",
-        help="Move relative to the current drone position, instead of the (0, 0, 0) starting position.",
+        help="Move relative to the current drone position, instead of the (0, 0, 0) starting position",
+    )
+    parser.add_argument(
+        "--teleport",
+        action="store_true",
+        help="Teleport to specified position, instead of waiting for the drone to fly"
+             " (NOTE this may cause errors, see pull#2324)",
+    )
+    parser.add_argument(
+        "--stay",
+        action="store_true",
+        help="Stay on the final position (returns to the starting one by default)",
     )
 
     parser.add_argument(
@@ -168,8 +200,6 @@ def main(args: argparse.Namespace) -> None:
         fly(client, args)  # do stuff
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting the script with Ctrl+C
-    finally:
-        client.enableApiControl(True)
 
 
 if __name__ == "__main__":
