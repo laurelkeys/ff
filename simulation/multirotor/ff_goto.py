@@ -15,6 +15,8 @@ except ModuleNotFoundError:
 
 
 def preflight(args: argparse.Namespace) -> None:
+    args.velocity = 2  # m/s
+    args.timeout_sec = 10
     pass
 
 
@@ -24,7 +26,6 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     ) -> airsim.Vector3r:
         if multirotor_state is None:
             multirotor_state = client.getMultirotorState()
-        # return multirotor_state.position
         return multirotor_state.kinematics_estimated.position
 
     def get_UE4_coords(
@@ -37,53 +38,38 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
     state = client.getMultirotorState()
 
-    # NED starting point coordinates ~(0, 0, 0)
-    home_position = get_NED_coords(state)
+    # NED starting point coordinates
+    home_position = get_NED_coords(state)  # ~ (0, 0, 0)
 
     # UE4 PlayerStart coordinates
     player_start = get_UE4_coords(state)
 
-    print("home_position (NED):", home_position, "\nplayer_start (UE4):", player_start)
+    if args.verbose:
+        print("home_position (NED):", home_position, "\nplayer_start (UE4):", player_start, "\n")
 
-    print("\n[ff] Taking off.. ", end="")
-    client.takeoffAsync().join()
+    if args.relative:
+        xyz = (
+            home_position.x_val + args.x,
+            home_position.y_val + args.y,
+            home_position.z_val + (0 if args.z is None else args.z),
+        )
+    else:
+        if args.z is None:
+            args.z = home_position.z_val  # keep the same altitude
+        xyz = (args.x, args.y, args.z)
+
+    print(f"[ff] Moving to {xyz}.. ", end="")
+    client.moveToPositionAsync(*xyz, args.velocity, args.timeout_sec).join()
     print("done.")
 
-    state = client.getMultirotorState()
-    print("NED:", get_NED_coords(state), "\nUE4:", get_UE4_coords(state))
+    final_xyz = get_NED_coords()
+    final_xyz = (final_xyz.x_val, final_xyz.y_val, final_xyz.z_val)
+    print(f"[ff] Reached {final_xyz}.")
 
-    print("\n[ff] Landing.. ", end="")
-    client.landAsync().join()
-    print("done.")
-
-    state = client.getMultirotorState()
-    print("NED:", get_NED_coords(state), "\nUE4:", get_UE4_coords(state))
-
-    print("\n[ff] Reset")
-    client.reset()
-    state = client.getMultirotorState()
-    print("NED:", get_NED_coords(), "\nUE4:", get_UE4_coords())
-    pass
-
-
-###############################################################################
-###############################################################################
-
-
-# FIXME PlayerStart in NED is not exactly (0, 0, 0)
-
-
-def convert_to_UE4(coords_NED):
-    coords_UE4 = coords_NED * 100
-    coords_UE4.z_val *= -1
-    coords_UE4 += player_start
-    return coords_UE4  # UE4 is in cm, with +z pointing up
-
-
-def convert_to_NED(coords_UE4):
-    coords_NED = (coords_UE4 - player_start) / 100
-    coords_NED.z_val *= -1
-    return coords_NED  # NED is in meters, with +z pointing down
+    if args.verbose:
+        state = client.getMultirotorState()
+        print("\nKinematics estimated position:", state.kinematics_estimated.position)
+        print("GPS location (UE4 coordinates):", state.gps_location)
 
 
 ###############################################################################
@@ -91,16 +77,24 @@ def convert_to_NED(coords_UE4):
 
 
 def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="")
+    parser = argparse.ArgumentParser(
+        description="Change the drone's position (uses NED coordinates)"
+    )
 
-    parser.add_argument("x", type=float)
-    parser.add_argument("y", type=float)
     parser.add_argument(
-        "z",
-        type=float,
-        nargs="?",
-        default=None,
-        help="Z coordinate (kept the same by default)",
+        "x", type=float, help="Coordinate value in meters, where +x is north"
+    )
+    parser.add_argument(
+        "y", type=float, help="Coordinate value in meters, where +y is east"
+    )
+    parser.add_argument(
+        "z", type=float, help="Coordinate value in meters, where +z is down (kept the same by default)",
+        nargs="?", default=None,
+    )
+    parser.add_argument(
+        "--relative",
+        action="store_true",
+        help="Move relative to the current drone position, instead of the (0, 0, 0) starting position.",
     )
 
     parser.add_argument(
@@ -117,15 +111,7 @@ def get_parser() -> argparse.ArgumentParser:
         help="Create a symbolic link to AirSim in the current directory.",
     )
 
-    parser.add_argument(
-        "--disable_api_on_exit",
-        action="store_true",
-        help="Disable API control on exit by calling client.enableApiControl(False).",
-    )
-
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Increase verbosity"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")
     return parser
 
 
@@ -183,8 +169,7 @@ def main(args: argparse.Namespace) -> None:
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting the script with Ctrl+C
     finally:
-        if args.disable_api_on_exit:
-            client.enableApiControl(False)
+        client.enableApiControl(True)
 
 
 if __name__ == "__main__":
