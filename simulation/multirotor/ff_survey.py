@@ -11,7 +11,7 @@ from typing import List, Tuple
 
 try:
     import airsim
-except:
+except ModuleNotFoundError:
     pass  # don't worry, it'll be imported later
 
 
@@ -93,8 +93,10 @@ def connect_to_airsim(vehicle_name: str = None) -> airsim.MultirotorClient:
 
 
 def build_run_cmds(
-    env_path: str, res: Tuple[int, int] = (1280, 720),
-    ue4editor_path: str = None, devenv_path: str = None
+    env_path: str,
+    res: Tuple[int, int] = (1280, 720),
+    ue4editor_path: str = None,
+    devenv_path: str = None,
 ) -> List[str]:
     _, env_ext = os.path.splitext(os.path.basename(env_path))
     assert env_ext in [
@@ -137,7 +139,9 @@ def run_env(env_path: str, env_proc: str, **kwargs) -> None:
     time.sleep(5)  # wait for the drone to spawn
 
 
-def possible_env_folders(env_root: str, exts: List[str] = ["*.exe", "*.sln", "*.uproject"]) -> List[str]:
+def possible_env_folders(
+    env_root: str, exts: List[str] = ["*.exe", "*.sln", "*.uproject"]
+) -> List[str]:
     env_folders = []
     for ext in exts:
         env_folders.extend(glob.glob(os.path.join(args.env_root, "*", ext)))
@@ -152,7 +156,7 @@ def possible_env_folders(env_root: str, exts: List[str] = ["*.exe", "*.sln", "*.
 def main(args: argparse.Namespace) -> None:
     try:
         airsim_path = airsim.__path__
-    except:
+    except NameError:
         airsim_path = os.path.join(args.airsim_root, "PythonClient", "airsim")
         import_airsim(airsim_path, create_symbolic_link=args.symbolic_link)
     finally:
@@ -160,10 +164,13 @@ def main(args: argparse.Namespace) -> None:
             path_str = f"'airsim' path: {airsim.__path__[0]}"
             print("-" * len(path_str), path_str, "-" * len(path_str), sep="\n")
 
-    print(', '.join(possible_env_folders(args.env_root)) + "\n")
+    if args.verbose:
+        print(", ".join(possible_env_folders(args.env_root)) + "\n")
+
     if args.env_name is not None:
+        # FIXME reobtain terminal's control after launching .sln or .uproject files
         launch_env(args)  # the --launch option was passed
-    quit()
+
     client = connect_to_airsim()
     try:
         fly(client, args)  # do stuff
@@ -180,8 +187,7 @@ def launch_env(args: argparse.Namespace) -> None:
 
     if len(args.env_name) == 0:
         env_folders = possible_env_folders(
-            args.env_root,
-            exts=["*.sln"] if args.edit else ["*.exe", "*.uproject"]
+            args.env_root, exts=["*.sln"] if args.edit else ["*.exe", "*.uproject"]
         )
         assert env_folders, f"\nno environment folder was found in '{args.env_root}'\n"
         args.env_name = random.choice(env_folders)
@@ -202,11 +208,10 @@ def launch_env(args: argparse.Namespace) -> None:
     else:
         # NOTE the folder name might be different from its .exe file name
         env_exe_path = glob.glob(os.path.join(env_dir, "*.exe"))
-        print("(DEBUG) env_exe_path=", env_exe_path)
         if env_exe_path:
-            assert(
+            assert (
                 len(env_exe_path) == 1
-            ), f"\nexpected only one .exe file in '{env_dir}'\n"
+            ), f"\nexpected only one .exe file in '{env_dir}', found: {env_exe_path}\n"
             run_env(
                 env_path=env_exe_path[0],
                 env_proc=os.path.basename(env_exe_path[0]),
