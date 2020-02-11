@@ -7,11 +7,16 @@ import subprocess
 
 try:
     import airsim
-except:
+except ModuleNotFoundError:
     pass  # don't worry, it'll be imported later
 
 ###############################################################################
 ###############################################################################
+
+
+def preflight(args: argparse.Namespace) -> None:
+    # setup before connecting to AirSim
+    pass
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
@@ -25,21 +30,28 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="")
+
     parser.add_argument(
         "--airsim_root",
         type=str,
         default=os.path.join("D:", "dev", "AirSim"),
         help="AirSim directory  (default: %(default)s)",
     )
+
     parser.add_argument(
         "--symbolic_link",
         "-ln",
         action="store_true",
         help="Create a symbolic link to AirSim in the current directory.",
     )
+
     parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Increase verbosity"
+        "--disable_api_on_exit",
+        action="store_true",
+        help="Disable API control on exit by calling client.enableApiControl(False).",
     )
+
+    parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")
     return parser
 
 
@@ -49,8 +61,9 @@ def import_airsim(airsim_path: str, create_symbolic_link: bool = False) -> None:
         import airsim
     except ModuleNotFoundError:
         client_path = os.path.join(airsim_path, "client.py")
-        if not os.path.exists(client_path):
-            print(f"\nWARNING: expected '{client_path}' does not exist\n")
+        assert os.path.exists(
+            client_path
+        ), f"\nexpected '{client_path}' doesn't exist\n"
 
         if create_symbolic_link:
             symlink_cmd = ["ln", "-s", airsim_path, "airsim"]
@@ -69,15 +82,15 @@ def import_airsim(airsim_path: str, create_symbolic_link: bool = False) -> None:
 def main(args: argparse.Namespace) -> None:
     try:
         airsim_path = airsim.__path__
-    except:
+    except NameError:
         airsim_path = os.path.join(args.airsim_root, "PythonClient", "airsim")
-        import_airsim(airsim_path, args.symbolic_link)
+        import_airsim(airsim_path, create_symbolic_link=args.symbolic_link)
     finally:
         if args.verbose:
-            airsim_path_str = f"'airsim' path: {airsim.__path__[0]}"
-            print("-" * len(airsim_path_str))
-            print(airsim_path_str)
-            print("-" * len(airsim_path_str))
+            path_str = f"'airsim' path: {airsim.__path__[0]}"
+            print("-" * len(path_str), path_str, "-" * len(path_str), sep="\n")
+
+    preflight(args)  # setup
 
     client = airsim.MultirotorClient()
     client.confirmConnection()
@@ -89,7 +102,8 @@ def main(args: argparse.Namespace) -> None:
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting the script with Ctrl+C
     finally:
-        client.enableApiControl(False)
+        if args.disable_api_on_exit:
+            client.enableApiControl(False)
 
 
 if __name__ == "__main__":
