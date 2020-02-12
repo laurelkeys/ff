@@ -6,6 +6,8 @@ import subprocess
 
 import numpy as np
 
+from typing import Tuple
+
 try:
     import airsim
 except ModuleNotFoundError:
@@ -26,45 +28,46 @@ def preflight(args: argparse.Namespace) -> None:
 
 def get_NED_coords(
     client: airsim.MultirotorClient, multirotor_state: airsim.MultirotorState = None
-) -> airsim.Vector3r:
+) -> Tuple[float, float, float]:
     ''' `(north, east, down)` values in `m`, following the right-hand rule '''
     if multirotor_state is None:
         multirotor_state = client.getMultirotorState()
-    return multirotor_state.kinematics_estimated.position
+    pos = multirotor_state.kinematics_estimated.position  # Vector3r
+    return pos.x_val, pos.y_val, pos.z_val
 
 
 def get_UE4_coords(
     client: airsim.MultirotorClient, multirotor_state: airsim.MultirotorState = None
-) -> airsim.Vector3r:
+) -> Tuple[float, float, float]:
     ''' `(north, east, up)` values in `cm`, following the left-hand rule '''
     if multirotor_state is None:
         multirotor_state = client.getMultirotorState()
     pos = multirotor_state.gps_location  # GeoPoint
-    return airsim.Vector3r(pos.latitude, pos.longitude, pos.altitude)
+    return pos.latitude, pos.longitude, pos.altitude
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.z is not None and args.z > 0:
         print("Warning: AirSim uses NED coordinates, meaning +z is down")
-        print("         (to fly upwards use negative z values)")
+        print("         (to fly upwards use negative z values)\n")
 
     state = client.getMultirotorState()
-    home_position = get_NED_coords(client, state)  # NED starting point coordinates ~ (0, 0, 0)
-    player_start = get_UE4_coords(client, state)   # UE4 PlayerStart coordinates
+    start_pos = {
+        'NED': get_NED_coords(client, state),
+        'UE4': get_UE4_coords(client, state)
+    }  # obs.: UE4's PlayerStart coordinates correspond to ~(0, 0, 0) in AirSim's NED system
 
+    print(f"Starting position (NED): {start_pos['NED']}\n")
     if args.verbose:
-        print("home_position (NED):", home_position, "\n")
-        print("player_start (UE4):", player_start, "\n")
+        print(f"Starting position (UE4): {start_pos['UE4']}\n")
 
     if args.relative:
-        xyz = (
-            home_position.x_val + args.x,
-            home_position.y_val + args.y,
-            home_position.z_val + (0 if args.z is None else args.z),
-        )
+        if args.z is None:
+            args.z = 0
+        xyz = tuple(sum(axis) for axis in zip(start_pos['NED'], (args.x, args.y, args.z)))
     else:
         if args.z is None:
-            args.z = home_position.z_val  # keep the same altitude
+            args.z = start_pos['NED'][2]  # keep the same altitude
         xyz = (args.x, args.y, args.z)
 
     if state.landed_state == airsim.LandedState.Landed:
@@ -72,9 +75,9 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         print("[ff] Taking off.. ", end="", flush=True)
         client.takeoffAsync().join()
         print("done.")
-    else:  # airsim.LandedState.Flying
+    else:
+        # NOTE .exe environments seem to always return Landed
         print(f"landed_state = {state.landed_state} (Flying)")
-        print("[ff] Hovering", flush=True)
         client.hoverAsync().join()
 
     if args.teleport:
@@ -89,22 +92,19 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     print("done.")
 
     state = client.getMultirotorState()
-    final_xyz = get_NED_coords(client, state)
-    final_xyz = (final_xyz.x_val, final_xyz.y_val, final_xyz.z_val)
-    print(f"[ff] Reached {final_xyz}.")
-
+    print(f"Ending position (NED): {get_NED_coords(client, state)}\n")
     if args.verbose:
-        print("\nKinematics estimated position:", state.kinematics_estimated.position)
-        print("GPS location (UE4 coordinates):", state.gps_location, "\n")
+        print(f"Ending position (UE4): {get_UE4_coords(client, state)}\n")
 
-    client.hoverAsync().join()
     print(f"[ff] Hovering for {args.wait_sec} seconds.. ", end="", flush=True)
-    time.sleep(args.wait_sec)  # hover for some time before teleporting back
+    client.hoverAsync().join()
+    time.sleep(args.wait_sec)
     print("done.")
 
     if args.verbose:
-        print("\nKinematics estimated position:", state.kinematics_estimated.position)
-        print("GPS location (UE4 coordinates):", state.gps_location, "\n")
+        state = client.getMultirotorState()
+        print(f"Final position (NED): {get_NED_coords(client, state)}\n")
+        print(f"Final position (UE4): {get_UE4_coords(client, state)}\n")
 
 
 ###############################################################################
