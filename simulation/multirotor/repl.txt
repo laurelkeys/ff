@@ -6,7 +6,3 @@ import airsim as sim
 client = sim.MultirotorClient()
 client.confirmConnection()
 client.enableApiControl(True)
-
-pose = client.simGetObjectPose("Cube_BBox")
-pose.position.z_val += 0.005
-client.simSetObjectPose("Cube_BBox", pose)

@@ -25,39 +25,50 @@ def preflight(args: argparse.Namespace) -> None:
 
 
 def pose2str(pose: airsim.Pose) -> str:
-    return "Pose(position=({:.2f} {:.2f} {:.2f}), orientation=({:.2f} {:.2f} {:.2f} {:.2f}))".format(
-        pose.position.x_val,
-        pose.position.y_val,
-        pose.position.z_val,
+    position_str = "position=({:.2f} {:.2f} {:.2f})".format(
+        pose.position.x_val, pose.position.y_val, pose.position.z_val
+    )
+    orientation_str = "orientation=({:.2f} {:.2f} {:.2f} {:.2f})".format(
         pose.orientation.w_val,
         pose.orientation.x_val,
         pose.orientation.y_val,
         pose.orientation.z_val,
+    )
+    return f"Pose({position_str}, {orientation_str})"
+
+
+def pose2args(pose: airsim.Pose) -> str:
+    return "-x {:.2f} -y {:.2f} -z {:.2f}".format(
+        pose.position.x_val, pose.position.y_val, pose.position.z_val
     )
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.z is not None and args.z > 0:
         print("Warning: AirSim uses NED coordinates, meaning +z is down")
-        print("         (to fly upwards use negative z values)\n")
+        print("         (use negative z values to fly upwards)\n")
 
     scene_objects = client.simListSceneObjects(
         name_regex=args.name
     )  # use '.*' to list all
 
+    if args.list_all:
+        print(client.simListSceneObjects())
+
     if not scene_objects:
         print(f"[ff] No object found with name '{args.name}'")
         print(
-            f"[ff] Object names containing it:",
+            "[ff] Object names containing it:",
             client.simListSceneObjects(f".*{args.name}.*"),
         )
     elif len(scene_objects) > 1:
         print(f"[ff] Multiple objects found with name '{args.name}':", scene_objects)
     else:
         object_name = scene_objects[0]
-        print(object_name)
         start_pose = client.simGetObjectPose(object_name)
-        print(f"[ff] Starting pose:", pose2str(start_pose))
+        print("[ff] Starting pose:", pose2args(start_pose))
+        if args.verbose:
+            print("    ", pose2str(start_pose))
 
         new_pose = start_pose
         if args.absolute:
@@ -68,11 +79,14 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             new_pose.position.x_val += args.x
             new_pose.position.y_val += args.y
             new_pose.position.z_val += args.z
-        print(f"\n[ff] Moving object to:", pose2str(new_pose), end="...")
+        print(f"[ff] Moving object '{object_name}'", end="")
         success = client.simSetObjectPose(object_name, pose=new_pose)
         print(" (successful)" if success else " (failed)")
 
-        print(f"\n[ff] Ending pose:", pose2str(client.simGetObjectPose(object_name)))
+        end_pose = client.simGetObjectPose(object_name)
+        print("[ff] Ending pose:", pose2args(end_pose))
+        if args.verbose:
+            print("    ", pose2str(end_pose))
 
         if not success:
             print("\nWarning: Make sure the object has Mobility = 'Movable' in UE4")
@@ -120,6 +134,12 @@ def get_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use coordinate values as absolute positions,"
         " instead of relative offsets to the current object location",
+    )
+
+    parser.add_argument(
+        "--list_all",
+        action="store_true",
+        help="List all scene objects",
     )
 
     parser.add_argument(
