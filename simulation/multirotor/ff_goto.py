@@ -4,8 +4,6 @@ import time
 import argparse
 import subprocess
 
-import numpy as np
-
 from typing import Tuple
 
 try:
