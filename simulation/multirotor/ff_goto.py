@@ -19,36 +19,46 @@ def preflight(args: argparse.Namespace) -> None:
     args.wait = 4  # s
     args.velocity = 2  # m/s
     args.timeout_sec = 10
-    pass
+
+
+###############################################################################
+###############################################################################
+
+
+def get_NED_coords(
+    client: airsim.MultirotorClient, multirotor_state: airsim.MultirotorState = None
+) -> airsim.Vector3r:
+    """ (north, east, down), in meters """  # right-hand rule
+    if multirotor_state is None:
+        multirotor_state = client.getMultirotorState()
+    # return client.simGetVehiclePose().position
+    return multirotor_state.kinematics_estimated.position
+
+
+def get_UE4_coords(
+    client: airsim.MultirotorClient, multirotor_state: airsim.MultirotorState = None
+) -> airsim.Vector3r:
+    """ (north, east, up), in centimeters """  # left-hand rule
+    if multirotor_state is None:
+        multirotor_state = client.getMultirotorState()
+    pos = multirotor_state.gps_location  # GeoPoint
+    return airsim.Vector3r(pos.latitude, pos.longitude, pos.altitude)
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
-    def get_NED_coords(
-        multirotor_state: airsim.MultirotorState = None,
-    ) -> airsim.Vector3r:
-        if multirotor_state is None:
-            multirotor_state = client.getMultirotorState()
-        #return client.simGetVehiclePose().position
-        return multirotor_state.kinematics_estimated.position
-
-    def get_UE4_coords(
-        multirotor_state: airsim.MultirotorState = None,
-    ) -> airsim.Vector3r:
-        if multirotor_state is None:
-            multirotor_state = client.getMultirotorState()
-        pos = multirotor_state.gps_location  # GeoPoint
-        return airsim.Vector3r(pos.latitude, pos.longitude, pos.altitude)
+    if args.z is not None and args.z > 0:
+        print("Warning: AirSim uses NED coordinates, meaning +z is down")
+        print("         (to fly upwards use negative z values)")
 
     state = client.getMultirotorState()
-
-    # NED starting point coordinates
-    home_position = get_NED_coords(state)  # ~ (0, 0, 0)
-
-    # UE4 PlayerStart coordinates
-    player_start = get_UE4_coords(state)
+    home_position = get_NED_coords(
+        client, state
+    )  # NED starting point coordinates ~ (0, 0, 0)
+    player_start = get_UE4_coords(client, state)  # UE4 PlayerStart coordinates
 
     if args.verbose:
-        print("home_position (NED):", home_position, "\nplayer_start (UE4):", player_start, "\n")
+        print("home_position (NED):", home_position, "\n")
+        print("player_start (UE4):", player_start, "\n")
 
     if args.relative:
         xyz = (
@@ -61,36 +71,45 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             args.z = home_position.z_val  # keep the same altitude
         xyz = (args.x, args.y, args.z)
 
+    print("landed_state =", client.getMultirotorState().landed_state)  # FIXME
+    if state.landed_state == airsim.LandedState.Landed:
+        print("[ff] Taking off.. ", end="", flush=True)
+        client.takeoffAsync().join()
+        print("done.", flush=True)
+    else:  # airsim.LandedState.Flying
+        client.hoverAsync().join()
+
     if args.teleport:
-        print(f"[ff] Teleporting to {xyz}.. ", end="")
+        print(f"[ff] Teleporting to {xyz}.. ", end="", flush=True)
         pose = airsim.Pose()
         pose.position = airsim.Vector3r(*xyz)
         client.simSetVehiclePose(pose, ignore_collison=True)
-        time.sleep(args.wait)
+        time.sleep(4)  # wait a few seconds after teleporting
     else:
-        print(f"[ff] Moving to {xyz}.. ", end="")
+        print(f"[ff] Moving to {xyz}.. ", end="", flush=True)
         client.moveToPositionAsync(*xyz, args.velocity, args.timeout_sec).join()
-    print("done.")
+    print("done.", flush=True)
 
-    final_xyz = get_NED_coords()
+    state = client.getMultirotorState()
+    final_xyz = get_NED_coords(client, state)
     final_xyz = (final_xyz.x_val, final_xyz.y_val, final_xyz.z_val)
     print(f"[ff] Reached {final_xyz}.")
 
-    time.sleep(args.wait)
-    client.hoverAsync()
-
     if args.verbose:
-        state = client.getMultirotorState()
         print("\nKinematics estimated position:", state.kinematics_estimated.position)
         print("GPS location (UE4 coordinates):", state.gps_location, "\n")
 
-    if not args.stay:
-        print(f"[ff] Teleporting back to start position.. ", end="")
-        pose = airsim.Pose()
-        pose.position = home_position
-        client.simSetVehiclePose(pose, ignore_collison=True)
-        time.sleep(args.wait)
-        print("done.")
+    client.hoverAsync().join()
+    # time.sleep(args.wait)
+    # client.hoverAsync().join()
+
+    # if not args.stay:
+    #     print(f"[ff] Teleporting back to start position.. ", end="")
+    #     pose = airsim.Pose()
+    #     pose.position = home_position
+    #     client.simSetVehiclePose(pose, ignore_collison=True)
+    #     time.sleep(args.wait)
+    #     print("done.")
 
 
 ###############################################################################
@@ -98,9 +117,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
 
 def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Change the drone's position (uses NED coordinates)"
-    )
+    parser = argparse.ArgumentParser(description="Change the drone's position (uses NED coordinates)")
 
     parser.add_argument(
         "x", type=float, help="Coordinate value in meters, where +x is north"
@@ -110,23 +127,27 @@ def get_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "z", type=float, help="Coordinate value in meters, where +z is down (kept the same by default)",
-        nargs="?", default=None,
+        nargs="?",
+        default=None,
     )
+
     parser.add_argument(
         "--relative",
         action="store_true",
         help="Move relative to the current drone position, instead of the (0, 0, 0) starting position",
     )
+
     parser.add_argument(
         "--teleport",
         action="store_true",
         help="Teleport to specified position, instead of waiting for the drone to fly"
-             " (NOTE this may cause errors, see pull#2324)",
+             " (NOTE this may lead to unexpected behaviours, see pull#2324)",
     )
+
     parser.add_argument(
         "--stay",
         action="store_true",
-        help="Stay on the final position (returns to the starting one by default)",
+        help="Stay on the final position (the drone returns to the starting position by default)",
     )
 
     parser.add_argument(
