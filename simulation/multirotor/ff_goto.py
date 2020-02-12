@@ -16,9 +16,8 @@ except ModuleNotFoundError:
 
 
 def preflight(args: argparse.Namespace) -> None:
-    args.wait = 4  # s
-    args.velocity = 2  # m/s
-    args.timeout_sec = 10
+    # NOTE avoid velocities over 5 m/s
+    args.velocity = 2
 
 
 ###############################################################################
@@ -28,17 +27,16 @@ def preflight(args: argparse.Namespace) -> None:
 def get_NED_coords(
     client: airsim.MultirotorClient, multirotor_state: airsim.MultirotorState = None
 ) -> airsim.Vector3r:
-    """ (north, east, down), in meters """  # right-hand rule
+    ''' `(north, east, down)` values in `m`, following the right-hand rule '''
     if multirotor_state is None:
         multirotor_state = client.getMultirotorState()
-    # return client.simGetVehiclePose().position
     return multirotor_state.kinematics_estimated.position
 
 
 def get_UE4_coords(
     client: airsim.MultirotorClient, multirotor_state: airsim.MultirotorState = None
 ) -> airsim.Vector3r:
-    """ (north, east, up), in centimeters """  # left-hand rule
+    ''' `(north, east, up)` values in `cm`, following the left-hand rule '''
     if multirotor_state is None:
         multirotor_state = client.getMultirotorState()
     pos = multirotor_state.gps_location  # GeoPoint
@@ -51,10 +49,8 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         print("         (to fly upwards use negative z values)")
 
     state = client.getMultirotorState()
-    home_position = get_NED_coords(
-        client, state
-    )  # NED starting point coordinates ~ (0, 0, 0)
-    player_start = get_UE4_coords(client, state)  # UE4 PlayerStart coordinates
+    home_position = get_NED_coords(client, state)  # NED starting point coordinates ~ (0, 0, 0)
+    player_start = get_UE4_coords(client, state)   # UE4 PlayerStart coordinates
 
     if args.verbose:
         print("home_position (NED):", home_position, "\n")
@@ -71,12 +67,14 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             args.z = home_position.z_val  # keep the same altitude
         xyz = (args.x, args.y, args.z)
 
-    print("landed_state =", client.getMultirotorState().landed_state)  # FIXME
     if state.landed_state == airsim.LandedState.Landed:
+        print(f"landed_state = {state.landed_state} (Landed)")
         print("[ff] Taking off.. ", end="", flush=True)
         client.takeoffAsync().join()
-        print("done.", flush=True)
+        print("done.")
     else:  # airsim.LandedState.Flying
+        print(f"landed_state = {state.landed_state} (Flying)")
+        print("[ff] Hovering", flush=True)
         client.hoverAsync().join()
 
     if args.teleport:
@@ -87,8 +85,8 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         time.sleep(4)  # wait a few seconds after teleporting
     else:
         print(f"[ff] Moving to {xyz}.. ", end="", flush=True)
-        client.moveToPositionAsync(*xyz, args.velocity, args.timeout_sec).join()
-    print("done.", flush=True)
+        client.moveToPositionAsync(*xyz, args.velocity).join()
+    print("done.")
 
     state = client.getMultirotorState()
     final_xyz = get_NED_coords(client, state)
@@ -100,16 +98,13 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         print("GPS location (UE4 coordinates):", state.gps_location, "\n")
 
     client.hoverAsync().join()
-    # time.sleep(args.wait)
-    # client.hoverAsync().join()
+    print(f"[ff] Hovering for {args.wait_sec} seconds.. ", end="", flush=True)
+    time.sleep(args.wait_sec)  # hover for some time before teleporting back
+    print("done.")
 
-    # if not args.stay:
-    #     print(f"[ff] Teleporting back to start position.. ", end="")
-    #     pose = airsim.Pose()
-    #     pose.position = home_position
-    #     client.simSetVehiclePose(pose, ignore_collison=True)
-    #     time.sleep(args.wait)
-    #     print("done.")
+    if args.verbose:
+        print("\nKinematics estimated position:", state.kinematics_estimated.position)
+        print("GPS location (UE4 coordinates):", state.gps_location, "\n")
 
 
 ###############################################################################
@@ -128,40 +123,42 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "z", type=float, help="Coordinate value in meters, where +z is down (kept the same by default)",
         nargs="?",
-        default=None,
+        default=None
     )
 
     parser.add_argument(
         "--relative",
         action="store_true",
-        help="Move relative to the current drone position, instead of the (0, 0, 0) starting position",
+        help="Move relative to the current drone position,"
+             " instead of the PlayerStart position"  # ~ (0, 0, 0) in AirSim's NED system
+    )
+
+    parser.add_argument(
+        "--wait_sec",
+        type=float,
+        default=4.0,
+        help="Time hovering in the final position  (default: %(default)ds)"
     )
 
     parser.add_argument(
         "--teleport",
         action="store_true",
         help="Teleport to specified position, instead of waiting for the drone to fly"
-             " (NOTE this may lead to unexpected behaviours, see pull#2324)",
-    )
-
-    parser.add_argument(
-        "--stay",
-        action="store_true",
-        help="Stay on the final position (the drone returns to the starting position by default)",
+             " (NOTE this may lead to errors with .exe environments, see pull#2324)"
     )
 
     parser.add_argument(
         "--airsim_root",
         type=str,
         default=os.path.join("D:", "dev", "AirSim"),
-        help="AirSim directory  (default: %(default)s)",
+        help="AirSim directory  (default: %(default)s)"
     )
 
     parser.add_argument(
         "--symbolic_link",
         "-ln",
         action="store_true",
-        help="Create a symbolic link to AirSim in the current directory.",
+        help="Create a symbolic link to AirSim in the current directory."
     )
 
     parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")
