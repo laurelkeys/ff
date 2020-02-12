@@ -57,9 +57,11 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         'UE4': get_UE4_coords(client, state)
     }  # obs.: UE4's PlayerStart coordinates correspond to ~(0, 0, 0) in AirSim's NED system
 
-    print(f"Starting position (NED): {start_pos['NED']}\n")
+    coords_format = "({:.2f}  {:.2f}  {:.2f})"
+
+    print("Starting position (NED): {}".format(coords_format).format(*start_pos['NED']))
     if args.verbose:
-        print(f"Starting position (UE4): {start_pos['UE4']}\n")
+        print("Starting position (UE4): {}".format(coords_format).format(*start_pos['UE4']))
 
     if args.relative:
         if args.z is None:
@@ -71,40 +73,35 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         xyz = (args.x, args.y, args.z)
 
     if state.landed_state == airsim.LandedState.Landed:
-        print(f"landed_state = {state.landed_state} (Landed)")
-        print("[ff] Taking off.. ", end="", flush=True)
+        print(f"\nlanded_state = {state.landed_state} (Landed)")
+        print("[ff] Taking off... ", end="", flush=True)
         client.takeoffAsync().join()
         print("done.")
     else:
         # NOTE .exe environments seem to always return Landed
-        print(f"landed_state = {state.landed_state} (Flying)")
+        print(f"\nlanded_state = {state.landed_state} (Flying)")
         client.hoverAsync().join()
 
     if args.teleport:
-        print(f"[ff] Teleporting to {xyz}.. ", end="", flush=True)
+        print("[ff] Teleporting to {}... ".format(coords_format).format(*xyz), end="", flush=True)
         pose = airsim.Pose()
         pose.position = airsim.Vector3r(*xyz)
         client.simSetVehiclePose(pose, ignore_collison=True)
         time.sleep(4)  # wait a few seconds after teleporting
     else:
-        print(f"[ff] Moving to {xyz}.. ", end="", flush=True)
+        print("[ff] Moving to {}... ".format(coords_format).format(*xyz), end="", flush=True)
         client.moveToPositionAsync(*xyz, args.velocity).join()
     print("done.")
 
-    state = client.getMultirotorState()
-    print(f"Ending position (NED): {get_NED_coords(client, state)}\n")
-    if args.verbose:
-        print(f"Ending position (UE4): {get_UE4_coords(client, state)}\n")
-
-    print(f"[ff] Hovering for {args.wait_sec} seconds.. ", end="", flush=True)
+    print(f"[ff] Hovering for {args.wait_sec} seconds... ", end="", flush=True)
     client.hoverAsync().join()
     time.sleep(args.wait_sec)
-    print("done.")
+    print("done.\n")
 
+    state = client.getMultirotorState()
+    print("[ff] Ending position (NED): {}".format(coords_format).format(*get_NED_coords(client, state)))
     if args.verbose:
-        state = client.getMultirotorState()
-        print(f"Final position (NED): {get_NED_coords(client, state)}\n")
-        print(f"Final position (UE4): {get_UE4_coords(client, state)}\n")
+        print("[ff] Ending position (UE4): {}".format(coords_format).format(*get_UE4_coords(client, state)))
 
 
 ###############################################################################
@@ -144,7 +141,7 @@ def get_parser() -> argparse.ArgumentParser:
         "--teleport",
         action="store_true",
         help="Teleport to specified position, instead of waiting for the drone to fly"
-             " (NOTE this may lead to errors with .exe environments, see pull#2324)"
+             " (NOTE this may lead to errors, see pull#2324)"
     )
 
     parser.add_argument(
