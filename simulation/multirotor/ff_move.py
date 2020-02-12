@@ -25,7 +25,7 @@ def preflight(args: argparse.Namespace) -> None:
 
 
 def pose2str(pose: airsim.Pose) -> str:
-    return "Pose(position=({:.2f}  {:.2f}  {:.2f}), orientation=({:.2f}  {:.2f}  {:.2f}  {:.2f}))".format(
+    return "Pose(position=({:.2f} {:.2f} {:.2f}), orientation=({:.2f} {:.2f} {:.2f} {:.2f}))".format(
         pose.position.x_val,
         pose.position.y_val,
         pose.position.z_val,
@@ -55,6 +55,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         print(f"[ff] Multiple objects found with name '{args.name}':", scene_objects)
     else:
         object_name = scene_objects[0]
+        print(object_name)
         start_pose = client.simGetObjectPose(object_name)
         print(f"[ff] Starting pose:", pose2str(start_pose))
 
@@ -72,7 +73,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         print(" (successful)" if success else " (failed)")
 
         print(f"\n[ff] Ending pose:", pose2str(client.simGetObjectPose(object_name)))
-        
+
         if not success:
             print("\nWarning: Make sure the object has Mobility = 'Movable' in UE4")
 
@@ -96,17 +97,22 @@ def get_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        "-x", type=float, help="Coordinate value in meters, where +x is north"
+        "-x",
+        type=float,
+        default=0.0,
+        help="Coordinate value in meters, where +x is north",
     )
     parser.add_argument(
-        "-y", type=float, help="Coordinate value in meters, where +y is east"
+        "-y",
+        type=float,
+        default=0.0,
+        help="Coordinate value in meters, where +y is east",
     )
     parser.add_argument(
         "-z",
         type=float,
+        default=0.0,
         help="Coordinate value in meters, where +z is down",
-        nargs="?",
-        default=None,
     )
 
     parser.add_argument(
