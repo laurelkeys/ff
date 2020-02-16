@@ -36,16 +36,23 @@ def fly(client: airsim.MultirotorClient, args) -> None:
     client.takeoffAsync(timeout_sec=8).join()
 
     ned_coordinates = []
-    z = 4
-    for x in [-2, 2]:
-        for y in [-2, 2]:
-            ned_coordinates.append((y, x, -z))  # North, East, Down
+    w, h = 4, 4
+    x, y, z = -2, -2, 4
+    clockwise = [(0,0), (1,0), (1,1), (0,1)]
+    for u, v in clockwise:
+        ned_coordinates.append((y + v * h, x + u * w, -z))  # North, East, Down
+    ned_coordinates.append(ned_coordinates[0])
 
+    wait_time = 5
     for coord in ned_coordinates:
-        print(f"[ff] Moving to {coord}")
+        print(f"[ff] Moving to {coord}", flush=True)
         client.simPrintLogMessage("NED coordinates: ", message_param=str(coord))
         client.moveToPositionAsync(*coord, velocity=5).join()
+        time.sleep(wait_time)
 
+    # print(f"[ff] Landing", flush=True)
+    # client.landAsync().join()
+    print(f"[ff] Going home", flush=True)
     client.goHomeAsync().join()
     print(f"[ff] Done")
     # client.reset()
@@ -132,7 +139,7 @@ def run_env(env_path: str, env_proc: str, **kwargs) -> None:
     if already_running:
         print(f"{env_name} is already running:")
         for p in already_running:  # there should (usually) only be one
-            print(f" - name={p.name()}, pid={p.pid()}")  # p.name() == env_proc
+            print(f" - name={p.name()}, pid={p.pid}")  # p.name() == env_proc
         return
 
     subprocess.run(build_run_cmds(env_path, **kwargs), shell=True)
