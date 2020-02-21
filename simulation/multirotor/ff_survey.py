@@ -3,7 +3,6 @@ import sys
 import glob
 import time
 import psutil
-import random
 import argparse
 import subprocess
 
@@ -113,14 +112,14 @@ def build_run_cmds(
     ], f"\ninvalid extension '{env_ext}'\n"
 
     if env_ext == ".exe":
-        cmds = ["start", env_path]
+        cmds = [env_path]
         if res is not None:
             cmds.extend([f"-ResX={res[0]}", f"-ResY={res[1]}"])
         cmds.append("-windowed")
 
     elif env_ext == ".sln":
         cmds = [devenv_path, env_path]
-        # TODO use Visual Studio's devenv command to run after launch
+        # TODO use Visual Studio's devenv command to run after launching
 
     else:  # ".uproject"
         cmds = [ue4editor_path, env_path, "-game"]
@@ -144,11 +143,11 @@ def run_env(env_path: str, env_proc: str, **kwargs) -> None:
 
     run_cmds = build_run_cmds(env_path, **kwargs)
     if args.verbose:
-        print("run_cmds =" , ' '.join(run_cmds))
+        print("run_cmds:\n$" , ' '.join(run_cmds) + '\n')
     print("Launching environment...")
     subprocess.Popen(run_cmds, shell=True, stdout=subprocess.PIPE)
     if args.wait_key:
-        input("Press any key to try connecting to AirSim ")
+        input("Press [enter] to try connecting to AirSim ")
 
 
 def possible_env_folders(
@@ -199,11 +198,11 @@ def launch_env(args: argparse.Namespace) -> None:
             args.env_root, exts=["*.sln"] if args.edit else ["*.exe", "*.uproject"]
         )
         assert env_folders, f"\nno environment folder was found in '{args.env_root}'\n"
-        args.env_name = random.choice(env_folders)
+        args.env_name = env_folders[0]
         if len(env_folders) > 1:
-            print("Multiple possible environment folders were found:")
+            print("Multiple environment folders were found:")
             print(" -", "\n - ".join(env_folders))
-            print("Randomly selected:", args.env_name)
+            print("Choosing the first one:", args.env_name + '\n')
         args.env_name = os.path.basename(os.path.dirname(args.env_name))
 
     env_dir = os.path.join(args.env_root, args.env_name)
@@ -264,7 +263,7 @@ def get_parser() -> argparse.ArgumentParser:
         metavar="ENV_NAME",
         type=str,
         nargs="?",
-        const="",  # (randomly) selects a valid environment folder in env_root
+        const="",  # tries to select a valid environment folder in env_root
         help="Name of the folder that contains the environment (.exe or .uproject file) to run.",
     )
 
