@@ -36,8 +36,8 @@ def fly(client: airsim.MultirotorClient, args) -> None:
     client.takeoffAsync(timeout_sec=8).join()
 
     ned_coordinates = []
-    w, h = 4, 4
-    x, y, z = -2, -2, 4
+    w, h = 20, 20
+    x, y, z = -2, -2, 20
     clockwise = [(0,0), (1,0), (1,1), (0,1)]
     for u, v in clockwise:
         ned_coordinates.append((y + v * h, x + u * w, -z))  # North, East, Down
@@ -50,10 +50,10 @@ def fly(client: airsim.MultirotorClient, args) -> None:
         client.moveToPositionAsync(*coord, velocity=5).join()
         time.sleep(wait_time)
 
-    # print(f"[ff] Landing", flush=True)
-    # client.landAsync().join()
-    print(f"[ff] Going home", flush=True)
-    client.goHomeAsync().join()
+    print(f"[ff] Landing", flush=True)
+    client.landAsync().join()
+    # print(f"[ff] Going home", flush=True)
+    # client.goHomeAsync().join()
     print(f"[ff] Done")
     # client.reset()
 
@@ -142,8 +142,13 @@ def run_env(env_path: str, env_proc: str, **kwargs) -> None:
             print(f" - name={p.name()}, pid={p.pid}")  # p.name() == env_proc
         return
 
-    subprocess.run(build_run_cmds(env_path, **kwargs), shell=True)
-    time.sleep(5)  # wait for the drone to spawn
+    run_cmds = build_run_cmds(env_path, **kwargs)
+    if args.verbose:
+        print("run_cmds =" , ' '.join(run_cmds))
+    print("Launching environment...")
+    subprocess.Popen(run_cmds, shell=True, stdout=subprocess.PIPE)
+    if args.wait_key:
+        input("Press any key to try connecting to AirSim ")
 
 
 def possible_env_folders(
@@ -175,7 +180,6 @@ def main(args: argparse.Namespace) -> None:
         print(", ".join(possible_env_folders(args.env_root)) + "\n")
 
     if args.env_name is not None:
-        # FIXME reobtain terminal's control after launching .sln or .uproject files
         launch_env(args)  # the --launch option was passed
 
     client = connect_to_airsim()
@@ -280,6 +284,12 @@ def get_parser() -> argparse.ArgumentParser:
         "--edit",
         action="store_true",
         help="Launch the specified environment's .sln in Visual Studio (instead of running its .uproject).",
+    )
+
+    parser.add_argument(
+        "--wait_key",
+        action="store_true",
+        help="Wait for a key press before connecting to AirSim (useful when using .uproject and .sln).",
     )
 
     parser.add_argument(
