@@ -21,8 +21,27 @@ ENV_ROOT = {
     "custom": "D:\\dev\\UE4\\Custom Environments",   # .sln and .uproject files
 }
 
+
 #######################################################
 #######################################################
+
+
+def to_NED(coords_UE4, ground_offset):
+    ''' Converts Unreal coordinates to NED system.
+        Assumes PlayerStart is at (0, 0, 0) in AirSim's local NED coordinate system. '''
+    coords_NED = coords_UE4  # Unreal uses cm and +z aiming up
+    coords_NED.z_val *= -1
+    coords_NED *= 0.01
+    return coords_NED - ground_offset
+
+
+def from_NED(coords_NED, ground_offset):
+    ''' Converts NED coordinates to Unreal system.
+        Assumes PlayerStart is at (0, 0, 0) in AirSim's local NED coordinate system. '''
+    coords_UE4 = coords_NED - ground_offset # AirSim uses meters and +z aiming down
+    coords_UE4.z_val *= -1
+    coords_UE4 *= 100
+    return coords_UE4
 
 
 def fly(client: airsim.MultirotorClient, args) -> None:
@@ -30,6 +49,8 @@ def fly(client: airsim.MultirotorClient, args) -> None:
         print(f"[ff] HomeGeoPoint:\n{client.getHomeGeoPoint()}\n")
         print(f"[ff] VehiclePose:\n{client.simGetVehiclePose()}\n")
         #print(f"[ff] MultirotorState:\n{client.getMultirotorState()}\n")
+
+    ground_offset = client.simGetVehiclePose().position.z_val  # assumes the drone is at PlayerStart
 
     print(f"[ff] Taking off")
     client.takeoffAsync(timeout_sec=8).join()
@@ -146,7 +167,7 @@ def run_env(env_path: str, env_proc: str, **kwargs) -> None:
         print("run_cmds:\n$" , ' '.join(run_cmds) + '\n')
     print("Launching environment...")
     subprocess.Popen(run_cmds, shell=True, stdout=subprocess.PIPE)
-    if args.wait_key:
+    if not args.no_wait:
         input("Press [enter] to try connecting to AirSim ")
 
 
@@ -286,9 +307,9 @@ def get_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        "--wait_key",
+        "--no_wait",
         action="store_true",
-        help="Wait for a key press before connecting to AirSim (useful when using .uproject and .sln).",
+        help="Don't wait for a key press before connecting to AirSim.",
     )
 
     parser.add_argument(
