@@ -26,22 +26,22 @@ ENV_ROOT = {
 #######################################################
 
 
-def to_NED(coords_UE4, ground_offset):
+def to_NED(coords_UE4, ground_offset_NED, player_start_UE4):
     ''' Converts Unreal coordinates to NED system.
         Assumes PlayerStart is at (0, 0, 0) in AirSim's local NED coordinate system. '''
-    coords_NED = coords_UE4  # Unreal uses cm and +z aiming up
+    coords_NED = coords_UE4 - player_start_UE4  # Unreal uses cm and +z aiming up
     coords_NED.z_val *= -1
     coords_NED *= 0.01
-    return coords_NED - ground_offset
+    return coords_NED + ground_offset_NED
 
 
-def from_NED(coords_NED, ground_offset):
+def from_NED(coords_NED, ground_offset_NED, player_start_UE4):
     ''' Converts NED coordinates to Unreal system.
         Assumes PlayerStart is at (0, 0, 0) in AirSim's local NED coordinate system. '''
-    coords_UE4 = coords_NED - ground_offset # AirSim uses meters and +z aiming down
+    coords_UE4 = coords_NED - ground_offset_NED  # AirSim uses meters and +z aiming down
     coords_UE4.z_val *= -1
     coords_UE4 *= 100
-    return coords_UE4
+    return coords_UE4 + player_start_UE4
 
 
 def fly(client: airsim.MultirotorClient, args) -> None:
@@ -50,7 +50,9 @@ def fly(client: airsim.MultirotorClient, args) -> None:
         print(f"[ff] VehiclePose:\n{client.simGetVehiclePose()}\n")
         #print(f"[ff] MultirotorState:\n{client.getMultirotorState()}\n")
 
-    ground_offset = client.simGetVehiclePose().position.z_val  # assumes the drone is at PlayerStart
+    player_start_UE4 = client.getHomeGeoPoint()
+    ground_offset_NED = client.simGetVehiclePose().position  # assumes the drone is at PlayerStart
+    assert ground_offset_NED.x_val == ground_offset_NED.y_val == 0
 
     print(f"[ff] Taking off")
     client.takeoffAsync(timeout_sec=8).join()
