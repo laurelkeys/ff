@@ -7,6 +7,7 @@ import argparse
 import subprocess
 
 from typing import List, Tuple
+from ff_types import Vec3
 
 try:
     import airsim
@@ -26,22 +27,18 @@ ENV_ROOT = {
 #######################################################
 
 
-def to_NED(coords_UE4, ground_offset_NED, player_start_UE4):
+def to_NED(coords_UE4, ground_offset_NED, home_UE4):
     ''' Converts Unreal coordinates to NED system.
         Assumes PlayerStart is at (0, 0, 0) in AirSim's local NED coordinate system. '''
-    coords_NED = coords_UE4 - player_start_UE4  # Unreal uses cm and +z aiming up
-    coords_NED.z_val *= -1
-    coords_NED *= 0.01
-    return coords_NED + ground_offset_NED
+    # Unreal uses cm and +z aiming up
+    return Vec3.flip_z(0.01 * (coords_UE4 - home_UE4) + ground_offset_NED)
 
 
-def from_NED(coords_NED, ground_offset_NED, player_start_UE4):
+def from_NED(coords_NED, ground_offset_NED, home_UE4):
     ''' Converts NED coordinates to Unreal system.
         Assumes PlayerStart is at (0, 0, 0) in AirSim's local NED coordinate system. '''
-    coords_UE4 = coords_NED - ground_offset_NED  # AirSim uses meters and +z aiming down
-    coords_UE4.z_val *= -1
-    coords_UE4 *= 100
-    return coords_UE4 + player_start_UE4
+    # AirSim uses meters and +z aiming down
+    return Vec3.flip_z(100 * (coords_NED - ground_offset_NED) + home_UE4)
 
 
 def fly(client: airsim.MultirotorClient, args) -> None:
@@ -50,23 +47,39 @@ def fly(client: airsim.MultirotorClient, args) -> None:
         print(f"[ff] VehiclePose:\n{client.simGetVehiclePose()}\n")
         #print(f"[ff] MultirotorState:\n{client.getMultirotorState()}\n")
 
-    player_start_UE4 = client.getHomeGeoPoint()
-    ground_offset_NED = client.simGetVehiclePose().position  # assumes the drone is at PlayerStart
-    assert ground_offset_NED.x_val == ground_offset_NED.y_val == 0
+    home_UE4 = Vec3.from_GeoPoint(client.getHomeGeoPoint())
+    ground_offset_NED = Vec3.from_Vector3r(client.simGetVehiclePose().position)
+    assert ground_offset_NED.x == ground_offset_NED.y == 0  # assumes the drone is at PlayerStart
+
+    player_start = Vec3.from_Vector3r(
+        client.simGetObjectPose(client.simListSceneObjects("PlayerStart.*")[0]).position
+    )
+    print(
+        f"PlayerStart = {player_start}", 
+        f"home_UE4 = {home_UE4}", 
+        f"ground_offset_NED = {ground_offset_NED}",
+        sep='\n'
+    )
 
     print(f"[ff] Taking off")
     client.takeoffAsync(timeout_sec=8).join()
 
-    ned_coordinates = []
-    w, h = 20, 20
-    x, y, z = -2, -2, 20
-    clockwise = [(0,0), (1,0), (1,1), (0,1)]
-    for u, v in clockwise:
-        ned_coordinates.append((y + v * h, x + u * w, -z))  # North, East, Down
-    ned_coordinates.append(ned_coordinates[0])
+    path_UE4 = [
+        Vec3( 639,  226, 589),
+        Vec3(1237,  226, 589),
+        Vec3(1237, -154, 589),
+        Vec3( 639, -154, 589),
+    ]
+    path_NED = [
+        to_NED(coords_UE4, ground_offset_NED, home_UE4) 
+        for coords_UE4 in path_UE4
+    ]
+
+    print("path_UE4 = [" + ', '.join((str(coord) for coord in path_UE4)) + "]")
+    print("path_NED = [" + ', '.join((str(coord) for coord in path_NED)) + "]")
 
     wait_time = 5
-    for coord in ned_coordinates:
+    for coord in path_NED:
         print(f"[ff] Moving to {coord}", flush=True)
         client.simPrintLogMessage("NED coordinates: ", message_param=str(coord))
         client.moveToPositionAsync(*coord, velocity=5).join()
@@ -154,7 +167,7 @@ def build_run_cmds(
 
 
 def run_env(env_path: str, env_proc: str, **kwargs) -> None:
-    env_name, _ = os.path.splitext(os.path.basename(env_path))
+    env_name, env_ext = os.path.splitext(os.path.basename(env_path))
     assert os.path.isfile(env_path), f"\n'{env_path}' doesn't exist\n"
 
     already_running = [p for p in psutil.process_iter() if p.name() == env_proc]
@@ -167,7 +180,11 @@ def run_env(env_path: str, env_proc: str, **kwargs) -> None:
     run_cmds = build_run_cmds(env_path, **kwargs)
     if args.verbose:
         print("run_cmds:\n$" , ' '.join(run_cmds) + '\n')
-    print("Launching environment...")
+    if env_ext == ".exe":
+        print("Launching environment...")
+    else:
+        print("Launching environment... (this may take a few seconds)")
+
     subprocess.Popen(run_cmds, shell=True, stdout=subprocess.PIPE)
     if not args.no_wait:
         input("Press [enter] to try connecting to AirSim ")
