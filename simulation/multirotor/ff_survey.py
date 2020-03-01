@@ -23,6 +23,16 @@ ENV_ROOT = {
 }
 
 
+# test paths for different maps (in NED coordinates)
+BLOCKS_PATH = [
+    Vec3(15,  15, -40),
+    Vec3(55,  15, -40),
+    Vec3(55, -20, -40),
+    Vec3(15, -20, -40),
+    Vec3(15,  15, -40),
+]
+
+
 #######################################################
 #######################################################
 
@@ -49,37 +59,18 @@ def fly(client: airsim.MultirotorClient, args) -> None:
 
     home_UE4 = Vec3.from_GeoPoint(client.getHomeGeoPoint())
     ground_offset_NED = Vec3.from_Vector3r(client.simGetVehiclePose().position)
-    assert ground_offset_NED.x == ground_offset_NED.y == 0  # assumes the drone is at PlayerStart
-
-    player_start = Vec3.from_Vector3r(
-        client.simGetObjectPose(client.simListSceneObjects("PlayerStart.*")[0]).position
-    )
-    print(
-        f"PlayerStart = {player_start}", 
-        f"home_UE4 = {home_UE4}", 
-        f"ground_offset_NED = {ground_offset_NED}",
-        sep='\n'
-    )
+    #assert ground_offset_NED.x == ground_offset_NED.y == 0  # assumes the drone is at PlayerStart
+    #player_start = Vec3.from_Vector3r(
+    #    client.simGetObjectPose(client.simListSceneObjects("PlayerStart.*")[0]).position
+    #)
 
     print(f"[ff] Taking off")
     client.takeoffAsync(timeout_sec=8).join()
 
-    path_UE4 = [
-        Vec3( 639,  226, 589),
-        Vec3(1237,  226, 589),
-        Vec3(1237, -154, 589),
-        Vec3( 639, -154, 589),
-    ]
-    path_NED = [
-        to_NED(coords_UE4, ground_offset_NED, home_UE4) 
-        for coords_UE4 in path_UE4
-    ]
-
-    print("path_UE4 = [" + ', '.join((str(coord) for coord in path_UE4)) + "]")
-    print("path_NED = [" + ', '.join((str(coord) for coord in path_NED)) + "]")
+    fligh_path = BLOCKS_PATH
 
     wait_time = 5
-    for coord in path_NED:
+    for coord in fligh_path:
         print(f"[ff] Moving to {coord}", flush=True)
         client.simPrintLogMessage("NED coordinates: ", message_param=str(coord))
         client.moveToPositionAsync(*coord, velocity=5).join()
