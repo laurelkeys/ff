@@ -29,7 +29,6 @@ BLOCKS_PATH = [
     Vec3(55,  15, -40),
     Vec3(55, -20, -40),
     Vec3(15, -20, -40),
-    Vec3(15,  15, -40),
 ]
 
 
@@ -67,14 +66,13 @@ def fly(client: airsim.MultirotorClient, args) -> None:
     print(f"[ff] Taking off")
     client.takeoffAsync(timeout_sec=8).join()
 
-    fligh_path = BLOCKS_PATH
+    fligh_path = BLOCKS_PATH  # TODO add option to change on argparse
 
-    wait_time = 5
-    for coord in fligh_path:
-        print(f"[ff] Moving to {coord}", flush=True)
-        client.simPrintLogMessage("NED coordinates: ", message_param=str(coord))
-        client.moveToPositionAsync(*coord, velocity=5).join()
-        time.sleep(wait_time)
+    print(f"[ff] Moving on path...", flush=True)
+    client.moveOnPathAsync(
+        path=[airsim.Vector3r(coord.x, coord.y, coord.z) for coord in fligh_path],
+        velocity=5
+    ).join()
 
     print(f"[ff] Landing", flush=True)
     client.landAsync().join()
