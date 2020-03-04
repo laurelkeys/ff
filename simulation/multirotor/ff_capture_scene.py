@@ -1,4 +1,5 @@
 import os, sys, time, argparse
+from typing import List
 
 import ff
 from ff_types import Vec3
@@ -19,10 +20,11 @@ except ModuleNotFoundError:
 
 # test paths for different maps (in NED coordinates)
 BLOCKS_PATH = [
-    Vec3(15, 15, -40),
-    Vec3(55, 15, -40),
+    Vec3(15,  18, -40),
+    Vec3(55,  18, -40),
     Vec3(55, -20, -40),
     Vec3(15, -20, -40),
+    Vec3(15,  18, -40),  # closed loop
 ]
 
 
@@ -49,38 +51,48 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         )
 
     initial_state = client.getMultirotorState()
-
     if initial_state.landed_state == airsim.LandedState.Landed:
         print(f"[ff] Taking off")
         client.takeoffAsync(timeout_sec=8).join()
+    else:
+        client.hoverAsync().join() # airsim.LandedState.Flying
 
-    print(f"[ff] Moving on path...", end=" ", flush=True)
-    client.moveOnPathAsync(
-        path=[airsim.Vector3r(coord.x, coord.y, coord.z) for coord in args.flight_path],
-        velocity=args.flight_velocity,
-    ).join()
-    print(f"done.")
+    #__move_on_path(client, args.flight_path, args.flight_velocity)
+    __move_on_box(client, args.flight_velocity)
 
     time.sleep(4)
     print(f"[ff] Drone reset")
     client.reset()
 
 
-###############################################################################
-# airsim (general) ############################################################
-###############################################################################
+def __move_on_path(client: airsim.MultirotorClient, path: List[Vec3], velocity: float) -> None:
+    print(f"[ff] Moving on path...", end=" ", flush=True)
+    client.moveOnPathAsync(
+        [airsim.Vector3r(coord.x, coord.y, coord.z) for coord in path],
+        velocity,
+    ).join()
+    print(f"done.")
 
 
-def connect_to_airsim(vehicle_name: str = None) -> airsim.MultirotorClient:
-    client = airsim.MultirotorClient()
-    client.confirmConnection()
-    if vehicle_name is not None:
-        client.enableApiControl(True, vehicle_name)
-        client.armDisarm(True, vehicle_name)
-    else:
-        client.enableApiControl(True)
-        client.armDisarm(True)
-    return client
+def __move_on_box(client: airsim.MultirotorClient, velocity: float) -> None:
+    print(f"[ff] Moving on box...", end="\n", flush=True)
+    z = -20
+    duration = 5
+    delay = 1
+    # NOTE airsim.DrivetrainType.MaxDegreeOfFreedom allows controlling the drone yaw independently
+    #      from the direction it is flying, this way we make it always point to the inside of the box
+    vx_vy_yaw = [(velocity, 0, 90), (0, velocity, 180), (-velocity, 0, 270), (0, -velocity, 0)]
+    for vx, vy, yaw in vx_vy_yaw:
+        print(f"     moving by velocity vx={vx}, vy={vy}, yaw={yaw}")
+        client.moveByVelocityZAsync(
+            vx, vy, z, duration, 
+            airsim.DrivetrainType.MaxDegreeOfFreedom, 
+            airsim.YawMode(False, yaw)
+        ).join()
+        time.sleep(delay)
+    client.hoverAsync().join()
+    client.landAsync().join()
+    print(f"done.")
 
 
 ###############################################################################
@@ -106,6 +118,23 @@ def main(args: argparse.Namespace) -> None:
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting the script with Ctrl+C
         # NOTE client.enableApiControl(True) must be called after reset
+
+
+###############################################################################
+# airsim (general) ############################################################
+###############################################################################
+
+
+def connect_to_airsim(vehicle_name: str = None) -> airsim.MultirotorClient:
+    client = airsim.MultirotorClient()
+    client.confirmConnection()
+    if vehicle_name is not None:
+        client.enableApiControl(True, vehicle_name)
+        client.armDisarm(True, vehicle_name)
+    else:
+        client.enableApiControl(True)
+        client.armDisarm(True)
+    return client
 
 
 ###############################################################################
