@@ -1,4 +1,4 @@
-import os, sys, time, argparse
+import os, sys, time, msvcrt, argparse
 from typing import List
 
 import ff
@@ -58,7 +58,30 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         client.hoverAsync().join() # airsim.LandedState.Flying
 
     #__move_on_path(client, args.flight_path, args.flight_velocity)
-    __move_on_box(client, args.flight_velocity)
+    #__move_on_box(client, z=-20, side=20, velocity=args.flight_velocity)
+    future = client.moveOnPathAsync(
+        [airsim.Vector3r(coord.x, coord.y, coord.z) for coord in args.flight_path],
+        args.flight_velocity
+    )
+    print(f"[ff] Press [space] to take pictures")
+    ch, img_count, png_img_responses = b' ', 0, []
+    while ch == b' ':
+        ch = msvcrt.getch()
+        png_img_responses.extend(client.simGetImages([airsim.ImageRequest(
+            ff.CameraName.bottom_center,
+            airsim.ImageType.Scene,
+            pixels_as_float=False,
+            compress=True
+        )]))
+        print(img_count)
+        img_count += 1
+
+    print(f"[ff] Waiting for drone to finish path...", end=" ", flush=True)
+    future.join()
+    print(f"done.")
+
+    for i, response in enumerate(png_img_responses):
+        airsim.write_file(f"tmp/out_{i}.png", response.image_data_uint8)
 
     time.sleep(4)
     print(f"[ff] Drone reset")
@@ -74,22 +97,20 @@ def __move_on_path(client: airsim.MultirotorClient, path: List[Vec3], velocity: 
     print(f"done.")
 
 
-def __move_on_box(client: airsim.MultirotorClient, velocity: float) -> None:
-    print(f"[ff] Moving on box...", end="\n", flush=True)
-    z = -20
-    duration = 5
-    delay = 1
+def __move_on_box(client: airsim.MultirotorClient, z: float, side: float, velocity: float) -> None:
     # NOTE airsim.DrivetrainType.MaxDegreeOfFreedom allows controlling the drone yaw independently
     #      from the direction it is flying, this way we make it always point to the inside of the box
+    duration = side / velocity
     vx_vy_yaw = [(velocity, 0, 90), (0, velocity, 180), (-velocity, 0, 270), (0, -velocity, 0)]
+    print(f"[ff] Moving on box...", end=" ", flush=True)
     for vx, vy, yaw in vx_vy_yaw:
-        print(f"     moving by velocity vx={vx}, vy={vy}, yaw={yaw}")
+        client.simPrintLogMessage(f"moving by velocity vx={vx}, vy={vy}, yaw={yaw}")
         client.moveByVelocityZAsync(
-            vx, vy, z, duration, 
-            airsim.DrivetrainType.MaxDegreeOfFreedom, 
+            vx, vy, z, duration,
+            airsim.DrivetrainType.MaxDegreeOfFreedom,
             airsim.YawMode(False, yaw)
         ).join()
-        time.sleep(delay)
+        time.sleep(4)
     client.hoverAsync().join()
     client.landAsync().join()
     print(f"done.")
@@ -211,3 +232,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
+
+# See https://github.com/microsoft/AirSim/blob/master/docs/apis.md#apis-for-multirotor
+#     https://github.com/microsoft/AirSim/blob/master/docs/image_apis.md#python-1

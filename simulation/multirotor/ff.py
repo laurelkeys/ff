@@ -17,12 +17,20 @@ class Default:
 
     ARGS = {
         "airsim_root": "D:\\dev\\AirSim",
-        "env_root": ENV_ROOT_ALIASES['doc'],
+        "env_root": ENV_ROOT_ALIASES["doc"],
         "devenv_exe": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\Common7\\IDE\\devenv.exe",
         "unreal_editor_exe": "D:\\Program Files\\Epic Games\\UE_4.18\\Engine\\Binaries\\Win64\\UE4Editor.exe",
     }
 
-    AIRSIM_CLIENT_PATH = os.path.join(ARGS['airsim_root'], "PythonClient", "airsim")
+    AIRSIM_CLIENT_PATH = os.path.join(ARGS["airsim_root"], "PythonClient", "airsim")
+
+
+class CameraName:
+    front_center  = "front_center"
+    front_right   = "front_right"
+    front_left    = "front_left"
+    bottom_center = "bottom_center"
+    back_center   = "back_center"
 
 
 ###############################################################################
