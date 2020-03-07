@@ -46,9 +46,7 @@ def preflight(args: argparse.Namespace) -> None:
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.verbose:
         print(f"[ff] HomeGeoPoint: {Vec3.from_GeoPoint(client.getHomeGeoPoint())}\n")
-        print(
-            f"[ff] VehiclePose: position={Vec3.from_Vector3r(client.simGetVehiclePose().position)}\n"
-        )
+        print(f"[ff] VehiclePose.position: {Vec3.from_Vector3r(client.simGetVehiclePose().position)}\n")
 
     initial_state = client.getMultirotorState()
     if initial_state.landed_state == airsim.LandedState.Landed:
@@ -59,10 +57,18 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
     #__move_on_path(client, args.flight_path, args.flight_velocity)
     #__move_on_box(client, z=-20, side=20, velocity=args.flight_velocity)
-    future = client.moveOnPathAsync(
-        [airsim.Vector3r(coord.x, coord.y, coord.z) for coord in args.flight_path],
-        args.flight_velocity
-    )
+    if not args.use_viewpoints:
+        future = client.moveOnPathAsync(
+            [airsim.Vector3r(coord.x, coord.y, coord.z) for coord in args.flight_path],
+            args.flight_velocity
+        )
+    else:
+        import viewpoints
+        future = client.moveOnPathAsync(
+            [airsim.Vector3r(*position) for position in viewpoints.Positions],
+            args.flight_velocity
+        )
+
     print(f"[ff] Press [space] to take pictures")
     ch, img_count, img_responses = msvcrt.getch(), 0, []
     while ch == b' ':

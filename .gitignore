@@ -7,3 +7,6 @@ __pycache__/
 **/airsim/pfm.py
 **/airsim/types.py
 **/airsim/utils.py
+
+# images
+simulation/multirotor/viewpoints/tmp/

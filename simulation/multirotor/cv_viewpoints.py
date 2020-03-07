@@ -43,6 +43,8 @@ def main(args: argparse.Namespace) -> None:
         path_str = f"'airsim' path: {airsim.__path__[0]}"
         print("-" * len(path_str), path_str, "-" * len(path_str), sep="\n")
 
+    # TODO check (and possibly change) settings.json mode to ComputerVision
+
     client = airsim.MultirotorClient()
     client.confirmConnection()
 

@@ -25,12 +25,16 @@ class Default:
     AIRSIM_CLIENT_PATH = os.path.join(ARGS["airsim_root"], "PythonClient", "airsim")
 
 
+###############################################################################
+###############################################################################
+
+
 class CameraName:
-    front_center  = "front_center"
-    front_right   = "front_right"
-    front_left    = "front_left"
-    bottom_center = "bottom_center"
-    back_center   = "back_center"
+    front_center  = "front_center"  # 0
+    front_right   = "front_right"   # 1
+    front_left    = "front_left"    # 2
+    bottom_center = "bottom_center" # 3
+    back_center   = "back_center"   # 4
 
 
 ###############################################################################
@@ -85,10 +89,6 @@ def launch_env(args):
             )
 
 
-###############################################################################
-###############################################################################
-
-
 def __possible_env_folders(env_root, exts=["*.exe", "*.sln", "*.uproject"]):
     env_folders = []
     for ext in exts:
@@ -139,3 +139,79 @@ def __build_run_cmds(env_path, res=(1280, 720), ue4editor_path=None, devenv_path
         cmds.append("-windowed")
 
     return cmds
+
+
+###############################################################################
+###############################################################################
+
+
+def create_symbolic_link(airsim_path=Default.AIRSIM_CLIENT_PATH, verbose=False):
+    assert os.path.exists(
+        os.path.join(airsim_path, "client.py")
+    ), f"\nExpected '{os.path.join(airsim_path, 'client.py')}' does not exist\n"
+
+    symlink_cmds = ["ln", "-s", airsim_path, "airsim"]
+    if verbose:
+        symlink_cmds.append("--verbose")
+    subprocess.run(symlink_cmds)
+    # sys.path.insert(0, os.getcwd())
+
+
+###############################################################################
+###############################################################################
+
+
+def add_arguments(parser):
+    parser.add_argument(
+        "--airsim_root",
+        type=str,
+        default=Default.ARGS["airsim_root"],
+        help="AirSim directory  (default: %(default)s)",
+    )
+
+    parser.add_argument(
+        "--launch",
+        dest="env_name",
+        metavar="ENV_NAME",
+        type=str,
+        nargs="?",
+        const="",  # tries to select a valid environment folder in env_root
+        help="Name of the folder that contains the environment (.exe or .uproject file) to run",
+    )
+
+    parser.add_argument(
+        "--from",
+        dest="env_root",
+        metavar="ENV_ROOT",
+        type=str,
+        default=Default.ARGS["env_root"],
+        help="Directory that contains the environment folder  (default: %(default)s)"
+             "\nAliases: {"
+             + ", ".join(
+                 [f"'{alias}': {env_root}" for alias, env_root in Default.ENV_ROOT_ALIASES.items()]
+             )
+             + "}",
+    )
+
+    parser.add_argument(
+        "--edit",
+        action="store_true",
+        help="Launch the specified environment's .sln in Visual Studio (instead of running its .uproject)",
+    )
+
+    parser.add_argument(
+        "--devenv_exe",
+        type=str,
+        default=Default.ARGS["devenv_exe"],
+        help="Path to Visual Studio's devenv.exe, needed to launch .sln environments  (default: %(default)s)",
+    )
+
+    parser.add_argument(
+        "--unreal_editor_exe",
+        type=str,
+        default=Default.ARGS["unreal_editor_exe"],
+        help="Path to UE4Editor.exe, needed to launch .uproject environments  (default: %(default)s)",
+    )
+
+    parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")
+    return parser
