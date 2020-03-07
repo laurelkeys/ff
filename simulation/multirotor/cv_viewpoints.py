@@ -2,6 +2,7 @@ import os, sys, time, msvcrt, argparse
 from typing import List
 
 import ff
+from ff_types import to_xyz_tuple, to_xyzw_tuple, xyz_to_str, xyzw_to_str, angles_to_str
 
 try:
     import airsim
@@ -10,32 +11,6 @@ except ModuleNotFoundError:
     assert os.path.exists(os.path.join(airsim_path, "client.py")), airsim_path
     sys.path.insert(0, os.path.dirname(airsim_path))
     import airsim
-
-
-def to_xyz_tuple(vector3r):
-    return (vector3r.x_val, vector3r.y_val, vector3r.z_val)
-
-
-def to_xyzw_tuple(quaternionr):
-    return (quaternionr.x_val, quaternionr.y_val, quaternionr.z_val, quaternionr.w_val)
-
-
-def xyz_to_str(xyz, n=2, show_hints=True):
-    if show_hints:
-        return f"(x={xyz[0]:.{n}f}, y={xyz[1]:.{n}f}, z={xyz[2]:.{n}f})"
-    return f"({xyz[0]:.{n}f}, {xyz[1]:.{n}f}, {xyz[2]:.{n}f})"
-
-
-def xyzw_to_str(xyzw, n=2, show_hints=True):
-    if show_hints:
-        return f"(x={xyzw[0]:.{n}f}, y={xyzw[1]:.{n}f}, z={xyzw[2]:.{n}f}, w={xyzw[3]:.{n}f})"
-    return f"({xyzw[0]:.{n}f}, {xyzw[1]:.{n}f}, {xyzw[2]:.{n}f}, {xyzw[3]:.{n}f})"
-
-
-def angles_to_str(angles, n=4, show_hints=True):
-    if show_hints:
-        return f"(pitch={angles[0]:.{n}f}, roll={angles[1]:.{n}f}, yaw={angles[2]:.{n}f})"
-    return f"({angles[0]:.{n}f}, {angles[1]:.{n}f}, {angles[2]:.{n}f})"
 
 
 def main(args: argparse.Namespace) -> None:

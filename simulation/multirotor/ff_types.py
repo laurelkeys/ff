@@ -1,8 +1,34 @@
 from math import sqrt
 
 
+def to_xyz_tuple(vector3r):
+    return (vector3r.x_val, vector3r.y_val, vector3r.z_val)
+
+
+def to_xyzw_tuple(quaternionr):
+    return (quaternionr.x_val, quaternionr.y_val, quaternionr.z_val, quaternionr.w_val)
+
+
+def xyz_to_str(xyz, n=2, show_hints=True):
+    if show_hints:
+        return f"(x={xyz[0]:.{n}f}, y={xyz[1]:.{n}f}, z={xyz[2]:.{n}f})"
+    return f"({xyz[0]:.{n}f}, {xyz[1]:.{n}f}, {xyz[2]:.{n}f})"
+
+
+def xyzw_to_str(xyzw, n=2, show_hints=True):
+    if show_hints:
+        return f"(x={xyzw[0]:.{n}f}, y={xyzw[1]:.{n}f}, z={xyzw[2]:.{n}f}, w={xyzw[3]:.{n}f})"
+    return f"({xyzw[0]:.{n}f}, {xyzw[1]:.{n}f}, {xyzw[2]:.{n}f}, {xyzw[3]:.{n}f})"
+
+
+def angles_to_str(angles, n=4, show_hints=True):
+    if show_hints:
+        return f"(pitch={angles[0]:.{n}f}, roll={angles[1]:.{n}f}, yaw={angles[2]:.{n}f})"
+    return f"({angles[0]:.{n}f}, {angles[1]:.{n}f}, {angles[2]:.{n}f})"
+
+
 class Vec3:
-    ''' Simple 3D vector class to abstract operations with airsim.GeoPoint and airsim.Vector3r '''
+    """ Simple 3D vector class to abstract operations with airsim.GeoPoint and airsim.Vector3r """
 
     def __init__(self, x=0, y=0, z=0):
         self.x = x
@@ -70,23 +96,25 @@ class Vec3:
 
     @staticmethod
     def from_GeoPoint(geopoint):
-        ''' Vec3(latitude, longitude, altitude) '''
-        return Vec3(
-            geopoint.latitude,
-            geopoint.longitude,
-            geopoint.altitude
-        )
+        """ Vec3(latitude, longitude, altitude) """
+        return Vec3(geopoint.latitude, geopoint.longitude, geopoint.altitude)
 
     @staticmethod
     def from_Vector3r(vector3r):
-        ''' Vec3(x_val, y_val, z_val) '''
-        return Vec3(
-            vector3r.x_val,
-            vector3r.y_val,
-            vector3r.z_val
-        )
+        """ Vec3(x_val, y_val, z_val) """
+        return Vec3(vector3r.x_val, vector3r.y_val, vector3r.z_val)
 
     @staticmethod
     def flip_z(v):
-        ''' Vec3(x, y, -z) '''
+        """ Vec3(x, y, -z) """
         return Vec3(v.x, v.y, -v.z)
+
+    def __iter__(self):
+        return iter(self.x, self.y, self.z)
+
+    def __getitem__(self, item):
+        assert 0 <= item < 3
+        return self.x if item == 0 else self.y if item == 1 else self.z
+
+    def __len__(self):
+        return 3
