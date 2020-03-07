@@ -64,24 +64,24 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         args.flight_velocity
     )
     print(f"[ff] Press [space] to take pictures")
-    ch, img_count, png_img_responses = b' ', 0, []
+    ch, img_count, img_responses = msvcrt.getch(), 0, []
     while ch == b' ':
-        ch = msvcrt.getch()
-        png_img_responses.extend(client.simGetImages([airsim.ImageRequest(
+        img_responses.extend(client.simGetImages([airsim.ImageRequest(
             ff.CameraName.bottom_center,
             airsim.ImageType.Scene,
-            pixels_as_float=False,
-            compress=True
+            False, True  # compressed PNG image
         )]))
-        print(img_count)
         img_count += 1
-
+        print(f"     {img_count} pictures taken", end="\r")
+        ch = msvcrt.getch()
+    print()
+    
     print(f"[ff] Waiting for drone to finish path...", end=" ", flush=True)
     future.join()
     print(f"done.")
 
-    for i, response in enumerate(png_img_responses):
-        airsim.write_file(f"tmp/out_{i}.png", response.image_data_uint8)
+    for i, response in enumerate(img_responses):
+        airsim.write_file(os.path.join(args.output_folder, f"out_{i}.png"), response.image_data_uint8)
 
     time.sleep(4)
     print(f"[ff] Drone reset")
@@ -180,7 +180,7 @@ def get_parser() -> argparse.ArgumentParser:
         type=str,
         nargs="?",
         const="",  # tries to select a valid environment folder in env_root
-        help="Name of the folder that contains the environment (.exe or .uproject file) to run.",
+        help="Name of the folder that contains the environment (.exe or .uproject file) to run",
     )
 
     parser.add_argument(
@@ -189,24 +189,39 @@ def get_parser() -> argparse.ArgumentParser:
         metavar="ENV_ROOT",
         type=str,
         default=ff.Default.ARGS["env_root"],
-        help="Directory that contains the environment folder  (default: %(default)s)."
+        help="Directory that contains the environment folder  (default: %(default)s)"
         "\nAliases: {"
         + ", ".join(
             [f"'{alias}': {env_root}" for alias, env_root in ff.Default.ENV_ROOT_ALIASES.items()]
         )
-        + "}.",
+        + "}",
     )
 
     parser.add_argument(
         "--edit",
         action="store_true",
-        help="Launch the specified environment's .sln in Visual Studio (instead of running its .uproject).",
+        help="Launch the specified environment's .sln in Visual Studio (instead of running its .uproject)",
     )
 
     parser.add_argument(
         "--no_wait",
         action="store_true",
-        help="Don't wait for a key press before connecting to AirSim.",
+        help="Don't wait for a key press before connecting to AirSim",
+    )
+
+    parser.add_argument(
+        "--out",
+        dest="output_folder",
+        metavar="OUTPUT_FOLDER",
+        type=str,
+        default="tmp",
+        help="Image output folder  (default: %(default)s/)"
+    )
+
+    parser.add_argument(
+        "--use_viewpoints",
+        action="store_true",
+        help="Get path from ./viewpoints.py"
     )
 
     parser.add_argument(
