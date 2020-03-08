@@ -24,6 +24,8 @@ from ff.types import to_xyz_str, to_xyzw_str, angles_to_str
 
 def preflight(args: argparse.Namespace) -> None:
     args.flight_velocity = 5
+    import viewpoints.default  # FIXME
+    args.viewpoints = zip(viewpoints.default.Positions, viewpoints.default.Orientations)
 
 
 ###############################################################################
@@ -44,16 +46,43 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         )
 
     if initial_state.landed_state == airsim.LandedState.Landed:
-        print(f"[ff] Taking off")
+        print("[ff] Taking off")
         client.takeoffAsync(timeout_sec=8).join()
     else:
         client.hoverAsync().join()  # airsim.LandedState.Flying
 
-    print("args:", args)
+    print("[ff] Press [space] to take pictures")
+    print("[ff] Flying viewpoints...", end=" ")
+
+    _move_by_path(client, args)
+    #_move_by_positions(client, args)
+
+    print("done")
 
     time.sleep(4)
-    print(f"[ff] Drone reset")
     client.reset()
+    print("[ff] Drone reset")
+
+
+def _move_by_path(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
+    path = [airsim.Vector3r(*position) for position, _orientation in args.viewpoints]
+    future = client.moveOnPathAsync(
+        path, args.flight_velocity, drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom
+    )
+    future.join()
+
+
+def _move_by_positions(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
+    for position, _orientation in args.viewpoints:
+        future = client.moveToPositionAsync(
+            *position, args.flight_velocity, drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom
+        )
+        # client.simSetCameraOrientation(
+        #     ff.CameraName.front_center,
+        #     airsim.Quaternionr(*orientation)
+        # )
+        future.join()
+        time.sleep(2)
 
 
 ###############################################################################

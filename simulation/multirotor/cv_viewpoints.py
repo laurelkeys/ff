@@ -17,43 +17,28 @@ except ModuleNotFoundError:
     import airsim
 
 
-SETTINGS = "D:\\Documents\\AirSim\\settings.json"
-
-
-def main(args: argparse.Namespace) -> None:
-    # change SimMode
-    with open(SETTINGS, "r+") as settings_file:
-        settings = json.load(settings_file)
-        sim_mode = settings["SimMode"]
-        if sim_mode != "ComputerVision":
-            print(f"\nChanging SimMode from '{sim_mode}' to 'ComputerVision'\n")
-            settings["SimMode"] = "ComputerVision"
-
+def main(args):
     client = airsim.MultirotorClient()
     client.confirmConnection()
 
-    positions = []
-    orientations = []
-    print(f"[ff] Press [space] to store points (and [backspace] to quit)")
+    positions, orientations = [], []
+    print(f"[ff] Press [space] to store points (and any other key to quit)\n")
 
-    ch = msvcrt.getch()
-    while ch != b"\x08":
-        if ch == b" ":
+    while True:
+        if msvcrt.kbhit():
+            if msvcrt.getch() != b" ":
+                break  # https://stackoverflow.com/a/13207813
+
             pose = client.simGetVehiclePose()
             xyz = to_xyz_tuple(pose.position)
             xyzw = to_xyzw_tuple(pose.orientation)
-            angles = airsim.to_eularian_angles(pose.orientation)  # (pitch, roll, yaw) tuple
+            angles = airsim.to_eularian_angles(pose.orientation)  # (pitch, roll, yaw)
 
             positions.append(xyz)
             orientations.append(angles if args.store_angles else xyzw)
 
-            print(
-                f"     Added position={xyz_to_str(xyz)}, "
-                f"orientation={angles_to_str(angles) if args.store_angles else xyzw_to_str(xyzw)}",
-                end="\r",
-            )
-
-        ch = msvcrt.getch()
+            orientation_str = angles_to_str(angles) if args.store_angles else xyzw_to_str(xyzw)
+            print(f"     Added position={xyz_to_str(xyz)}, orientation={orientation_str}")
     print()
 
     str_positions = ", ".join([xyz_to_str(position, 4, False) for position in positions])
@@ -66,30 +51,28 @@ def main(args: argparse.Namespace) -> None:
         ]
     )
 
-    print(f"\nPositions: [{str_positions}]")
-    print(f"\nOrientations: [{str_orientations}]")
+    print(f"\nPositions = [{str_positions}]\n\nOrientations = [{str_orientations}]")
 
+    print(f"\n[ff] Done", end="")
     if args.output_file is not None:
         with open(args.output_file, "w") as f:
-            f.write(f"Positions: [{str_positions}]")
-            f.write(f"\nOrientations: [{str_orientations}]")
-
-    # restore SimMode
-    if sim_mode != "ComputerVision":
-        settings["SimMode"] = sim_mode
-        with open(SETTINGS, "r+") as settings_file:
-            json.dump(settings, settings_file, indent=4)
+            f.write(f"Positions = [{str_positions}]")
+            f.write(f"\nOrientations = [{str_orientations}]")
+        print(f" (output saved to {args.output_file})", end="")
+    print()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Capture viewpoints in 'ComputerVision' mode")
     parser.add_argument(
-        "--store_angles",
+        "--store_angles", "-a",
         action="store_true",
         help="Store (pitch, roll, yaw) instead of quaternions for orientation",
     )
     parser.add_argument(
-        "--output_file", type=str, help="Output file path to save the viewpoints to",
+        "--output_file", "-o",
+        type=str,
+        help="Output file path to save the viewpoints to",
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")
     args = parser.parse_args()

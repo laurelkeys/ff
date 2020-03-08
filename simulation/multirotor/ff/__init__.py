@@ -1,5 +1,6 @@
 import os
 import glob
+import json
 import psutil
 import subprocess
 
@@ -26,6 +27,8 @@ class Default:
 
     AIRSIM_CLIENT_PATH = os.path.join(ARGS["airsim_root"], "PythonClient", "airsim")
 
+    SETTINGS_PATH = "D:\\Documents\\AirSim\\settings.json"
+
 
 ###############################################################################
 ###############################################################################
@@ -37,6 +40,14 @@ class CameraName:
     front_left    = "front_left"    # 2
     bottom_center = "bottom_center" # 3
     back_center   = "back_center"   # 4
+
+
+class SimMode:
+    Default        = ""
+    Car            = "Car"
+    Multirotor     = "Multirotor"
+    ComputerVision = "ComputerVision"
+    _list_all      = [Default, Car, Multirotor, ComputerVision]
 
 
 ###############################################################################
@@ -156,7 +167,26 @@ def create_symbolic_link(airsim_path=Default.AIRSIM_CLIENT_PATH, verbose=False):
     if verbose:
         symlink_cmds.append("--verbose")
     subprocess.run(symlink_cmds)
-    # sys.path.insert(0, os.getcwd())
+
+
+###############################################################################
+###############################################################################
+
+
+def change_sim_mode(new_sim_mode, settings_file_path=Default.SETTINGS_PATH):
+    assert new_sim_mode in SimMode._list_all, f"\ninvalid SimMode '{new_sim_mode}'\n"
+
+    with open(settings_file_path, "r") as settings_file:
+        settings = json.load(settings_file)
+
+    sim_mode = settings["SimMode"]
+    if sim_mode != new_sim_mode:
+        settings["SimMode"] = new_sim_mode
+        with open(settings_file_path, "w") as settings_file:
+            json.dump(settings, settings_file, indent=2)
+        return True, sim_mode
+
+    return False, sim_mode
 
 
 ###############################################################################
