@@ -3,6 +3,8 @@ import glob
 import psutil
 import subprocess
 
+from .types import *
+
 ###############################################################################
 ###############################################################################
 
@@ -17,7 +19,7 @@ class Default:
 
     ARGS = {
         "airsim_root": "D:\\dev\\AirSim",
-        "env_root": ENV_ROOT_ALIASES["doc"],
+        "env_root": ENV_ROOT_ALIASES["custom"],
         "devenv_exe": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\Common7\\IDE\\devenv.exe",
         "unreal_editor_exe": "D:\\Program Files\\Epic Games\\UE_4.18\\Engine\\Binaries\\Win64\\UE4Editor.exe",
     }
@@ -148,7 +150,7 @@ def __build_run_cmds(env_path, res=(1280, 720), ue4editor_path=None, devenv_path
 def create_symbolic_link(airsim_path=Default.AIRSIM_CLIENT_PATH, verbose=False):
     assert os.path.exists(
         os.path.join(airsim_path, "client.py")
-    ), f"\nExpected '{os.path.join(airsim_path, 'client.py')}' does not exist\n"
+    ), f"\nexpected '{os.path.join(airsim_path, 'client.py')}' does not exist\n"
 
     symlink_cmds = ["ln", "-s", airsim_path, "airsim"]
     if verbose:
@@ -161,7 +163,7 @@ def create_symbolic_link(airsim_path=Default.AIRSIM_CLIENT_PATH, verbose=False):
 ###############################################################################
 
 
-def add_arguments(parser):
+def add_arguments_to(parser):
     parser.add_argument(
         "--airsim_root",
         type=str,

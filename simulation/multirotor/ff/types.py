@@ -1,5 +1,8 @@
 from math import sqrt
 
+###############################################################################
+###############################################################################
+
 
 def to_xyz_tuple(vector3r):
     return (vector3r.x_val, vector3r.y_val, vector3r.z_val)
@@ -25,6 +28,18 @@ def angles_to_str(angles, n=4, show_hints=True):
     if show_hints:
         return f"(pitch={angles[0]:.{n}f}, roll={angles[1]:.{n}f}, yaw={angles[2]:.{n}f})"
     return f"({angles[0]:.{n}f}, {angles[1]:.{n}f}, {angles[2]:.{n}f})"
+
+
+def to_xyz_str(vector3r, n=2, show_hints=True):
+    return xyz_to_str(to_xyz_tuple(vector3r))
+
+
+def to_xyzw_str(quaternionr, n=2, show_hints=True):
+    return xyzw_to_str(to_xyzw_tuple(quaternionr))
+
+
+###############################################################################
+###############################################################################
 
 
 class Vec3:
