@@ -49,7 +49,7 @@ def get_parser():
 
 
 ###############################################################################
-# AirSim BAT Files ###########################################################
+# AirSim BAT Files ############################################################
 ###############################################################################
 
 
@@ -59,7 +59,7 @@ def build_cmd_list(cmds, conditional_execution=False):
 
 
 ###############################################################################
-# Downloaded Environments #####################################################
+# AirSim settings.json ########################################################
 ###############################################################################
 
 
@@ -69,16 +69,6 @@ def env_settings(args) -> str:
     with open(settings_path) as settings_file:
         settings = settings_file.read()
     return settings
-
-
-def run_env(args, width: int = None, height: int = None) -> None:
-    """ Run a downloaded environment in windowed mode """
-    cmds = ["start", args.env_name]
-    if width:
-        cmds += [f"ResX={width}"]
-        cmds += [f"ResY={height}" if height is not None else int(3 * width / 4)]
-    cmds += ["-windowed"]
-    subprocess.run(cmds, cwd=args.environment, shell=True)
 
 
 ###############################################################################
@@ -146,7 +136,3 @@ if __name__ == "__main__":
     print(f'SimMode:     "{args.sim_mode}"')
     if args.verbose:
         print(f"settings.json: {env_settings(args)}")
-    
-    if "run" in unknown_args:
-        run_env(args)  # TODO set ResX and ResY
-

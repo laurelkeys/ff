@@ -51,13 +51,28 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     else:
         client.hoverAsync().join()  # airsim.LandedState.Flying
 
-    print("[ff] Press [space] to take pictures")  # FIXME
-    print("[ff] Flying viewpoints...", end=" ")
+    print("[ff] Flying viewpoints...")
+    print("[ff] Press [space] to take pictures (or any other key to stop)")  # TODO
+    future = _move_by_path(client, args)
 
-    #_move_by_path(client, args)
-    _move_by_positions(client, args)
-    #_move_by_vehicle_poses(client, args)
+    img_count = 0
+    while True:
+        if msvcrt.kbhit():
+            if msvcrt.getch() != b" ":
+                break  # https://stackoverflow.com/a/13207813
 
+            response, *_  = client.simGetImages([airsim.ImageRequest(
+                ff.CameraName.front_center,
+                airsim.ImageType.Scene,
+                False, True  # compressed PNG image
+            )])
+            img_count += 1
+            print(f"     {img_count} pictures taken", end="\r")
+            airsim.write_file(os.path.join(args.output_folder, f"out_{img_count}.png"), response.image_data_uint8)
+    print()
+    
+    print(f"[ff] Waiting for drone to finish path...", end=" ", flush=True)
+    future.join()
     print("done")
 
     time.sleep(4)
@@ -67,9 +82,12 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
 def _move_by_path(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     path = [airsim.Vector3r(*position) for position, _orientation in args.viewpoints]
-    client.moveOnPathAsync(
-        path, args.flight_velocity, drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom
-    ).join()
+    future = client.moveOnPathAsync(
+        path, args.flight_velocity,
+        drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
+        yaw_mode=airsim.YawMode(is_rate=False, yaw_or_rate=-1.5)  # FIXME
+    )
+    return future
 
 
 def _move_by_positions(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
@@ -88,12 +106,13 @@ def _move_by_positions(client: airsim.MultirotorClient, args: argparse.Namespace
 
 
 def _move_by_vehicle_poses(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
-    # NOTE simSetVehiclePose() is meant for ComputerVision mode (but PR#2324 may fix it)
+    raise Warning("simSetVehiclePose() is meant for ComputerVision mode")
+    # NOTE check https://github.com/microsoft/AirSim/pull/2324
     for position, orientation in args.viewpoints:
         pose = airsim.Pose(airsim.Vector3r(*position), airsim.Quaternionr(*orientation))
         client.simSetVehiclePose(pose, ignore_collison=True)
         client.hoverAsync().join()
-        time.sleep(4)
+        time.sleep(2)
 
 
 ###############################################################################
