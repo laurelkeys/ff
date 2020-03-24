@@ -9,4 +9,4 @@ __pycache__/
 **/airsim/utils.py
 
 # images
-simulation/multirotor/viewpoints/tmp/
+simulation/multirotor/viewpoints/*/
