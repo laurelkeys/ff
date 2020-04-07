@@ -37,11 +37,11 @@ def write_SfM_log(T, i_map, filename):
 
 
 def convert_Meshroom_to_log(filename, logfile_out, input_images, formatp):
-	input_images_list = glob.glob(f"{input_images}/*.{formatp}")
-	input_images_list.sort()
-	n_of_images = len(input_images_list)
+    input_images_list = glob.glob(f"{input_images}/*.{formatp}")
+    input_images_list.sort()
+    n_of_images = len(input_images_list)
 
-	T, i_map, TF, i_mapF = [], [], [], []
+    T, i_map, TF, i_mapF = [], [], [], []
 
     # # FIXME
     # for x in range(n_of_views):
@@ -55,16 +55,16 @@ def convert_Meshroom_to_log(filename, logfile_out, input_images, formatp):
     #     # FIXME
 
     for k in range(n_of_images):
-		try:
+        try:
             # find the k-th view id
-			view_id = [i for i, item in enumerate(i_map) if k == item[1]][0]
-			i_mapF.append(np.array([k, k, 0], dtype='int'))
-			TF.append(T[view_id])
-		except IndexError:
+            view_id = [i for i, item in enumerate(i_map) if k == item[1]][0]
+            i_mapF.append(np.array([k, k, 0], dtype='int'))
+            TF.append(T[view_id])
+        except IndexError:
             # assign the identity matrix to the k-th view id
             # as the log file needs an entry for every image
-			i_mapF.append(np.array([k, -1, 0], dtype='int'))
-			TF.append(IDENTITY_4x4)
+            i_mapF.append(np.array([k, -1, 0], dtype='int'))
+            TF.append(IDENTITY_4x4)
 
     write_SfM_log(TF, i_mapF, logfile_out)
 
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     parser.add_argument("in_sfm_fname", help="Input .sfm filename")
     parser.add_argument("out_log_fname", help="Output .log filename")
     parser.add_argument("images_folder", help="Input images folder path")
-    parser.add_argument("--formatp", default="png", help="Images format")
+    parser.add_argument("--formatp", default="jpg", help="Images format")
 
     args = parser.parse_args()
 
