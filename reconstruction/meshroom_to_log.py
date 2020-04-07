@@ -1,12 +1,19 @@
 import os
 import glob
+import json
 import argparse
+import collections
 
 import numpy as np
 import open3d as o3d
 
 
 IDENTITY_4x4 = np.identity(4)
+
+
+Image = collections.namedtuple("Image", [
+    "id", "qvec", "tvec", "camera_id", "name", "xys", "point3D_ids"
+]) # https://github.com/colmap/colmap/blob/dev/scripts/python/read_write_model.py
 
 
 def quat2rotmat(qvec):
@@ -44,16 +51,23 @@ def convert_Meshroom_to_log(filename, logfile_out, input_images, formatp):
 
     T, i_map, TF, i_mapF = [], [], [], []
 
-    # # FIXME
-    # for x in range(n_of_views):
-    #     # FIXME
-    #     w = np.zeros((4,4))
-    #     w[ 3,  3] = 1
-    #     w[:3, :3] = r
-    #     w[:3,  3] = translation
-    #     A = matrix(w)
-    #     T.append(A.I)
-    #     # FIXME
+    images = [] # FIXME make an Image list like COLMAP's
+
+    for im in images:
+        # im = Image(im)
+        qvec = im[1] # im.qvec
+        rotmat = quat2rotmat(qvec)
+        translation = im[2] # im.tvec
+        w = np.zeros((4, 4))
+        w[ 3,  3] = 1
+        w[:3, :3] = rotmat
+        w[:3,  3] = translation
+        A = np.matrix(w)
+        T.append(A.I)
+        image_name = im[4] # im.name
+        matching = [i for i, s in enumerate(input_images_list) if image_name in s]
+        ii = im[0] # im.id
+        i_map.append([ii, matching[0], 0])
 
     for k in range(n_of_images):
         try:
