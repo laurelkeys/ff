@@ -1,3 +1,4 @@
+import os
 import glob
 import argparse
 
@@ -13,11 +14,11 @@ def quat2rotmat(qvec):
         [1 - 2 * qvec[2]**2 - 2 * qvec[3]**2,
          2 * qvec[1] * qvec[2] - 2 * qvec[0] * qvec[3],
          2 * qvec[3] * qvec[1] + 2 * qvec[0] * qvec[2]],
-        
+
         [2 * qvec[1] * qvec[2] + 2 * qvec[0] * qvec[3],
          1 - 2 * qvec[1]**2 - 2 * qvec[3]**2,
          2 * qvec[2] * qvec[3] - 2 * qvec[0] * qvec[1]],
-        
+
         [2 * qvec[3] * qvec[1] - 2 * qvec[0] * qvec[2],
          2 * qvec[2] * qvec[3] + 2 * qvec[0] * qvec[1],
          1 - 2 * qvec[1]**2 - 2 * qvec[2]**2]
@@ -80,6 +81,12 @@ if __name__ == "__main__":
     parser.add_argument("--formatp", default="jpg", help="Images format")
 
     args = parser.parse_args()
+
+    # NOTE .sfm is actually a JSON
+    _, ext = os.path.splitext(args.in_sfm_fname)
+    assert ext.lower() in [".sfm", ".json"]
+    assert os.path.isfile(args.in_sfm_fname)
+    assert os.path.isdir(args.images_folder)
 
     convert_Meshroom_to_log(
         args.in_sfm_fname,
