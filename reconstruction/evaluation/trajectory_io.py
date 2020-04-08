@@ -1,6 +1,7 @@
 import numpy as np
 import open3d as o3d
 
+
 # Trajectory File (.log) Format
 
 # Every five lines are an item.
@@ -9,6 +10,7 @@ import open3d as o3d
 
 # ref.: http://redwood-data.org/indoor/fileformat.html
 #       https://github.com/intel-isl/TanksAndTemples/blob/master/python_toolbox/evaluation/trajectory_io.py
+
 
 class CameraPose:
     def __init__(self, meta, mat):

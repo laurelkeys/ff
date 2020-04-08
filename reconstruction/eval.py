@@ -45,7 +45,7 @@ def run_evaluation(
 
     # Histograms and P/R/F1
     precision, recall, fscore, *histograms_data = EvaluateHisto(
-        scene, pcd, gt_pcd,  r.transformation, vol, dTau / 2.0, dTau, out_dir, plot_stretch=5
+        scene, out_dir, pcd, gt_pcd,  r.transformation, vol, dTau / 2.0, dTau, plot_stretch=5
     )
 
     print("==============================")

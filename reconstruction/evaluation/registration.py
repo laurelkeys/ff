@@ -39,7 +39,9 @@ import open3d as o3d
 
 from trajectory_io import convert_trajectory_to_pointcloud
 
+
 MAX_POINT_NUMBER = 4e6
+
 
 def trajectory_alignment(scene, traj, gt_traj, gt_trans):
     traj_pcd = convert_trajectory_to_pointcloud(traj)
