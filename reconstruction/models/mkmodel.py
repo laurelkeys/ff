@@ -26,6 +26,7 @@ if __name__ == "__main__":
         with open(os.path.join(folder_name, ".gitignore"), 'w') as f:
             f.write('\n'.join([
                 "images/",
+                "pointcloud/*.ply"
                 "Meshroom/*.mg",
                 "Meshroom/MeshroomCache/",
             ]))

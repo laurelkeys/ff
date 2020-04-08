@@ -1,3 +1,4 @@
 images/
+pointcloud/*.ply
 Meshroom/*.mg
 Meshroom/MeshroomCache/

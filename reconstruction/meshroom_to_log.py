@@ -9,9 +9,11 @@ import open3d as o3d
 
 
 # ref.:
-#  [1] https://colmap.github.io/format.html#images-txt
-#  [2] https://github.com/colmap/colmap/blob/dev/src/estimators/pose.h#L125
-#  [3] https://github.com/colmap/colmap/blob/dev/scripts/python/read_write_model.py
+#  [1] https://www.tanksandtemples.org/tutorial/
+#  [2] https://colmap.github.io/format.html#images-txt
+#  [3] https://github.com/colmap/colmap/blob/dev/src/estimators/pose.h#L125
+#  [4] https://github.com/alicevision/meshroom/wiki/Using-known-camera-positions
+#  [5] https://github.com/colmap/colmap/blob/dev/scripts/python/read_write_model.py
 
 
 class CameraPose:
@@ -56,7 +58,7 @@ def convert_Meshroom_to_log(filename, logfile_out, input_images, formatp):
             rotation = np.array(
                 [float(_) for _ in pose_transform['rotation']]
             ).reshape((3, 3))
-            rotation[:, 1:] *= -1 # ref.: [1]
+            rotation[:, 1:] *= -1 # ref.: [2]
 
             # camera center in world coordinates
             center = np.array([float(_) for _ in pose_transform['center']])
@@ -113,3 +115,5 @@ if __name__ == "__main__":
         args.out_log_fname,
         args.images_folder, args.formatp
     )
+
+    # e.g.: python meshroom_to_log.py models\Monstree6\Meshroom\publish\cameras.json models\Monstree6\pointcloud\Monstree6_Meshroom_SfM.log models\Monstree6\images\
