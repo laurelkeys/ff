@@ -7,62 +7,18 @@ import collections
 import numpy as np
 import open3d as o3d
 
+
 # ref.:
 #  [1] https://colmap.github.io/format.html#images-txt
 #  [2] https://github.com/colmap/colmap/blob/dev/src/estimators/pose.h#L125
 #  [3] https://github.com/colmap/colmap/blob/dev/scripts/python/read_write_model.py
 
-IDENTITY_4x4 = np.identity(4)
-
-# ref.: [3] (NOTE only 'id', 'qvec', 'tvec' and 'name' are needed)
-COLMAPImage = collections.namedtuple("COLMAPImage", [
-    "id", "qvec", "tvec", "camera_id", "name", "xys", "point3D_ids"
-])
 
 class CameraPose:
-    def __init__(self, camera_pose):
-        self.id = camera_pose['poseId'] # NOTE equal to the 'viewId'
-        self.rotation = camera_pose['pose']['transform']['rotation']
-        self.center = camera_pose['pose']['transform']['center']
-
-    def np_rotation(self):
-        # 3x3 (column-major) rotation matrix
-        rotation = np.array(
-            [float(_) for _ in self.rotation]
-        ).reshape((3, 3))
-        rotation[:, 1:] *= -1 # ref.: [1]
-        return rotation
-
-    def np_center(self):
-        # camera center in world coordinates
-        center = np.array(
-            [float(_) for _ in self.center]
-        )
-        return center
-
-    def np_log_matrix(self):
-        # homogeneous transformation matrix
-        mat = np.identity(4)
-        mat[:3, :3] = self.np_rotation()
-        mat[:3,  3] = self.np_center()
-        return mat
-
-
-
-def quat2rotmat(qvec):
-    return np.array([
-        [1 - 2 * qvec[2]**2 - 2 * qvec[3]**2,
-         2 * qvec[1] * qvec[2] - 2 * qvec[0] * qvec[3],
-         2 * qvec[3] * qvec[1] + 2 * qvec[0] * qvec[2]],
-
-        [2 * qvec[1] * qvec[2] + 2 * qvec[0] * qvec[3],
-         1 - 2 * qvec[1]**2 - 2 * qvec[3]**2,
-         2 * qvec[2] * qvec[3] - 2 * qvec[0] * qvec[1]],
-
-        [2 * qvec[3] * qvec[1] - 2 * qvec[0] * qvec[2],
-         2 * qvec[2] * qvec[3] + 2 * qvec[0] * qvec[1],
-         1 - 2 * qvec[1]**2 - 2 * qvec[2]**2]
-    ])
+    def __init__(self, pose_id, image_path, log_matrix):
+        self.id = pose_id
+        self.image_path = image_path
+        self.log_matrix = log_matrix
 
 
 def write_SfM_log(T, i_map, filename):
@@ -84,50 +40,40 @@ def convert_Meshroom_to_log(filename, logfile_out, input_images, formatp):
 
     T, i_map, TF, i_mapF = [], [], [], []
 
-    views = []
+    views = {}
     camera_poses = []
-    observations = []
     with open(filename, 'r') as sfm_file:
         sfm_data = json.load(sfm_file)
 
         for view in sfm_data['views']:
-            views.append((
-                views['viewId'],
-                views['path'],
-            ))
-            # assert views['viewId'] == views['poseId']
+            views[view['poseId']] = view['path'] # NOTE equal to the 'viewId'
 
         for camera_pose in sfm_data['poses']:
-            camera_poses.append(CameraPose(camera_pose))
+            pose_id = camera_pose['poseId']
+            pose_transform = camera_pose['pose']['transform']
 
-        for landmark in sfm_data['structure']:
-            ids = []
-            for observation_id in landmark['observations']:
-                ids.append(observation_id['observationId']) # NOTE equal to 'poseId'
+            # 3x3 (column-major) rotation matrix
+            rotation = np.array(
+                [float(_) for _ in pose_transform['rotation']]
+            ).reshape((3, 3))
+            rotation[:, 1:] *= -1 # ref.: [1]
 
-            observations.append((
-                landmark['landmarkId'],
-                landmark['X'],
-                ids,
-            ))
+            # camera center in world coordinates
+            center = np.array([float(_) for _ in pose_transform['center']])
 
-    images = [] # FIXME make an Image list like COLMAP's
+            # homogeneous transformation matrix
+            mat = np.identity(4)
+            mat[:3, :3] = rotation
+            mat[:3,  3] = center
 
-    for im in images:
-        # im = Image(im)
-        qvec = im[1] # im.qvec
-        rotmat = quat2rotmat(qvec)
-        translation = im[2] # im.tvec
-        w = np.zeros((4, 4))
-        w[ 3,  3] = 1
-        w[:3, :3] = rotmat
-        w[:3,  3] = translation
-        A = np.matrix(w)
+            camera_poses.append(CameraPose(pose_id, views[pose_id], mat))
+
+    for pose in camera_poses:
+        A = np.matrix(pose.log_matrix)
         T.append(A.I)
-        image_name = im[4] # im.name
+        image_name =  os.path.basename(pose.image_path)
         matching = [i for i, s in enumerate(input_images_list) if image_name in s]
-        ii = im[0] # im.id
-        i_map.append([ii, matching[0], 0])
+        i_map.append([pose.id, matching[0], 0])
 
     for k in range(n_of_images):
         try:
@@ -139,7 +85,7 @@ def convert_Meshroom_to_log(filename, logfile_out, input_images, formatp):
             # assign the identity matrix to the k-th view id
             # as the log file needs an entry for every image
             i_mapF.append(np.array([k, -1, 0], dtype='int'))
-            TF.append(IDENTITY_4x4)
+            TF.append(np.identity(4))
 
     write_SfM_log(TF, i_mapF, logfile_out)
 
