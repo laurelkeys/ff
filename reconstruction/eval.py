@@ -3,7 +3,8 @@ import argparse
 import numpy as np
 import open3d as o3d
 
-from trajectory_io import read_trajectory
+from evaluation.registration import trajectory_alignment, registration_vol_ds, registration_unif
+from evaluation.trajectory_io import read_trajectory
 
 
 # ref.: https://github.com/intel-isl/TanksAndTemples/tree/master/python_toolbox/evaluation
@@ -16,7 +17,7 @@ def run_evaluation(
     gt_ply_fname, gt_traj_fname,
     crop_fname, alignment_fname,
 ):
-    for fname in [ply_fname, traj_fname, gt_ply_fname, gt_traj_fname, crop_fname, align_fname]:
+    for fname in [ply_fname, traj_fname, gt_ply_fname, gt_traj_fname, crop_fname, alignment_fname]:
         fname = os.path.join(scene_dir, fname)
         assert os.path.isfile(fname), f"couldn't find file '{fname}'"
 
