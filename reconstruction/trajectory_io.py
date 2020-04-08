@@ -7,8 +7,8 @@ import open3d as o3d
 # The first line contains three numbers which store metadata 
 # and the other four lines make up the homogeneous transformation matrix.
 
-#  ref.: http://redwood-data.org/indoor/fileformat.html
-#        https://github.com/intel-isl/TanksAndTemples/blob/master/python_toolbox/evaluation/trajectory_io.py
+# ref.: http://redwood-data.org/indoor/fileformat.html
+#       https://github.com/intel-isl/TanksAndTemples/blob/master/python_toolbox/evaluation/trajectory_io.py
 
 class CameraPose:
     def __init__(self, meta, mat):
@@ -28,7 +28,7 @@ class CameraPose:
 def convert_trajectory_to_pointcloud(traj):
     pcd = o3d.geometry.PointCloud()
     for t in traj:
-        pcd.points.append(t.pose[:3, 3])
+        pcd.points.append(t.pose[:3, 3]) # translation column-vector
     return pcd
 
 

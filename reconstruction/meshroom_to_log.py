@@ -16,6 +16,7 @@ import open3d as o3d
 #  [5] https://github.com/colmap/colmap/blob/dev/scripts/python/read_write_model.py
 
 
+# FIXME rename, so it's not confused with trajectory_io
 class CameraPose:
     def __init__(self, pose_id, image_path, log_matrix):
         self.id = pose_id
