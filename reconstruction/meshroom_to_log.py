@@ -7,13 +7,46 @@ import collections
 import numpy as np
 import open3d as o3d
 
+# ref.:
+#  [1] https://colmap.github.io/format.html#images-txt
+#  [2] https://github.com/colmap/colmap/blob/dev/src/estimators/pose.h#L125
+#  [3] https://github.com/colmap/colmap/blob/dev/scripts/python/read_write_model.py
 
 IDENTITY_4x4 = np.identity(4)
 
-
-Image = collections.namedtuple("Image", [
+# ref.: [3] (NOTE only 'id', 'qvec', 'tvec' and 'name' are needed)
+COLMAPImage = collections.namedtuple("COLMAPImage", [
     "id", "qvec", "tvec", "camera_id", "name", "xys", "point3D_ids"
-]) # https://github.com/colmap/colmap/blob/dev/scripts/python/read_write_model.py
+])
+
+class CameraPose:
+    def __init__(self, camera_pose):
+        self.id = camera_pose['poseId'] # NOTE equal to the 'viewId'
+        self.rotation = camera_pose['pose']['transform']['rotation']
+        self.center = camera_pose['pose']['transform']['center']
+
+    def np_rotation(self):
+        # 3x3 (column-major) rotation matrix
+        rotation = np.array(
+            [float(_) for _ in self.rotation]
+        ).reshape((3, 3))
+        rotation[:, 1:] *= -1 # ref.: [1]
+        return rotation
+
+    def np_center(self):
+        # camera center in world coordinates
+        center = np.array(
+            [float(_) for _ in self.center]
+        )
+        return center
+
+    def np_log_matrix(self):
+        # homogeneous transformation matrix
+        mat = np.identity(4)
+        mat[:3, :3] = self.np_rotation()
+        mat[:3,  3] = self.np_center()
+        return mat
+
 
 
 def quat2rotmat(qvec):
@@ -50,6 +83,33 @@ def convert_Meshroom_to_log(filename, logfile_out, input_images, formatp):
     n_of_images = len(input_images_list)
 
     T, i_map, TF, i_mapF = [], [], [], []
+
+    views = []
+    camera_poses = []
+    observations = []
+    with open(filename, 'r') as sfm_file:
+        sfm_data = json.load(sfm_file)
+
+        for view in sfm_data['views']:
+            views.append((
+                views['viewId'],
+                views['path'],
+            ))
+            # assert views['viewId'] == views['poseId']
+
+        for camera_pose in sfm_data['poses']:
+            camera_poses.append(CameraPose(camera_pose))
+
+        for landmark in sfm_data['structure']:
+            ids = []
+            for observation_id in landmark['observations']:
+                ids.append(observation_id['observationId']) # NOTE equal to 'poseId'
+
+            observations.append((
+                landmark['landmarkId'],
+                landmark['X'],
+                ids,
+            ))
 
     images = [] # FIXME make an Image list like COLMAP's
 
