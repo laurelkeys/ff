@@ -50,7 +50,7 @@ def read_alignment_transformation(filename):
 def write_color_distances(path, pcd, distances, max_distance):
     o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
     # cmap = plt.get_cmap("afmhot")
-    cmap = plt.get_cmap("hot_r")
+    cmap = plt.get_cmap("hot_r") # NOTE "cividis" is probably better
     distances = np.array(distances)
     colors = cmap(np.minimum(distances, max_distance) / max_distance)[:, :3]
     pcd.colors = o3d.utility.Vector3dVector(colors)
@@ -77,9 +77,9 @@ def EvaluateHisto(
     t = crop_volume.crop_point_cloud(t)
     t = t.voxel_down_sample(voxel_size)
     t.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=20))
-    
-    source_n_fn = f"{filename_mvs}/{scene}.precision.ply"
-    target_n_fn = f"{filename_mvs}/{scene}.recall.ply"
+
+    source_n_fn = os.path.join(filename_mvs, f"{scene}.precision.ply")
+    target_n_fn = os.path.join(filename_mvs, f"{scene}.recall.ply")
     # Colorize the poincloud files prith the precision and recall values
     # o3d.io.write_point_cloud(source_n_fn, s)
     # o3d.io.write_point_cloud(target_n_fn, t)
@@ -107,10 +107,10 @@ def EvaluateHisto(
     ] = get_f1_score_histo2(
         threshold, filename_mvs, plot_stretch, distance1, distance2
     )
-    np.savetxt(filename_mvs + "/" + scene + ".recall.txt", cum_target)
-    np.savetxt(filename_mvs + "/" + scene + ".precision.txt", cum_source)
+    np.savetxt(os.path.join(filename_mvs, f"{scene}.recall.txt"), cum_target)
+    np.savetxt(os.path.join(filename_mvs, f"{scene}.precision.txt"), cum_source)
     np.savetxt(
-        filename_mvs + "/" + scene + ".prf_tau_plotstr.txt",
+        os.path.join(filename_mvs, f"{scene}.prf_tau_plotstr.txt"),
         np.array([precision, recall, fscore, threshold, plot_stretch]),
     )
 
@@ -129,34 +129,27 @@ def get_f1_score_histo2(
     threshold, filename_mvs, plot_stretch, distance1, distance2, verbose=True
 ):
     print("[get_f1_score_histo2]")
-    dist_threshold = threshold
-    if len(distance1) and len(distance2):
 
-        recall = float(sum(d < threshold for d in distance2)) / float(
-            len(distance2)
-        )
-        precision = float(sum(d < threshold for d in distance1)) / float(
-            len(distance1)
-        )
+    dist_threshold = threshold
+    len_d1, len_d2 = len(distance1), len(distance2)
+
+    if len_d1 and len_d2:
+        recall = float(sum(d < threshold for d in distance2)) / len_d2
+        precision = float(sum(d < threshold for d in distance1)) / len_d1
         fscore = 2 * recall * precision / (recall + precision)
-        num = len(distance1)
+
         bins = np.arange(0, dist_threshold * plot_stretch, dist_threshold / 100)
         hist, edges_source = np.histogram(distance1, bins)
-        cum_source = np.cumsum(hist).astype(float) / num
+        cum_source = np.cumsum(hist).astype(float) / len_d1
 
-        num = len(distance2)
         bins = np.arange(0, dist_threshold * plot_stretch, dist_threshold / 100)
         hist, edges_target = np.histogram(distance2, bins)
-        cum_target = np.cumsum(hist).astype(float) / num
+        cum_target = np.cumsum(hist).astype(float) / len_d2
 
     else:
-        precision = 0
-        recall = 0
-        fscore = 0
-        edges_source = np.array([0])
-        cum_source = np.array([0])
-        edges_target = np.array([0])
-        cum_target = np.array([0])
+        precision, recall, fscore = 0, 0, 0
+        edges_source, cum_source = np.array([0]), np.array([0])
+        edges_target, cum_target = np.array([0]), np.array([0])
 
     return [
         precision,

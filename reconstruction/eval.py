@@ -3,8 +3,10 @@ import argparse
 import numpy as np
 import open3d as o3d
 
-from evaluation.registration import trajectory_alignment, registration_vol_ds, registration_unif
-from evaluation.trajectory_io import read_trajectory
+from tanksandtemples.plot import plot_graph
+from tanksandtemples.evaluation import EvaluateHisto
+from tanksandtemples.registration import trajectory_alignment, registration_vol_ds, registration_unif
+from tanksandtemples.trajectory_io import read_trajectory
 
 
 # ref.: https://github.com/intel-isl/TanksAndTemples/tree/master/python_toolbox/evaluation
@@ -17,9 +19,13 @@ def run_evaluation(
     gt_ply_fname, gt_traj_fname,
     crop_fname, alignment_fname,
 ):
-    for fname in [ply_fname, traj_fname, gt_ply_fname, gt_traj_fname, crop_fname, alignment_fname]:
-        fname = os.path.join(scene_dir, fname)
-        assert os.path.isfile(fname), f"couldn't find file '{fname}'"
+
+    ply_fname = os.path.join(scene_dir, ply_fname)
+    traj_fname = os.path.join(scene_dir, traj_fname)
+    gt_ply_fname = os.path.join(scene_dir, gt_ply_fname)
+    gt_traj_fname = os.path.join(scene_dir, gt_traj_fname)
+    crop_fname = os.path.join(scene_dir, crop_fname)
+    alignment_fname = os.path.join(scene_dir, alignment_fname)
 
     os.makedirs(out_dir, exist_ok=True)
 
@@ -57,7 +63,7 @@ def run_evaluation(
     print("f-score : %.4f" % fscore)
     print("==============================")
 
-    # TODO Plotting
+    # Plotting
     edges_source, cum_source, edges_target, cum_target = histograms_data
     plot_graph(
         scene, out_dir, fscore,
@@ -70,7 +76,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "scene_dir", type=str, required=True,
+        "scene_dir", type=str,
         help="Path to a scene directory with the necessary files.",
     )
     parser.add_argument(
@@ -107,22 +113,35 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if args.out_dir.strip() == "":
-        args.out_dir = os.path.join(os.path.dirname(args.ply_fname), "evaluation")
-
     scene = os.path.basename(os.path.normpath(args.scene_dir))
+
+    if args.traj_fname is None: args.traj_fname = f"{scene}_Meshroom.log"
+    if args.gt_traj_fname is None: args.gt_traj_fname = f"{scene}.log"
+    if args.ply_fname is None: args.ply_fname = f"{scene}_Meshroom.ply"
+    if args.gt_ply_fname is None: args.gt_ply_fname = f"{scene}.ply"
+    if args.crop_fname is None: args.crop_fname = f"{scene}.json"
+    if args.alignment_fname is None: args.alignment_fname = f"{scene}_trans.txt"
+
+    if args.out_dir.strip() == "":
+        args.out_dir = os.path.join(
+            os.path.dirname(args.scene_dir), "evaluation"
+        )
+
+    # for k, v in vars(args).items():
+    #     print(f"{k}: {v}")
+    # print()
 
     run_evaluation(
         scene=scene,
         scene_dir=args.scene_dir,
         out_dir=args.out_dir,
         dTau=args.dTau,
-        traj_fname=args.traj_fname or f"{scene}_Meshroom.log",
-        gt_traj_fname=args.gt_traj_fname or f"{scene}.log",
-        ply_fname=args.ply_fname or f"{scene}_Meshroom.ply",
-        gt_ply_fname=args.gt_ply_fname or f"{scene}.ply",
-        crop_fname=args.crop_fname or f"{scene}.json",
-        alignment_fname=args.alignment_fname or f"{scene}_trans.txt",
+        traj_fname=args.traj_fname,
+        gt_traj_fname=args.gt_traj_fname,
+        ply_fname=args.ply_fname,
+        gt_ply_fname=args.gt_ply_fname,
+        crop_fname=args.crop_fname,
+        alignment_fname=args.alignment_fname,
     )
 
 
