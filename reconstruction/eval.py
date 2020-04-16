@@ -19,6 +19,7 @@ def run_evaluation(
     gt_ply_fname, gt_traj_fname,
     crop_fname, alignment_fname,
 ):
+    print(f"\n{'=' * 27}\nEvaluating {scene}\n{'=' * 27}")
 
     ply_fname = os.path.join(scene_dir, ply_fname)
     traj_fname = os.path.join(scene_dir, traj_fname)
@@ -153,6 +154,7 @@ if __name__ == "__main__":
 # - <scene>.json -- bounding box coordinates (crop file)
 # - <scene>_trans.txt -- alignment matrix (with ground-truth point cloud as the reference)
 #
-# Trajectory .log files can be converted from Meshroom's cameras.sfm
+# Ground-truth .log files should be captured together with the photos, from AirSim itself
+# Reconstructed trajectory .log files can be converted from Meshroom's cameras.sfm
 # The alignment matrix can be copied from a MeshLab .mlp project
 # Bounding box coordinates need to be generated through Open3d

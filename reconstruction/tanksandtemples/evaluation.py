@@ -33,9 +33,9 @@
 # The dataset has a different license, please refer to
 # https://tanksandtemples.org/license/
 
+import os
 import json
 import copy
-import os
 import numpy as np
 import open3d as o3d
 import matplotlib.pyplot as plt
@@ -50,7 +50,8 @@ def read_alignment_transformation(filename):
 def write_color_distances(path, pcd, distances, max_distance):
     o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
     # cmap = plt.get_cmap("afmhot")
-    cmap = plt.get_cmap("hot_r") # NOTE "cividis" is probably better
+    # cmap = plt.get_cmap("hot_r")
+    cmap = plt.get_cmap("cividis")
     distances = np.array(distances)
     colors = cmap(np.minimum(distances, max_distance) / max_distance)[:, :3]
     pcd.colors = o3d.utility.Vector3dVector(colors)
@@ -134,8 +135,8 @@ def get_f1_score_histo2(
     len_d1, len_d2 = len(distance1), len(distance2)
 
     if len_d1 and len_d2:
-        recall = float(sum(d < threshold for d in distance2)) / len_d2
-        precision = float(sum(d < threshold for d in distance1)) / len_d1
+        recall = sum(d < threshold for d in distance2) / len_d2
+        precision = sum(d < threshold for d in distance1) / len_d1
         fscore = 2 * recall * precision / (recall + precision)
 
         bins = np.arange(0, dist_threshold * plot_stretch, dist_threshold / 100)

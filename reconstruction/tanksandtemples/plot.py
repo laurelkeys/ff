@@ -35,6 +35,7 @@
 
 import os
 import matplotlib.pyplot as plt
+
 from cycler import cycler
 
 
@@ -50,25 +51,13 @@ def plot_graph(
     f = plt.figure()
     plt_size = [14, 7]
     pfontsize = "medium"
-
     ax = plt.subplot(111)
+
     label_str = "precision"
-    ax.plot(
-        edges_source[1::],
-        cum_source * 100,
-        c="red",
-        label=label_str,
-        linewidth=2.0,
-    )
+    ax.plot(edges_source[1::], cum_source * 100, c="red", label=label_str, linewidth=2.0)
 
     label_str = "recall"
-    ax.plot(
-        edges_target[1::],
-        cum_target * 100,
-        c="blue",
-        label=label_str,
-        linewidth=2.0,
-    )
+    ax.plot(edges_target[1::], cum_target * 100, c="blue", label=label_str, linewidth=2.0)
 
     ax.grid(True)
     plt.rcParams["figure.figsize"] = plt_size
@@ -99,10 +88,10 @@ def plot_graph(
     # Put a legend to the right of the current axis
     ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
     plt.setp(ax.get_legend().get_texts(), fontsize=pfontsize)
-    png_name = os.path.join(mvs_outpath, "/PR_{0}_@d_th_0_{1}.png".format(
+    png_name = os.path.join(mvs_outpath, "PR_{0}_@d_th_0_{1}.png".format(
         scene, "%04d" % (dist_threshold * 10000)
     ))
-    pdf_name = os.path.join(mvs_outpath, "/PR_{0}_@d_th_0_{1}.pdf".format(
+    pdf_name = os.path.join(mvs_outpath, "PR_{0}_@d_th_0_{1}.pdf".format(
         scene, "%04d" % (dist_threshold * 10000)
     ))
 
