@@ -69,6 +69,9 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             img_count += 1
             print(f"     {img_count} pictures taken", end="\r")
             airsim.write_file(os.path.join(args.output_folder, f"out_{img_count}.png"), response.image_data_uint8)
+            # TODO save poses to .log file
+            print("camera_position:", response.camera_position) # Vector3r
+            print("camera_orientation:", response.camera_orientation) # Quaternionr
     print()
     
     print(f"[ff] Waiting for drone to finish path...", end=" ", flush=True)

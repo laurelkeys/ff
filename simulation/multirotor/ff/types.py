@@ -124,9 +124,6 @@ class Vec3:
         """ Vec3(x, y, -z) """
         return Vec3(v.x, v.y, -v.z)
 
-    def __iter__(self):
-        return iter(self.x, self.y, self.z)
-
     def __getitem__(self, item):
         assert 0 <= item < 3
         return self.x if item == 0 else self.y if item == 1 else self.z
