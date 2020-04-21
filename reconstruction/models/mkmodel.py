@@ -18,19 +18,19 @@ if __name__ == "__main__":
             folder_name = os.path.join(os.path.dirname(os.path.realpath(__file__)), folder_name)
 
         os.makedirs(folder_name)
+        os.makedirs(os.path.join(folder_name, "data"))
         os.makedirs(os.path.join(folder_name, "images"))
-        os.makedirs(os.path.join(folder_name, "pointcloud"))
         os.makedirs(os.path.join(folder_name, "Meshroom"))
         os.makedirs(os.path.join(folder_name, "Meshroom", "publish"))
 
-        with open(os.path.join(folder_name, ".gitignore"), 'w') as f:
-            f.write('\n'.join([
-                "images/",
-                "pointcloud/*.ply",
-                "pointcloud/*.mlp",
-                "Meshroom/*.mg",
-                "Meshroom/MeshroomCache/",
-            ]))
+        # with open(os.path.join(folder_name, ".gitignore"), 'w') as f:
+        #     f.write('\n'.join([
+        #         "images/",
+        #         "data/*.ply",
+        #         "data/*.mlp",
+        #         "Meshroom/*.mg",
+        #         "Meshroom/MeshroomCache/",
+        #     ]))
 
     except FileExistsError:
         print(f"WARNING: Directory '{args.model_name}' already exists (execution aborted).")

@@ -1,12 +1,31 @@
 .vscode
+
 __pycache__/
+.pytest_cache/
 
 # symbolic links
-**/airsim/__init__.py
-**/airsim/client.py
-**/airsim/pfm.py
-**/airsim/types.py
-**/airsim/utils.py
+airsim/__init__.py
+airsim/client.py
+airsim/pfm.py
+airsim/types.py
+airsim/utils.py
 
-# images
-simulation/multirotor/viewpoints/*/
+# images and point cloud data
+reconstruction/models/**/images/
+reconstruction/models/**/data/*.ply
+reconstruction/models/**/data/*.mlp
+reconstruction/models/**/Meshroom/*.mg
+reconstruction/models/**/Meshroom/MeshroomCache/
+
+reconstruction/models/**/Meshroom/publish/cameras.*
+reconstruction/models/**/Meshroom/publish/cloud_and_poses.*
+reconstruction/models/**/Meshroom/publish/sfm.*
+
+simulation/viewpoints/**/*.jpg
+simulation/viewpoints/**/*.png
+
+visualization/data/**/*.sfm
+visualization/data/**/*.ply
+
+# temp files
+reconstruction/models/_*.py
