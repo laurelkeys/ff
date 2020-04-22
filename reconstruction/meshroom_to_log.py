@@ -5,8 +5,8 @@ import argparse
 import collections
 
 import numpy as np
-import open3d as o3d
 
+import open3d as o3d
 
 # ref.:
 #  [1] https://www.tanksandtemples.org/tutorial/

@@ -1,11 +1,11 @@
 import numpy as np
-import open3d as o3d
 
+import open3d as o3d
 
 # Trajectory File (.log) Format
 
 # Every five lines are an item.
-# The first line contains three numbers which store metadata 
+# The first line contains three numbers which store metadata
 # and the other four lines make up the homogeneous transformation matrix.
 
 # ref.: http://redwood-data.org/indoor/fileformat.html

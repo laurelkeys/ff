@@ -2,7 +2,6 @@
 
 ![](docs/workflow.png)
 
-## Directory structure
 ```bash
 .
 ├── docs                    # Project proposal and reports
@@ -19,8 +18,8 @@
 │   └── tanksandtemples     # Tanks and Temples benchmark evaluation scripts
 │
 ├── simulation
-│   ├── ff                  # Code common to drone scripts and AirSim wrapper
 │   ├── multirotor          # AirSim related code for drone control
+│   │   └── ff              # Drone scripts common code wrapper
 │   └── viewpoints          # Images captured in the simulator
 │
 └── visualization           # Open3D related code

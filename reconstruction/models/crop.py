@@ -1,7 +1,8 @@
 import argparse
-import numpy as np
-import open3d as o3d
 
+import numpy as np
+
+import open3d as o3d
 
 # ref.: https://stackoverflow.com/a/58191090
 #       https://github.com/intel-isl/Open3D/issues/404

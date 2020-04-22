@@ -34,11 +34,13 @@
 # https://tanksandtemples.org/license/
 
 import os
-import json
 import copy
+import json
+
 import numpy as np
-import open3d as o3d
 import matplotlib.pyplot as plt
+
+import open3d as o3d
 
 
 def read_alignment_transformation(filename):

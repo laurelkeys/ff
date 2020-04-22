@@ -6,6 +6,8 @@ import argparse
 
 import ff
 
+from ff.types import to_xyz_str, to_xyzw_str, angles_to_str
+
 try:
     import airsim
 except ModuleNotFoundError:
@@ -13,8 +15,6 @@ except ModuleNotFoundError:
     assert os.path.exists(os.path.join(airsim_path, "client.py")), airsim_path
     sys.path.insert(0, os.path.dirname(airsim_path))
     import airsim
-
-from ff.types import to_xyz_str, to_xyzw_str, angles_to_str
 
 
 ###############################################################################
@@ -24,8 +24,8 @@ from ff.types import to_xyz_str, to_xyzw_str, angles_to_str
 
 def preflight(args: argparse.Namespace) -> None:
     args.flight_velocity = 2
-    import viewpoints.default  # FIXME
-    args.viewpoints = zip(viewpoints.default.Positions, viewpoints.default.Orientations)
+    from ff import viewpoints  # FIXME
+    args.viewpoints = zip(viewpoints.Cidadela.Positions, viewpoints.Cidadela.Orientations)
 
 
 ###############################################################################
@@ -73,7 +73,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             print("camera_position:", response.camera_position) # Vector3r
             print("camera_orientation:", response.camera_orientation) # Quaternionr
     print()
-    
+
     print(f"[ff] Waiting for drone to finish path...", end=" ", flush=True)
     future.join()
     print("done")
@@ -96,14 +96,14 @@ def _move_by_path(client: airsim.MultirotorClient, args: argparse.Namespace) -> 
 def _move_by_positions(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     for position, orientation in args.viewpoints:
         _pitch, _roll, yaw = airsim.to_eularian_angles(airsim.Quaternionr(*orientation))
-        
+
         client.moveToPositionAsync(
             *position,
             args.flight_velocity,
             drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
             yaw_mode=airsim.YawMode(is_rate=False, yaw_or_rate=yaw)
         ).join()
-        
+
         client.hoverAsync().join()
         time.sleep(2)
 

@@ -1,8 +1,14 @@
-import os, sys, time, msvcrt, argparse
+import os
+import sys
+import time
+import msvcrt
+import argparse
+
 from typing import List
 
 import ff
-from ff_types import Vec3
+
+from ff.types import Vec3
 
 try:
     import airsim
@@ -81,7 +87,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         print(f"     {img_count} pictures taken", end="\r")
         ch = msvcrt.getch()
     print()
-    
+
     print(f"[ff] Waiting for drone to finish path...", end=" ", flush=True)
     future.join()
     print(f"done.")

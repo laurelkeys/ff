@@ -34,11 +34,12 @@
 # https://tanksandtemples.org/license/
 
 import copy
+
 import numpy as np
+
 import open3d as o3d
 
 from .trajectory_io import convert_trajectory_to_pointcloud
-
 
 MAX_POINT_NUMBER = 4e6
 

@@ -6,7 +6,7 @@ import msvcrt
 import argparse
 
 from ff import Default
-from ff.types import to_xyz_tuple, to_xyzw_tuple, xyz_to_str, xyzw_to_str, angles_to_str
+from ff.types import xyz_to_str, xyzw_to_str, to_xyz_tuple, angles_to_str, to_xyzw_tuple
 
 try:
     import airsim

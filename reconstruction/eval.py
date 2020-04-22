@@ -1,13 +1,15 @@
 import os
 import argparse
+
 import numpy as np
+
 import open3d as o3d
 
 from tanksandtemples.plot import plot_graph
 from tanksandtemples.evaluation import EvaluateHisto
-from tanksandtemples.registration import trajectory_alignment, registration_vol_ds, registration_unif
+from tanksandtemples.registration import (registration_unif, registration_vol_ds,
+                                          trajectory_alignment)
 from tanksandtemples.trajectory_io import read_trajectory
-
 
 # ref.: https://github.com/intel-isl/TanksAndTemples/tree/master/python_toolbox/evaluation
 

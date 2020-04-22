@@ -2,12 +2,14 @@ import os
 import sys
 import glob
 import time
-import psutil
 import argparse
 import subprocess
 
 from typing import List, Tuple
-from ff_types import Vec3
+
+import psutil
+
+from ff.types import Vec3
 
 try:
     import airsim

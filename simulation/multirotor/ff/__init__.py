@@ -1,8 +1,9 @@
 import os
 import glob
 import json
-import psutil
 import subprocess
+
+import psutil
 
 from .types import *
 
@@ -21,8 +22,8 @@ class Default:
     ARGS = {
         "airsim_root": "D:\\dev\\AirSim",
         "env_root": ENV_ROOT_ALIASES["custom"],
-        "devenv_exe": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\Common7\\IDE\\devenv.exe",
-        "unreal_editor_exe": "D:\\Program Files\\Epic Games\\UE_4.18\\Engine\\Binaries\\Win64\\UE4Editor.exe",
+        "devenv_exe": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\Common7\\IDE\\devenv.exe",
+        "unreal_editor_exe": "D:\\Program Files\\Epic Games\\UE_4.24\\Engine\\Binaries\\Win64\\UE4Editor.exe",
     }
 
     AIRSIM_CLIENT_PATH = os.path.join(ARGS["airsim_root"], "PythonClient", "airsim")

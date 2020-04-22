@@ -43,7 +43,7 @@ def to_xyzw_str(quaternionr, n=2, show_hints=True):
 
 
 class Vec3:
-    """ Simple 3D vector class to abstract operations with airsim.GeoPoint and airsim.Vector3r """
+    """ Simple 3D vector class to abstract operations with `airsim.GeoPoint` and `airsim.Vector3r` """
 
     def __init__(self, x=0, y=0, z=0):
         self.x = x
@@ -79,9 +79,7 @@ class Vec3:
 
     def __div__(self, v):
         if not isinstance(v, Vec3):
-            assert v != 0
             return Vec3(self.x / v, self.y / v, self.z / v)
-        assert v.x != 0 and v.y != 0 and v.z != 0
         return Vec3(self.x / v.x, self.y / v.y, self.z / v.z)
 
     def __iter__(self):
@@ -105,23 +103,21 @@ class Vec3:
         return sqrt(self.length_squared)
 
     def normalized(self):
-        length = self.length()
-        assert length != 0
-        return self / length
+        return self / self.length()
 
     @staticmethod
     def from_GeoPoint(geopoint):
-        """ Vec3(latitude, longitude, altitude) """
+        """ `Vec3(latitude, longitude, altitude)` """
         return Vec3(geopoint.latitude, geopoint.longitude, geopoint.altitude)
 
     @staticmethod
     def from_Vector3r(vector3r):
-        """ Vec3(x_val, y_val, z_val) """
+        """ `Vec3(x_val, y_val, z_val)` """
         return Vec3(vector3r.x_val, vector3r.y_val, vector3r.z_val)
 
     @staticmethod
     def flip_z(v):
-        """ Vec3(x, y, -z) """
+        """ `Vec3(x, y, -z)` """
         return Vec3(v.x, v.y, -v.z)
 
     def __getitem__(self, item):
