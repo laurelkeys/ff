@@ -5,7 +5,11 @@ import subprocess
 
 import psutil
 
+from .sim import *
 from .types import *
+from .helper import *
+from .logger import *
+from .viewpoints import *
 
 ###############################################################################
 ###############################################################################
@@ -96,8 +100,11 @@ def launch_env(args):
             assert os.path.isfile(
                 args.unreal_editor_exe
             ), f"\n'{args.unreal_editor_exe}' doesn't exist\n"
+            env_uproject_path = os.path.join(env_dir, args.env_name + ".uproject")
+            if not os.path.exists(env_uproject_path):
+                env_uproject_path, *_ = glob.glob(os.path.join(env_dir, "*.uproject"))
             __run_env(
-                env_path=os.path.join(env_dir, args.env_name + ".uproject"),
+                env_path=env_uproject_path,
                 env_proc="UE4Editor.exe",
                 ue4editor_path=args.unreal_editor_exe,
             )

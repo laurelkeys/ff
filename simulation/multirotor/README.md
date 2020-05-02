@@ -3,100 +3,84 @@
 import os
 import sys
 import argparse
-import subprocess
+
+import ff
 
 try:
     import airsim
 except ModuleNotFoundError:
-    pass  # don't worry, it'll be imported later
+    ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_CLIENT_PATH)
+    import airsim
+
 
 ###############################################################################
+# preflight (called before connecting) ########################################
 ###############################################################################
-
 
 def preflight(args: argparse.Namespace) -> None:
     # setup before connecting to AirSim
     pass
 
+###############################################################################
+# fly (called after connecting) ###############################################
+###############################################################################
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     # do (awesome) stuff here
-    pass
+    
+    initial_pose = client.simGetVehiclePose()
+    if args.verbose:
+        ff.print_pose(initial_pose, airsim.to_eularian_angles)
 
+    initial_state = client.getMultirotorState()
+    if initial_state.landed_state == airsim.LandedState.Landed:
+        print("[ff] Taking off")
+        client.takeoffAsync(timeout_sec=8).join()
+    else:
+        client.hoverAsync().join() # airsim.LandedState.Flying
+
+    client.reset()
+    print("[ff] Drone reset")
 
 ###############################################################################
+# main ########################################################################
 ###############################################################################
-
-
-def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="")
-
-    parser.add_argument(
-        "--airsim_root",
-        type=str,
-        default=os.path.join("D:", "dev", "AirSim"),
-        help="AirSim directory  (default: %(default)s)",
-    )
-
-    parser.add_argument(
-        "--symbolic_link",
-        "-ln",
-        action="store_true",
-        help="Create a symbolic link to AirSim in the current directory.",
-    )
-
-    parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")
-    return parser
-
-
-def import_airsim(airsim_path: str, create_symbolic_link: bool = False) -> None:
-    global airsim
-    try:
-        import airsim
-    except ModuleNotFoundError:
-        client_path = os.path.join(airsim_path, "client.py")
-        assert os.path.exists(
-            client_path
-        ), f"\nexpected '{client_path}' doesn't exist\n"
-
-        if create_symbolic_link:
-            symlink_cmd = ["ln", "-s", airsim_path, "airsim"]
-            if args.verbose:
-                symlink_cmd.append("--verbose")
-            subprocess.run(symlink_cmd)
-
-            airsim_client_root = os.getcwd()
-        else:
-            airsim_client_root = os.path.dirname(airsim_path)
-
-        sys.path.insert(0, airsim_client_root)
-        import airsim  # ModuleNotFoundError will be raised if the path is incorrect
-
 
 def main(args: argparse.Namespace) -> None:
+    if args.verbose:
+        ff.print_airsim_path(airsim.__path__)
+
+    if args.env_name is not None:
+        ff.launch_env(args) # the --launch option was passed
+        input("\nPress [enter] to connect to AirSim ")
+
+    preflight(args) # setup
+    client = connect_to_airsim()
     try:
-        airsim_path = airsim.__path__
-    except NameError:
-        airsim_path = os.path.join(args.airsim_root, "PythonClient", "airsim")
-        import_airsim(airsim_path, create_symbolic_link=args.symbolic_link)
-    finally:
-        if args.verbose:
-            path_str = f"'airsim' path: {airsim.__path__[0]}"
-            print("-" * len(path_str), path_str, "-" * len(path_str), sep="\n")
+        fly(client, args) # do stuff
+    except KeyboardInterrupt:
+        client.reset() # avoid UE4 'fatal error' when exiting with Ctrl+C
+        # NOTE client.enableApiControl(True) must be called after reset
 
-    preflight(args)  # setup
-
+def connect_to_airsim() -> airsim.MultirotorClient:
     client = airsim.MultirotorClient()
     client.confirmConnection()
     client.enableApiControl(True)
     client.armDisarm(True)
+    return client
 
-    try:
-        fly(client, args)  # do stuff
-    except KeyboardInterrupt:
-        client.reset()  # avoid UE4 'fatal error' when exiting the script with Ctrl+C
-        # NOTE client.enableApiControl(True) must be called after reset
+###############################################################################
+# argument parsing ############################################################
+###############################################################################
 
+def get_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="")
+
+    # parser.add_argument(...)
+    # ...
+
+    ff.add_arguments_to(parser)
+    return parser
 
 if __name__ == "__main__":
     parser = get_parser()

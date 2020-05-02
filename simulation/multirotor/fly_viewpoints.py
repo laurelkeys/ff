@@ -173,8 +173,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--viewpoints_path",
         type=str,
-        default=os.path.join("viewpoints", "default.py"),
-        help="Path to the viewpoints file  (default: %(default)s)",
+        help="Path to a viewpoints file",
     )
 
     ff.add_arguments_to(parser)
