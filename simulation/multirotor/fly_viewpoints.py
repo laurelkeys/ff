@@ -24,8 +24,8 @@ except ModuleNotFoundError:
 
 def preflight(args: argparse.Namespace) -> None:
     args.flight_velocity = 2
-    from ff import viewpoints  # FIXME
-    args.viewpoints = zip(viewpoints.Cidadela.Positions, viewpoints.Cidadela.Orientations)
+    viewpoints = ff.Cidadela_4_24 # FIXME
+    args.viewpoints = zip(viewpoints.positions, viewpoints.orientations)
 
 
 ###############################################################################
