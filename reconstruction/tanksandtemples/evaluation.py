@@ -52,8 +52,8 @@ def read_alignment_transformation(filename):
 def write_color_distances(path, pcd, distances, max_distance):
     o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
     # cmap = plt.get_cmap("afmhot")
-    # cmap = plt.get_cmap("hot_r")
-    cmap = plt.get_cmap("cividis")
+    cmap = plt.get_cmap("hot_r")
+    # cmap = plt.get_cmap("cividis") # TODO make this a parameter
     distances = np.array(distances)
     colors = cmap(np.minimum(distances, max_distance) / max_distance)[:, :3]
     pcd.colors = o3d.utility.Vector3dVector(colors)

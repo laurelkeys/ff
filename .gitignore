@@ -14,6 +14,7 @@ airsim/utils.py
 reconstruction/models/**/images/
 reconstruction/models/**/data/*.ply
 reconstruction/models/**/data/*.mlp
+reconstruction/models/**/data/*cameras.json
 reconstruction/models/**/Meshroom/*.mg
 reconstruction/models/**/Meshroom/MeshroomCache/
 

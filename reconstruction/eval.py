@@ -118,8 +118,8 @@ if __name__ == "__main__":
 
     scene = os.path.basename(os.path.normpath(args.scene_dir))
 
-    if args.traj_fname is None: args.traj_fname = f"{scene}_Meshroom.log"
-    if args.gt_traj_fname is None: args.gt_traj_fname = f"{scene}.log"
+    if args.traj_fname is None: args.traj_fname = f"{scene}_Meshroom_SfM.log"
+    if args.gt_traj_fname is None: args.gt_traj_fname = f"{scene}_SfM.log"
     if args.ply_fname is None: args.ply_fname = f"{scene}_Meshroom.ply"
     if args.gt_ply_fname is None: args.gt_ply_fname = f"{scene}.ply"
     if args.crop_fname is None: args.crop_fname = f"{scene}.json"

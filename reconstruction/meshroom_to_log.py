@@ -36,6 +36,8 @@ def write_SfM_log(T, i_map, filename):
 
 def convert_Meshroom_to_log(filename, logfile_out, input_images, formatp):
     input_images_list = glob.glob(f"{input_images}/*.{formatp}")
+    if len(input_images_list) == 0:
+        print("Warning: no images were found (try setting --formatp)")
     input_images_list.sort()
     n_of_images = len(input_images_list)
 
