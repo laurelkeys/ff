@@ -4,7 +4,7 @@ import json
 import subprocess
 
 from .sim import SimMode
-from .constants import Default
+from .defaults import Default
 
 
 def add_airsim_to_path(airsim_path):
@@ -29,6 +29,12 @@ def create_symbolic_link(airsim_path=Default.AIRSIM_CLIENT_PATH, verbose=False):
 
 ###############################################################################
 ###############################################################################
+
+
+def curr_sim_mode(settings_file_path=Default.SETTINGS_PATH):
+    with open(settings_file_path, "r") as settings_file:
+        settings = json.load(settings_file)
+    return settings["SimMode"]
 
 
 def change_sim_mode(new_sim_mode, settings_file_path=Default.SETTINGS_PATH):

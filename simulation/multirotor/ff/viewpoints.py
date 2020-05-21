@@ -80,6 +80,7 @@ class Cidadela_4_24(Viewpoints):
     ]
 
 
+# FIXME move this out of ff
 DEFAULT_ENV_VIEWPOINTS = {
     "Cidadela": Cidadela,
     "Cidadela_4_24": Cidadela_4_24,

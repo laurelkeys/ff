@@ -1,8 +1,9 @@
 import os
-import sys
+import json
 import time
 import msvcrt
 import argparse
+import importlib
 
 import ff
 
@@ -11,9 +12,7 @@ from ff.types import to_xyz_str, to_xyzw_str, angles_to_str
 try:
     import airsim
 except ModuleNotFoundError:
-    airsim_path = ff.Default.AIRSIM_CLIENT_PATH
-    assert os.path.exists(os.path.join(airsim_path, "client.py")), airsim_path
-    sys.path.insert(0, os.path.dirname(airsim_path))
+    ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_CLIENT_PATH)
     import airsim
 
 
@@ -24,8 +23,10 @@ except ModuleNotFoundError:
 
 def preflight(args: argparse.Namespace) -> None:
     args.flight_velocity = 2
-    viewpoints = ff.Cidadela_4_24 # FIXME
-    args.viewpoints = zip(viewpoints.positions, viewpoints.orientations)
+    assert os.path.isfile(args.viewpoints_path), f"Couldn't find file '{args.viewpoints_path}'"
+    with open(args.viewpoints_path, 'r') as viewpoints_file:
+        viewpoints = json.load(viewpoints_file)
+    args.viewpoints = zip(viewpoints["positions"], viewpoints["orientations"])
 
 
 ###############################################################################
@@ -38,12 +39,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     initial_state = client.getMultirotorState()
 
     if args.verbose:
-        print(
-            "[ff] VehiclePose \n"
-            f"     .position    = {to_xyz_str(initial_pose.position)}\n"
-            f"     .orientation = {to_xyzw_str(initial_pose.orientation)}\n"
-            f"                    {angles_to_str(airsim.to_eularian_angles(initial_pose.orientation))}\n"
-        )
+        ff.print_pose(initial_pose, to_eularian_angles=airsim.to_eularian_angles)
 
     if initial_state.landed_state == airsim.LandedState.Landed:
         print("[ff] Taking off")
@@ -61,17 +57,25 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             if msvcrt.getch() != b" ":
                 break  # https://stackoverflow.com/a/13207813
 
-            response, *_  = client.simGetImages([airsim.ImageRequest(
-                ff.CameraName.front_center,
-                airsim.ImageType.Scene,
-                False, True  # compressed PNG image
-            )])
+            response, *_ = client.simGetImages(
+                [
+                    airsim.ImageRequest(
+                        ff.CameraName.front_center,
+                        airsim.ImageType.Scene,
+                        False,
+                        True,  # compressed PNG image
+                    )
+                ]
+            )
             img_count += 1
             print(f"     {img_count} pictures taken", end="\r")
-            airsim.write_file(os.path.join(args.output_folder, f"out_{img_count}.png"), response.image_data_uint8)
+            airsim.write_file(
+                os.path.join(args.output_folder, f"out_{img_count}.png"),
+                response.image_data_uint8,
+            )
             # TODO save poses to .log file
-            print("camera_position:", response.camera_position) # Vector3r
-            print("camera_orientation:", response.camera_orientation) # Quaternionr
+            print("camera_position:", response.camera_position)  # Vector3r
+            print("camera_orientation:", response.camera_orientation)  # Quaternionr
     print()
 
     print(f"[ff] Waiting for drone to finish path...", end=" ", flush=True)
@@ -86,9 +90,10 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 def _move_by_path(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     path = [airsim.Vector3r(*position) for position, _orientation in args.viewpoints]
     future = client.moveOnPathAsync(
-        path, args.flight_velocity,
+        path,
+        args.flight_velocity,
         drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
-        yaw_mode=airsim.YawMode(is_rate=False, yaw_or_rate=-1.5)  # FIXME
+        yaw_mode=airsim.YawMode(is_rate=False, yaw_or_rate=-1.5),  # FIXME
     )
     return future
 
@@ -101,7 +106,7 @@ def _move_by_positions(client: airsim.MultirotorClient, args: argparse.Namespace
             *position,
             args.flight_velocity,
             drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
-            yaw_mode=airsim.YawMode(is_rate=False, yaw_or_rate=yaw)
+            yaw_mode=airsim.YawMode(is_rate=False, yaw_or_rate=yaw),
         ).join()
 
         client.hoverAsync().join()
@@ -162,18 +167,16 @@ def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Fly viewpoints capturing images")
 
     parser.add_argument(
+        "viewpoints_path", type=str, help="Path to a viewpoints file .json",
+    )
+
+    parser.add_argument(
         "--out",
         dest="output_folder",
         metavar="OUTPUT_FOLDER",
         type=str,
         default="tmp",
         help="Image output folder  (default: %(default)s/)",
-    )
-
-    parser.add_argument(
-        "--viewpoints_path",
-        type=str,
-        help="Path to a viewpoints file",
     )
 
     ff.add_arguments_to(parser)
