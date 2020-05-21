@@ -3,30 +3,28 @@
 __pycache__/
 .pytest_cache/
 
-# symbolic links
+# symbolic link to airsim
 airsim/__init__.py
 airsim/client.py
 airsim/pfm.py
 airsim/types.py
 airsim/utils.py
 
-# images and point cloud data
-reconstruction/models/**/images/
-reconstruction/models/**/data/*.ply
-reconstruction/models/**/data/*.mlp
-reconstruction/models/**/data/*cameras.json
-reconstruction/models/**/Meshroom/*.mg
-reconstruction/models/**/Meshroom/MeshroomCache/
+# images
+**/images/
 
-reconstruction/models/**/Meshroom/publish/cameras.*
-reconstruction/models/**/Meshroom/publish/cloud_and_poses.*
-reconstruction/models/**/Meshroom/publish/sfm.*
+# meshlab
+*.mlp
 
-simulation/viewpoints/**/*.jpg
-simulation/viewpoints/**/*.png
+# meshroom
+*.mg
+*.sfm
+**/MeshroomCache/
+reconstruction/models/**/*.json
 
-visualization/data/**/*.sfm
-visualization/data/**/*.ply
+# point cloud data
+*.ply
+**/*cameras.json
 
-# temp files
+# temp script files
 reconstruction/models/_*.py
