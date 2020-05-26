@@ -1,11 +1,10 @@
 
-# from .sim import *
-# from .types import *
+from .sim import *
+from .types import *
 from .helper import *
 from .logger import *
 from .defaults import *
-# from .launcher import *
-# from .viewpoints import *
+from .launcher import *
 
 def add_arguments_to(parser):
     parser.add_argument(

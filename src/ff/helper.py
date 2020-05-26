@@ -27,7 +27,7 @@ def curr_sim_mode(settings_path=Default.SETTINGS_PATH):
 
 
 def change_sim_mode(new_sim_mode, settings_path=Default.SETTINGS_PATH):
-    ''' Returns a tuple `(changed_sim_mode: bool, curr_sim_mode: str)`. '''
+    """ Returns a tuple `(changed_sim_mode: bool, curr_sim_mode: str)`. """
 
     assert new_sim_mode in SimMode._list_all, f"\ninvalid SimMode '{new_sim_mode}'\n"
 

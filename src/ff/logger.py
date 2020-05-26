@@ -18,10 +18,7 @@ def print_pose(vehicle_pose, to_eularian_angles=None):
         f"                    {angles_to_str(to_eularian_angles(vehicle_pose.orientation))}\n",
     ]
 
-    if to_eularian_angles is None:
-        print_str = print_str[:-1]
-
-    print(*print_str)
+    print(*(print_str if to_eularian_angles is not None else print_str[:-1]))
 
 
 ###############################################################################
