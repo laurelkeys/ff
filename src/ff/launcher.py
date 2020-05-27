@@ -1,4 +1,5 @@
 import os
+import warnings
 import subprocess
 
 from glob import glob
@@ -7,6 +8,7 @@ from os.path import join
 import psutil
 
 from .helper import possible_env_paths
+from .logger import log_warning
 from .defaults import Default
 
 ###############################################################################
@@ -18,11 +20,8 @@ class LaunchEnvArgs:
 
     def __init__(self, args):
         if args.env_name is None:
-            possibilities = possible_env_paths(args.env_root)
-            print(possibilities)
-            exit()
-
-        if args.edit:
+            self.env_path = self._try_to_make_env_path(args.env_root)
+        elif args.edit:
             env_name, env_name_ext = os.path.splitext(args.env_name)
             assert env_name_ext in [None, ".sln"], args.env_name
             self.env_path = self._make_env_path(args.env_root, f"{env_name}.sln")
@@ -40,6 +39,26 @@ class LaunchEnvArgs:
 
     def __iter__(self):
         return iter((self.env_path, self.ue4editor_exe, self.devenv_exe, self.verbose))
+
+    def _try_to_make_env_path(self, env_root):
+        """ Searches for a valid environment given only env_root.
+            The first match is returned:
+            1. `env_root/*.ext`
+            2. `env_root/*/*.ext`\n
+            Note: this always prints a warning since it shouldn't be used.
+        """
+        # NOTE searches for .uproject, .sln and .exe
+        possibilities = possible_env_paths(env_root)
+        log_warning("env_name=None, trying to find a valid environment file in env_root..")
+        assert possibilities, f"No environment was found for env_root='{env_root}'"
+        if len(possibilities) > 1:
+            print(
+                f"\nMultiple environment files were found for env_root='{env_root}'"
+                + "\nChoosing the first one from the following:\n- "
+                + "\n- ".join(possibilities)
+                + "\n"
+            )
+        return possibilities[0]
 
     def _make_env_path(self, env_root, env_name):
         """ Searches for a valid environment. The first match is returned:
