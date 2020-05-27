@@ -1,11 +1,13 @@
 import os
-import glob
 import subprocess
+
+from glob import glob
+from os.path import join
 
 import psutil
 
+from .helper import possible_env_paths
 from .defaults import Default
-
 
 ###############################################################################
 ###############################################################################
@@ -15,6 +17,11 @@ class LaunchEnvArgs:
     """ Wraps `argparse` arguments to be used in `launch_env()`. """
 
     def __init__(self, args):
+        if args.env_name is None:
+            possibilities = possible_env_paths(args.env_root)
+            print(possibilities)
+            exit()
+
         if args.edit:
             env_name, env_name_ext = os.path.splitext(args.env_name)
             assert env_name_ext in [None, ".sln"], args.env_name
@@ -48,28 +55,28 @@ class LaunchEnvArgs:
             if os.path.isfile(env_name):
                 return env_name # 1
 
-            matches = glob.glob(f"{env_root}/*/{env_name}")
+            matches = glob(join(env_root, "*", env_name))
             if matches: return matches[0] # 4
 
         else:
             exts = ["uproject", "sln", "exe"]
 
             for ext in exts:
-                matches = glob.glob(f"{env_name}.{ext}")
+                matches = glob(f"{env_name}.{ext}")
                 if matches: return matches[0] # 1
 
             if os.path.isdir(env_name):
                 for ext in exts:
-                    matches = glob.glob(f"{env_name}/*.{ext}")
+                    matches = glob(join(env_name, f"*.{ext}"))
                     if matches: return matches[0] # 2
 
-            if os.path.isdir(os.path.join(env_root, env_name)):
+            if os.path.isdir(join(env_root, env_name)):
                 for ext in exts:
-                    matches = glob.glob(f"{env_root}/{env_name}/*.{ext}")
+                    matches = glob(join(env_root, env_name, f"*.{ext}"))
                     if matches: return matches[0] # 3
 
             for ext in exts:
-                matches = glob.glob(f"{env_root}/*/{env_name}.{ext}")
+                matches = glob(join(env_root, "*", f"{env_name}.{ext}"))
                 if matches: return matches[0] # 4
 
         assert False, f"No environment file was found for env_root='{env_root}', env_name='{env_name}'"
@@ -77,6 +84,10 @@ class LaunchEnvArgs:
 
 ###############################################################################
 ###############################################################################
+
+
+def launch_env_from_args(args):
+    launch_env(*LaunchEnvArgs(args))
 
 
 def launch_env(env_path, ue4editor_exe=None, devenv_exe=None, verbose=True, **kwargs):
