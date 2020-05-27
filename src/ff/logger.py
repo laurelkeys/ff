@@ -3,6 +3,15 @@ from .types import to_xyz_str, to_xyzw_str, angles_to_str
 ###############################################################################
 ###############################################################################
 
+def log_info(   *args, **kwargs): print("[INFO]",    *args, **kwargs)
+def log_debug(  *args, **kwargs): print("[DEBUG]",   *args, **kwargs)
+def log_warning(*args, **kwargs): print("[WARNING]", *args, **kwargs)
+def log_error(  *args, **kwargs): print("[ERROR]",   *args, **kwargs)
+def log_fatal(  *args, **kwargs): print("[FATAL]",   *args, **kwargs)
+
+###############################################################################
+###############################################################################
+
 
 def print_airsim_path(airsim_path):
     path_str = f"'airsim' path: {airsim_path[0]}"

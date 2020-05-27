@@ -49,7 +49,7 @@ def change_sim_mode(new_sim_mode, settings_path=Default.AIRSIM_SETTINGS_PATH):
 ###############################################################################
 
 
-def possible_env_paths(env_root, exts=["exe", "sln", "uproject"]):
+def possible_env_paths(env_root, exts=["uproject", "sln", "exe"]):
     """ Searches for valid environment files with the following patterns:
         - `env_root/*.ext`
         - `env_root/*/*.ext`
