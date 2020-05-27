@@ -46,3 +46,19 @@ def change_sim_mode(new_sim_mode, settings_path=Default.SETTINGS_PATH):
 
 ###############################################################################
 ###############################################################################
+
+
+def possible_env_paths(env_root, exts=["*.exe", "*.sln", "*.uproject"]):
+    """ Searches for valid environment files with the following patterns:
+        - `env_root/*.ext`
+        - `env_root/*/*.ext`
+    """
+    env_paths = []
+    for ext in exts:
+        env_paths.extend(glob.glob(f"{env_root}/*.{ext}"))
+        env_paths.extend(glob.glob(f"{env_root}/*/*.{ext}"))
+    return env_paths
+
+
+###############################################################################
+###############################################################################

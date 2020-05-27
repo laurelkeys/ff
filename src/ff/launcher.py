@@ -79,20 +79,32 @@ class LaunchEnvArgs:
 ###############################################################################
 
 
-def launch_env(env_path, ue4editor_exe, devenv_exe, verbose):
-    """ Use `launch_env(*LaunchEnvArgs(args))` for convenience. """
-
+def launch_env(env_path, ue4editor_exe=None, devenv_exe=None, verbose=True, **kwargs):
+    """ Use `launch_env(*LaunchEnvArgs(args))` for convenience.\n
+        Note: `res: (int, int)` and `windowed: bool` can be passed through `**kwargs`
+              for "uproject" and "exe" files.
+    """
     _, ext = os.path.splitext(env_path)
     if ext == ".uproject":
-        pass  # TODO
+        run_cmds = _run_env(
+            env_path, ext,
+            env_proc="UE4Editor.exe",
+            ue4editor_exe_path=ue4editor_exe,
+            **kwargs
+        )
     elif ext == ".sln":
         run_cmds = _run_env(
             env_path, ext,
             env_proc="devenv.exe",  # Visual Studio
             devenv_exe_path=devenv_exe,
+            **kwargs
         )
     elif ext == ".exe":
-        pass  # TODO
+        run_cmds = _run_env(
+            env_path, ext,
+            env_proc=os.path.basename(env_path),
+            **kwargs
+        )
     else:
         assert False, f"Unexpected extension in env_path='{env_path}'"
 
@@ -102,20 +114,21 @@ def launch_env(env_path, ue4editor_exe, devenv_exe, verbose):
             print("\n run_cmds=" + " ".join(run_cmds) + "\n")
 
 
-def _run_env(env_path, env_ext, env_proc, **kwargs):
+def _run_env(env_path, env_ext, env_proc=None, **kwargs):
     assert os.path.isfile(env_path), f"File doesn't exist, env_path='{env_path}'"
 
-    already_running = [
-        p.as_dict(attrs=['pid', 'name'])
-        for p in psutil.process_iter()
-        if env_proc.lower() in p.name().lower()
-    ]
+    if env_proc is not None:
+        already_running = [
+            p.as_dict(attrs=['pid', 'name'])
+            for p in psutil.process_iter()
+            if env_proc.lower() in p.name().lower()
+        ]
 
-    if already_running:
-        print(f"'{os.path.basename(env_path)}' is already running:")
-        for p in already_running:  # there should (usually) only be one
-            print(f" - name='{p['name']}', pid={p['pid']}")
-        return []
+        if already_running:
+            print(f"'{os.path.basename(env_path)}' is already running:")
+            for p in already_running:  # there should (usually) only be one
+                print(f" - name='{p['name']}', pid={p['pid']}")
+            return []
 
     run_cmds = _build_run_cmds(env_path, **kwargs)
     subprocess.Popen(run_cmds, shell=True, stdout=subprocess.PIPE)
@@ -123,13 +136,33 @@ def _run_env(env_path, env_ext, env_proc, **kwargs):
 
 
 def _build_run_cmds(
-    # necessary args
     env_path, env_ext,
-    # (optionally) passed as kwargs
-    res=(1280, 720), ue4editor_path=None, devenv_path=None
+    ue4editor_exe_path=None, devenv_exe_path=None,
+    res=(1280, 720), windowed=True,
 ):
-    # FIXME
-    pass
+    if ext == ".uproject":
+        assert os.path.isfile(ue4editor_exe_path), ue4editor_exe_path
+        cmds = [ue4editor_exe_path, env_path, "-game"]
+        if res is not None:
+            cmds.extend([f"-ResX={res[0]}", f"-ResY={res[1]}"])
+        if windowed:
+            cmds.append("-windowed")
+
+    elif ext == ".sln":
+        assert os.path.isfile(devenv_path), devenv_path
+        cmds = [devenv_path, env_path]
+
+    elif ext == ".exe":
+        cmds = [env_path]
+        if res is not None:
+            cmds.extend([f"-ResX={res[0]}", f"-ResY={res[1]}"])
+        if windowed:
+            cmds.append("-windowed")
+
+    else:
+        assert False, env_path
+
+    return cmds
 
 
 ###############################################################################
