@@ -3,11 +3,19 @@ from .types import to_xyz_str, to_xyzw_str, angles_to_str
 ###############################################################################
 ###############################################################################
 
-def log_info(   *args, **kwargs): print("[INFO]",    *args, **kwargs)
-def log_debug(  *args, **kwargs): print("[DEBUG]",   *args, **kwargs)
-def log_warning(*args, **kwargs): print("[WARNING]", *args, **kwargs)
-def log_error(  *args, **kwargs): print("[ERROR]",   *args, **kwargs)
-def log_fatal(  *args, **kwargs): print("[FATAL]",   *args, **kwargs)
+
+def log_info(*args, **kwargs):
+    print("[INFO]", *args, **kwargs)
+
+def log_error(*args, **kwargs):
+    print("[ERROR]", *args, **kwargs)
+
+def log_debug(*args, **kwargs):
+    print("[DEBUG]", *args, **kwargs)
+
+def log_warning(*args, **kwargs):
+    print("[WARNING]", *args, **kwargs)
+
 
 ###############################################################################
 ###############################################################################
@@ -25,7 +33,6 @@ def print_pose(vehicle_pose, to_eularian_angles=None):
         f"     .orientation = {to_xyzw_str(vehicle_pose.orientation)}\n",
         f"                    {angles_to_str(to_eularian_angles(vehicle_pose.orientation))}\n",
     ]
-
     print(*(print_str if to_eularian_angles is not None else print_str[:-1]))
 
 

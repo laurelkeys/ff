@@ -8,7 +8,7 @@ from os.path import join
 import psutil
 
 from .helper import possible_env_paths
-from .logger import log_warning
+from .logger import log_info, log_warning, log_debug
 from .defaults import Default
 
 ###############################################################################
@@ -19,14 +19,16 @@ class LaunchEnvArgs:
     """ Wraps `argparse` arguments to be used in `launch_env()`. """
 
     def __init__(self, args):
-        if args.env_name is None:
-            self.env_path = self._try_to_make_env_path(args.env_root)
+        env_root = Default.ENV_ROOT_ALIASES.get(args.env_root, args.env_root)
+
+        if not args.env_name:
+            self.env_path = self._try_to_make_env_path(env_root)
         elif args.edit:
             env_name, env_name_ext = os.path.splitext(args.env_name)
             assert env_name_ext in [None, ".sln"], args.env_name
-            self.env_path = self._make_env_path(args.env_root, f"{env_name}.sln")
+            self.env_path = self._make_env_path(env_root, f"{env_name}.sln")
         else:
-            self.env_path = self._make_env_path(args.env_root, args.env_name)
+            self.env_path = self._make_env_path(env_root, args.env_name)
 
         if self.env_path.endswith("uproject"):
             assert os.path.isfile(args.ue4editor_exe), args.ue4editor_exe
@@ -45,7 +47,7 @@ class LaunchEnvArgs:
             The first match is returned:
             1. `env_root/*.ext`
             2. `env_root/*/*.ext`\n
-            Note: this always prints a warning since it shouldn't be used.
+            Note: this always prints a warning since it should be avoided.
         """
         # NOTE searches for .uproject, .sln and .exe
         possibilities = possible_env_paths(env_root)
@@ -70,7 +72,7 @@ class LaunchEnvArgs:
                   Otherwise, the tested extensions are: "uproject", "sln", "exe".
         """
         _, ext = os.path.splitext(env_name)
-        if ext is not None:
+        if ext:
             if os.path.isfile(env_name):
                 return env_name # 1
 
@@ -141,7 +143,7 @@ def launch_env(env_path, ue4editor_exe=None, devenv_exe=None, verbose=True, **kw
     if run_cmds:
         print("Launching environment... (this may take a few seconds)")
         if verbose:
-            print("\n run_cmds=" + " ".join(run_cmds) + "\n")
+            log_info("run_cmds=" + " ".join(run_cmds) + "\n")
 
 
 def _run_env(env_path, env_ext, env_proc=None, **kwargs):
@@ -160,7 +162,7 @@ def _run_env(env_path, env_ext, env_proc=None, **kwargs):
                 print(f" - name='{p['name']}', pid={p['pid']}")
             return []
 
-    run_cmds = _build_run_cmds(env_path, **kwargs)
+    run_cmds = _build_run_cmds(env_path, env_ext, **kwargs)
     subprocess.Popen(run_cmds, shell=True, stdout=subprocess.PIPE)
     return run_cmds
 
@@ -170,7 +172,7 @@ def _build_run_cmds(
     ue4editor_exe_path=None, devenv_exe_path=None,
     res=(1280, 720), windowed=True,
 ):
-    if ext == ".uproject":
+    if env_ext == ".uproject":
         assert os.path.isfile(ue4editor_exe_path), ue4editor_exe_path
         cmds = [ue4editor_exe_path, env_path, "-game"]
         if res is not None:
@@ -178,11 +180,11 @@ def _build_run_cmds(
         if windowed:
             cmds.append("-windowed")
 
-    elif ext == ".sln":
-        assert os.path.isfile(devenv_path), devenv_path
-        cmds = [devenv_path, env_path]
+    elif env_ext == ".sln":
+        assert os.path.isfile(devenv_exe_path), devenv_exe_path
+        cmds = [devenv_exe_path, env_path]
 
-    elif ext == ".exe":
+    elif env_ext == ".exe":
         cmds = [env_path]
         if res is not None:
             cmds.extend([f"-ResX={res[0]}", f"-ResY={res[1]}"])
