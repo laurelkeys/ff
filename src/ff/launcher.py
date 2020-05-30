@@ -72,7 +72,7 @@ class LaunchEnvArgs:
                   Otherwise, the tested extensions are: "uproject", "sln", "exe".
         """
         _, ext = os.path.splitext(env_name)
-        if ext:
+        if ext in ["uproject", "sln", "exe"]:
             if os.path.isfile(env_name):
                 return env_name # 1
 
