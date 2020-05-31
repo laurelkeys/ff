@@ -1,5 +1,6 @@
 import os
 import sys
+import msvcrt
 import argparse
 
 import ff
@@ -40,6 +41,29 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     else:
         client.hoverAsync().join()  # airsim.LandedState.Flying
 
+    print(f"[ff] Press [space] (and any other key to quit)\n")
+    while True:
+        if msvcrt.kbhit():
+            if msvcrt.getch() != b" ":
+                break  # https://stackoverflow.com/a/13207813
+
+            image_response, *_ = client.simGetImages(
+                [
+                    airsim.ImageRequest(
+                        camera_name=ff.CameraName.front_center, image_type=airsim.ImageType.Scene
+                    )
+                ]
+            )
+
+            _, pos, quat = get_record_line_from(client)
+            _, cam_pos, cam_quat = get_record_line_from(image_response)
+            print(f"{pos=}, \n{quat=}, \n{cam_pos=}, \n{cam_quat=}\n")
+            cam = client.simGetCameraInfo(ff.CameraName.front_center)
+            print(cam.pose.position.to_numpy_array())
+            print(cam.pose.orientation.to_numpy_array())
+
+            client.moveToZAsync
+
     client.reset()
     print("[ff] Drone reset")
 
@@ -48,25 +72,20 @@ def get_record_line_from(client_or_image_response):
     """ Modified implementation of AirSim's recording function.
         See: AirSim/Unreal/Plugins/AirSim/Source/PawnSimApi.cpp#L554
     """
-    # NOTE AirSim uses WXYZ for quaternions, here we return XYZW,
-    #      we also omit the TimeStamp value as the first argument
+    # NOTE AirSim uses WXYZ for quaternions, here we return XYZW, also,
+    #      while it uses the client's pose, there's a slight difference
+    #      in the `position` captured by image_response, owing to the camera,
+    #      and there can be large ones in `orientation` when using MaxDegreeOfFreedom
 
     if isinstance(client := client_or_image_response, airsim.MultirotorClient):
         state = client.getMultirotorState()
-        timestamp = state.timestamp
-        position = state.kinematics_estimated.position
-        orientation = state.kinematics_estimated.orientation
+        return state.timestamp, ff.xyz_xyzw_of_client(state)
 
     elif isinstance(image_response := client_or_image_response, airsim.ImageResponse):
-        timestamp = image_response.time_stamp
-        position = image_response.camera_position
-        orientation = image_response.camera_orientation
+        return image_response.time_stamp, ff.xyz_xyzw_of_image(image_response)
 
     else:
-        assert False, type(client_or_image_response)
-
-    # uint64, [x, y, z], [x, y, z, w]
-    return timestamp, position.to_numpy_array(), orientation.to_numpy_array()
+        assert False, f"{type(client_or_image_response)=}"
 
 
 ###############################################################################

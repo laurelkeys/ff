@@ -21,3 +21,23 @@ class SimMode:
 
 ###############################################################################
 ###############################################################################
+
+
+def xyz_xyzw_of_client(client_state):
+    position = client_state.kinematics_estimated.position
+    orientation = client_state.kinematics_estimated.orientation
+    return position.to_numpy_array(), orientation.to_numpy_array()
+
+def xyz_xyzw_of_camera(camera_info):
+    position = camera_info.pose.position
+    orientation = camera_info.pose.orientation
+    return position.to_numpy_array(), orientation.to_numpy_array()
+
+def xyz_xyzw_of_image(image_response):
+    position = image_response.camera_position
+    orientation = image_response.camera_orientation
+    return position.to_numpy_array(), orientation.to_numpy_array()
+
+
+###############################################################################
+###############################################################################
