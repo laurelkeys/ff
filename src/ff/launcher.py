@@ -52,10 +52,10 @@ class LaunchEnvArgs:
         # NOTE searches for .uproject, .sln and .exe
         possibilities = possible_env_paths(env_root)
         log_warning("env_name=None, trying to find a valid environment file in env_root..")
-        assert possibilities, f"No environment was found for env_root='{env_root}'"
+        assert possibilities, f"No environment was found for {env_root=}"
         if len(possibilities) > 1:
             print(
-                f"\nMultiple environment files were found for env_root='{env_root}'"
+                f"\nMultiple environment files were found for {env_root=}"
                 + "\nChoosing the first one from the following:\n- "
                 + "\n- ".join(possibilities)
                 + "\n"
@@ -100,7 +100,7 @@ class LaunchEnvArgs:
                 matches = glob(join(env_root, "*", f"{env_name}.{ext}"))
                 if matches: return matches[0] # 4
 
-        assert False, f"No environment file was found for env_root='{env_root}', env_name='{env_name}'"
+        assert False, f"No environment file was found for {env_root=}, {env_name=}"
 
 
 ###############################################################################
@@ -138,7 +138,7 @@ def launch_env(env_path, ue4editor_exe=None, devenv_exe=None, verbose=True, **kw
             **kwargs
         )
     else:
-        assert False, f"Unexpected extension in env_path='{env_path}'"
+        assert False, f"Unexpected extension in {env_path=}"
 
     if run_cmds:
         print("Launching environment... (this may take a few seconds)")
@@ -147,7 +147,7 @@ def launch_env(env_path, ue4editor_exe=None, devenv_exe=None, verbose=True, **kw
 
 
 def _run_env(env_path, env_ext, env_proc=None, **kwargs):
-    assert os.path.isfile(env_path), f"File doesn't exist, env_path='{env_path}'"
+    assert os.path.isfile(env_path), f"File doesn't exist, {env_path=}"
 
     if env_proc is not None:
         already_running = [
