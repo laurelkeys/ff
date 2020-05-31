@@ -44,31 +44,30 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     print("[ff] Drone reset")
 
 
-def get_xyz_xyzw_from(client_or_image_response, is_header_line=False):
-    """ Reimplementation of AirSim's recording function.
+def get_record_line_from(client_or_image_response):
+    """ Modified implementation of AirSim's recording function.
         See: AirSim/Unreal/Plugins/AirSim/Source/PawnSimApi.cpp#L554
     """
-    if is_header_line:
-        # NOTE AirSim uses WXYZ for quaternions, here we return XYZW
-        #      we also omit the TimeStamp value as the first argument
-        return "POS_X\tPOS_Y\tPOS_Z\tQ_X\tQ_Y\tQ_Z\tQ_W\t"
+    # NOTE AirSim uses WXYZ for quaternions, here we return XYZW,
+    #      we also omit the TimeStamp value as the first argument
 
     if isinstance(client := client_or_image_response, airsim.MultirotorClient):
-        kinematics = client.simGetGroundTruthKinematics()
-        position = kinematics.position
-        orientation = kinematics.orientation
+        state = client.getMultirotorState()
+        timestamp = state.timestamp
+        position = state.kinematics_estimated.position
+        orientation = state.kinematics_estimated.orientation
 
     elif isinstance(image_response := client_or_image_response, airsim.ImageResponse):
+        timestamp = image_response.time_stamp
         position = image_response.camera_position
         orientation = image_response.camera_orientation
 
     else:
         assert False, type(client_or_image_response)
 
-    return [
-        position.to_numpy_array(),  # [x, y, z]
-        orientation.to_numpy_array()  # [x, y, z, w]
-    ]
+    # uint64, [x, y, z], [x, y, z, w]
+    return timestamp, position.to_numpy_array(), orientation.to_numpy_array()
+
 
 ###############################################################################
 ## main #######################################################################
@@ -108,7 +107,7 @@ def connect_to_airsim() -> airsim.MultirotorClient:
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Fly viewpoints capturing camera position and orientation."
+        description="Fly viewpoints, capturing camera position (XYZ vector) and orientation (XYZW quaternion)."
     )
     ff.add_arguments_to(parser)
     return parser
