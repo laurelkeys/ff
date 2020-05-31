@@ -12,6 +12,7 @@ import numpy as np
 #  [3] https://github.com/colmap/colmap/blob/dev/src/estimators/pose.h#L125
 #  [4] https://github.com/alicevision/meshroom/wiki/Using-known-camera-positions
 #  [5] https://github.com/colmap/colmap/blob/dev/scripts/python/read_write_model.py
+#  [6] https://github.com/alicevision/meshroom/issues/787
 
 
 # FIXME rename, so it's not confused with trajectory_io
