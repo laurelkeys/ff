@@ -57,10 +57,18 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
             _, pos, quat = get_record_line_from(client)
             _, cam_pos, cam_quat = get_record_line_from(image_response)
-            print(f"{pos=}, \n{quat=}, \n{cam_pos=}, \n{cam_quat=}\n")
+            # print(f"{pos=}, \n{quat=}, \n{cam_pos=}, \n{cam_quat=}\n")
             cam = client.simGetCameraInfo(ff.CameraName.front_center)
-            print(cam.pose.position.to_numpy_array())
-            print(cam.pose.orientation.to_numpy_array())
+            # print(cam.pose.position.to_numpy_array())
+            # print(cam.pose.orientation.to_numpy_array())
+            print(f"{cam.fov=}")
+            print(f"{cam.proj_mat.matrix=}")
+            cam = client.simGetCameraInfo(ff.CameraName.bottom_center)
+            print(f"{cam.fov=}")
+            print(f"{cam.proj_mat.matrix=}")
+            cam = client.simGetCameraInfo(ff.CameraName.back_center)
+            print(f"{cam.fov=}")
+            print(f"{cam.proj_mat.matrix=}")
 
             client.moveToZAsync
 
@@ -79,10 +87,10 @@ def get_record_line_from(client_or_image_response):
 
     if isinstance(client := client_or_image_response, airsim.MultirotorClient):
         state = client.getMultirotorState()
-        return state.timestamp, ff.xyz_xyzw_of_client(state)
+        return state.timestamp, *ff.xyz_xyzw_of_client(state)
 
     elif isinstance(image_response := client_or_image_response, airsim.ImageResponse):
-        return image_response.time_stamp, ff.xyz_xyzw_of_image(image_response)
+        return image_response.time_stamp, *ff.xyz_xyzw_of_image(image_response)
 
     else:
         assert False, f"{type(client_or_image_response)=}"
