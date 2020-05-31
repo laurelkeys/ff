@@ -1,8 +1,8 @@
 import os
+import sys
 import math
 import time
 
-import __ff_to_path__
 import ff
 
 try:
