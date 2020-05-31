@@ -5,6 +5,8 @@ import argparse
 
 import ff
 
+from wrappers import OrbitNavigator
+
 try:
     import airsim
 except ModuleNotFoundError:
@@ -41,36 +43,16 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     else:
         client.hoverAsync().join()  # airsim.LandedState.Flying
 
-    print(f"[ff] Press [space] (and any other key to quit)\n")
-    while True:
-        if msvcrt.kbhit():
-            if msvcrt.getch() != b" ":
-                break  # https://stackoverflow.com/a/13207813
-
-            image_response, *_ = client.simGetImages(
-                [
-                    airsim.ImageRequest(
-                        camera_name=ff.CameraName.front_center, image_type=airsim.ImageType.Scene
-                    )
-                ]
-            )
-
-            _, pos, quat = get_record_line_from(client)
-            _, cam_pos, cam_quat = get_record_line_from(image_response)
-            # print(f"{pos=}, \n{quat=}, \n{cam_pos=}, \n{cam_quat=}\n")
-            cam = client.simGetCameraInfo(ff.CameraName.front_center)
-            # print(cam.pose.position.to_numpy_array())
-            # print(cam.pose.orientation.to_numpy_array())
-            print(f"{cam.fov=}")
-            print(f"{cam.proj_mat.matrix=}")
-            cam = client.simGetCameraInfo(ff.CameraName.bottom_center)
-            print(f"{cam.fov=}")
-            print(f"{cam.proj_mat.matrix=}")
-            cam = client.simGetCameraInfo(ff.CameraName.back_center)
-            print(f"{cam.fov=}")
-            print(f"{cam.proj_mat.matrix=}")
-
-            client.moveToZAsync
+    navigator = OrbitNavigator(
+        client,
+        args.radius,
+        args.altitude,
+        args.speed,
+        args.iterations,
+        [float(_) for _ in args.center.split(',')],
+        args.snapshots
+    )
+    navigator.start()
 
     client.reset()
     print("[ff] Drone reset")
@@ -134,8 +116,34 @@ def connect_to_airsim() -> airsim.MultirotorClient:
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Fly viewpoints, capturing camera position (XYZ vector) and orientation (XYZW quaternion)."
+        description="Fly in a circular orbit, capturing camera position (XYZ vector) and orientation (XYZW quaternion)."
     )
+
+    parser.add_argument(
+        "--radius", type=float, default=10,
+        help="Radius in [m]  (default: %(default)d)"
+    )
+    parser.add_argument(
+        "--altitude", type=float, default=20,
+        help="Altitude in positive [m]  (default: %(default)d)"
+    )
+    parser.add_argument(
+        "--speed", type=float, default=3,
+        help="Speed in [m/s]  (default: %(default)d)"
+    )
+    parser.add_argument(
+        "--center", default="1,0",
+        help="Direction vector x,y pointing to center of orbit  (default: %(default)s)"
+    )
+    parser.add_argument(
+        "--iterations", type=float, default=3,
+        help="Number of 360 degree orbits  (default: %(default)d)"
+    )
+    parser.add_argument(
+        "--snapshots", type=float, default=0,
+        help="Number of FPV snapshots to take during orbit  (default: %(default)d)"
+    )
+
     ff.add_arguments_to(parser)
     return parser
 
