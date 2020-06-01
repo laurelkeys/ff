@@ -4,6 +4,3 @@
 [submodule "src/vendor/TanksAndTemples"]
 	path = src/vendor/TanksAndTemples
 	url = https://github.com/intel-isl/TanksAndTemples.git
-[submodule "src/vendor/transformations"]
-	path = src/vendor/transformations
-	url = https://github.com/cgohlke/transformations.git
