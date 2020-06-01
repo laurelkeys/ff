@@ -54,8 +54,33 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     )
     navigator.start()
 
+    take_pictures(client)
+
     client.reset()
     print("[ff] Drone reset")
+
+
+def take_pictures(client):
+    print("[ff] Press [space] to take pictures (or any other key to stop)")  # TODO
+    img_count = 0
+    while True:
+        if msvcrt.kbhit():
+            if msvcrt.getch() != b" ":
+                break  # https://stackoverflow.com/a/13207813
+
+            response, *_ = client.simGetImages(
+                [airsim.ImageRequest(ff.CameraName.front_center, airsim.ImageType.Scene)]
+            )
+            img_count += 1
+            print(f"     {img_count} pictures taken", end="\r")
+            airsim.write_file(
+                os.path.join(args.output_folder, f"out_{img_count}.png"),
+                response.image_data_uint8,
+            )
+            # TODO save poses to .log file
+            print("camera_position:", response.camera_position)  # Vector3r
+            print("camera_orientation:", response.camera_orientation)  # Quaternionr
+    print()
 
 
 def get_record_line_from(client_or_image_response):
@@ -120,11 +145,11 @@ def get_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        "--radius", type=float, default=10,
+        "--radius", type=float, default=5,
         help="Radius in [m]  (default: %(default)d)"
     )
     parser.add_argument(
-        "--altitude", type=float, default=20,
+        "--altitude", type=float, default=1.5,
         help="Altitude in positive [m]  (default: %(default)d)"
     )
     parser.add_argument(
@@ -132,11 +157,11 @@ def get_parser() -> argparse.ArgumentParser:
         help="Speed in [m/s]  (default: %(default)d)"
     )
     parser.add_argument(
-        "--center", default="1,0",
+        "--center", default="0,-1",
         help="Direction vector x,y pointing to center of orbit  (default: %(default)s)"
     )
     parser.add_argument(
-        "--iterations", type=float, default=3,
+        "--iterations", type=float, default=2,
         help="Number of 360 degree orbits  (default: %(default)d)"
     )
     parser.add_argument(

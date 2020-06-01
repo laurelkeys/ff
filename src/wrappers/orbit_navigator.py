@@ -62,7 +62,7 @@ class OrbitNavigator:
 
         # AirSim uses NED coordinates so negative axis is up
         state = self.client.getMultirotorState()
-        if not self.did_takeoff and state.landed_state == airsim.LandedState.Landed:
+        if not self.did_takeoff:  ## and state.landed_state == airsim.LandedState.Landed:
             self.did_takeoff = True
             self._print("taking off...")
             self.client.takeoffAsync(timeout_sec=10).join()
@@ -211,16 +211,19 @@ class OrbitNavigator:
 
     def _take_snapshot(self):
         # first hold our current position so drone doesn't try and keep flying while we take the picture.
-        pos = self.client.getMultirotorState().kinematics_estimated.position
-        self.client.moveToPositionAsync(
-            pos.x_val,
-            pos.y_val,
-            self.z,
-            velocity=0.5,
-            timeout_sec=10,
-            drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
-            yaw_mode=airsim.YawMode(False, self.camera_heading),
-        ).join()
+        ## pos = self.client.getMultirotorState().kinematics_estimated.position
+        ## self.client.moveToPositionAsync(
+        ##     pos.x_val,
+        ##     pos.y_val,
+        ##     self.z,
+        ##     velocity=0.5,
+        ##     timeout_sec=10,
+        ##     drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
+        ##     yaw_mode=airsim.YawMode(False, self.camera_heading),
+        ## ).join()
+
+        # self.client.simSetCameraOrientation(ff.CameraName.front_right, self.camera_heading)
+
         responses = self.client.simGetImages(
             [airsim.ImageRequest(ff.CameraName.front_right, airsim.ImageType.Scene)]
         )  # scene vision image in png format
