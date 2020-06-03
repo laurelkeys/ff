@@ -42,6 +42,7 @@ class Meshroom:
 
     @property
     def translation(T, as_column_vector=False):
+        """ T[0], T[1], T[2] """
         assert len(T) == 3, T
         if as_column_vector:
             return np.array(T).reshape((-1, 1))
@@ -49,6 +50,10 @@ class Meshroom:
 
     @property
     def rotation(R, as_quaternion=True):
+        """ R[0], -R[1], -R[2],\n
+            R[3], -R[4], -R[5],\n
+            R[6], -R[7], -R[8]
+        """
         assert len(R) == 9, R
         rot = np.array([
             R[0], -R[1], -R[2],
@@ -69,7 +74,10 @@ class Meshroom:
              0  ,   0  ,   0  ,  1
         """
         return np.vstack((
-            np.hstack((self.rotation(R), self.translation(T))),
+            np.hstack((
+                self.rotation(R, as_quaternion=False),
+                self.translation(T, as_column_vector=True)
+            )),
             [0, 0, 0, 1]
         ))
 
