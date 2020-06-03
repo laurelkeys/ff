@@ -1,11 +1,11 @@
 import os
 import sys
+import time
+import json
 import msvcrt
 import argparse
 
 import ff
-
-from wrappers import OrbitNavigator
 
 try:
     import airsim
@@ -20,8 +20,10 @@ except ModuleNotFoundError:
 
 
 def preflight(args: argparse.Namespace) -> None:
-    # setup before connecting to AirSim
-    pass
+    assert os.path.isfile(args.viewpoints_path), f"Couldn't find file '{args.viewpoints_path}'"
+    with open(args.viewpoints_path, 'r') as viewpoints_file:
+        viewpoints = json.load(viewpoints_file)
+    args.viewpoints = zip(viewpoints["positions"], viewpoints["orientations"])
 
 
 ###############################################################################
@@ -30,27 +32,36 @@ def preflight(args: argparse.Namespace) -> None:
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
-    # do (awesome) stuff here
-
     initial_pose = client.simGetVehiclePose()
+    initial_state = client.getMultirotorState()
+
     if args.verbose:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
 
-    initial_state = client.getMultirotorState()
     if initial_state.landed_state == airsim.LandedState.Landed:
         print("[ff] Taking off")
         client.takeoffAsync(timeout_sec=8).join()
-    else:
-        client.hoverAsync().join()  # airsim.LandedState.Flying
+    # else:
+    #     client.hoverAsync().join()  # airsim.LandedState.Flying
 
-    take_pictures_loop(client)
+    path = [airsim.Vector3r(*position) for position, _orientation in args.viewpoints]
+    future = client.moveOnPathAsync(
+        path,
+        velocity=2,
+        drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
+        yaw_mode=airsim.YawMode(is_rate=False, yaw_or_rate=-1.5),  # FIXME
+    )
+
+    _take_pictures_loop(client)
+    future.join()
 
     client.reset()
     print("[ff] Drone reset")
 
 
-def take_pictures_loop(client):
+def _take_pictures_loop(client):
     print("[ff] Press [space] to take pictures (or any other key to stop)")
+    record = ""
     img_count = 0
     while True:
         if msvcrt.kbhit():
@@ -64,13 +75,17 @@ def take_pictures_loop(client):
             img_count += 1
             print(f"     {img_count} pictures taken", end="\r")
 
+            timestamp, position, orientation = get_record_line_from(response)
+            tx, ty, tz = position
+            qx, qy, qz, qw = orientation
+            record += "\n" + " ".join([str(_) for _ in [timestamp, tx, ty, tz, qx, qy, qz, qw]])
+
             airsim.write_file(
-                os.path.join(args.output_folder, f"out_{img_count}.png"),
+                os.path.join(args.output_folder, f"out_{timestamp}.png"),
                 response.image_data_uint8,
             )
 
-            print(get_record_line_from(response))
-
+    print("***\n" + record + "\n***")
     print()
 
 
@@ -132,6 +147,19 @@ def connect_to_airsim() -> airsim.MultirotorClient:
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="")
+
+    parser.add_argument(
+        "viewpoints_path", type=str, help="Path to a viewpoints file .json",
+    )
+
+    parser.add_argument(
+        "--out",
+        dest="output_folder",
+        metavar="OUTPUT_FOLDER",
+        type=str,
+        default="D:\\Pictures\\Temp\\airsim",
+        help="Image output folder  (default: %(default)s/)",
+    )
 
     ff.add_arguments_to(parser)
     return parser
