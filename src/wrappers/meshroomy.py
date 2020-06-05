@@ -7,39 +7,48 @@ import quaternion
 ###############################################################################
 
 
-def qt_from_rotation_matrix(rot):
-    """ See https://code.woboq.org/qt5/qtbase/src/gui/math3d/qquaternion.cpp.html """
-    assert rot.shape == (3, 3), rot
+class Quaternion:
+    class XYZW:
+        @staticmethod
+        def from_rotation_matrix(rot):
+            w, x, y, z = Quaternion.WXYZ.from_rotation_matrix(rot)
+            return np.array([x, y, z, w])
 
-    if (trace := rot.trace()) > 0.00000001:
-        s = 2 * np.sqrt(trace + 1)
-        scalar = 0.25 * s
-        axis = np.array(
-            [
-                (rot[2, 1] - rot[1, 2]) / s,
-                (rot[0, 2] - rot[2, 0]) / s,
-                (rot[1, 0] - rot[0, 1]) / s,
-            ]
-        )
+    class WXYZ:
+        @staticmethod
+        def from_rotation_matrix(rot):
+            """ See https://code.woboq.org/qt5/qtbase/src/gui/math3d/qquaternion.cpp.html """
+            assert rot.shape == (3, 3), rot
 
-    else:
-        s_next = [1, 2, 0]
-        # i = max([(_, rot[_, _]) for _ in range(1, 3)], key=lambda _: _[1])[1]
-        i = 0
-        if rot[1, 1] > rot[0, 0]:
-            i = 1
-        if rot[2, 2] > rot[i, i]:
-            i = 2
-        j = s_next[i]
-        k = s_next[j]
-        s = 2 * np.sqrt(rot[i, i] - rot[j, j] - rot[k, k] + 1)
-        scalar = (rot[k, j] - rot[j, k]) / s
-        axis = np.zeros(shape=(3,))
-        axis[i] = 0.25 * s
-        axis[j] = (rot[j, i] + rot[i, j]) / s
-        axis[k] = (rot[k, i] + rot[i, k]) / s
+            if (trace := rot.trace()) > 0.00000001:
+                s = 2 * np.sqrt(trace + 1)
+                scalar = 0.25 * s
+                axis = np.array(
+                    [
+                        (rot[2, 1] - rot[1, 2]) / s,
+                        (rot[0, 2] - rot[2, 0]) / s,
+                        (rot[1, 0] - rot[0, 1]) / s,
+                    ]
+                )
 
-    return np.array([scalar, *axis])
+            else:
+                s_next = [1, 2, 0]
+                # i = max([(_, rot[_, _]) for _ in range(1, 3)], key=lambda _: _[1])[1]
+                i = 0
+                if rot[1, 1] > rot[0, 0]:
+                    i = 1
+                if rot[2, 2] > rot[i, i]:
+                    i = 2
+                j = s_next[i]
+                k = s_next[j]
+                s = 2 * np.sqrt(rot[i, i] - rot[j, j] - rot[k, k] + 1)
+                scalar = (rot[k, j] - rot[j, k]) / s
+                axis = np.zeros(shape=(3,))
+                axis[i] = 0.25 * s
+                axis[j] = (rot[j, i] + rot[i, j]) / s
+                axis[k] = (rot[k, i] + rot[i, k]) / s
+
+            return np.array([scalar, *axis])
 
 
 ###############################################################################
@@ -50,7 +59,7 @@ class MeshroomParser:
     @staticmethod
     def parse_cameras(cameras_file_path):
         """ Parses `cameras.json`, converted from `StructureFromMotion -> outputViewAndPoses`.\n
-            Returns a tuple `(views, poses)`.
+            Returns a tuple of lists `(views, poses)`.
         """
         with open(cameras_file_path, "r") as cameras_file:
             cameras = json.loads(cameras_file.read())  # { version featuresFolders matchesFolders views intrinsics poses }
@@ -59,16 +68,51 @@ class MeshroomParser:
         return views, poses
 
     @staticmethod
-    def extract_transforms(poses):
-        """ Returns a list of `(pose_id, rotation, center)` tuples. """
-        transforms = []
-        for poses_dict in poses:
-            transforms.append(MeshroomParser.Pose.extract_from(poses_dict))
-        return transforms
+    def extract_views_and_poses(views=None, poses=None):
+        """ Returns two dictionaries, mapping:
+            - `view_id` to `View` (if `views` is not None, else `{}`)
+            - `pose_id` to `Pose` (if `poses` is not None, else `{}`)
+            Note: `view_id == pose_id`.
+        """
+        _poses = {}
+        for poses_dict in poses or []:
+            pose_id, rotation, center = MeshroomParser.Pose.extract_from(poses_dict)
+            _poses[pose_id] = MeshroomParser.Pose(rotation, center)
+
+        _views = {}
+        for views_dict in views or []:
+            view_id, pose_id, path, width, hight = MeshroomParser.View.extract_from(views_dict)
+            _views[view_id] = MeshroomParser.View(pose_id, path, width, hight)
+            if _poses:
+                assert pose_id in _poses, f"Unexpected poseId value for {views_dict=}"
+            assert pose_id == view_id, f"Differing viewId and poseId in {views_dict=}"
+
+        return _views, _poses
+
+    class View:
+        def __init__(self, pose_id, path, width, hight):
+            """ E.g.: `_, pose_id, path, width, hight = extract_from(views_dict)` """
+            self.pose_id = pose_id
+            self.path = path
+            self.width = width
+            self.hight = hight
+
+        @staticmethod
+        def extract_from(views_dict):
+            """ Returns a `(view_id, pose_id, path, width, height)` tuple. """
+            view_id = views_dict["viewId"]
+            pose_id = views_dict["poseId"]
+            assert view_id == pose_id, views_dict
+            path = views_dict["path"]
+            width = views_dict["width"]
+            height = views_dict["height"]
+            return view_id, pose_id, path, width, height
 
     class Pose:
-        def __init__(self, poses_dict):
-            self.pose_id, self.rotation, self.center = Pose.extract_from(poses_dict)
+        def __init__(self, rotation, center):
+            """ E.g.: `_, rotation, center = extract_from(poses_dict)` """
+            self.rotation = rotation
+            self.center = center
 
         @staticmethod
         def extract_from(poses_dict):
@@ -97,11 +141,13 @@ class MeshroomTransform:
             R[6], -R[7], -R[8]
         """
         assert len(R) == 9, R
-        rot = np.array([R[0], -R[1], -R[2], R[3], -R[4], -R[5], R[6], -R[7], -R[8],])
+        rot = np.array(
+            [[R[0], -R[1], -R[2]],
+             [R[3], -R[4], -R[5]],
+             [R[6], -R[7], -R[8]]]
+        )
         if as_quaternion:
-            # TODO compare results:
-            return qt_from_rotation_matrix(rot)
-            # return quaternion.from_rotation_matrix(rot)
+            return Quaternion.XYZW.from_rotation_matrix(rot)
         return rot
 
     @staticmethod

@@ -1,7 +1,12 @@
+import os
+import sys
+import argparse
+
 import ff
 
-from vendor.tartanair_tools.evaluation import *
-from vendor.TanksAndTemples.python_toolbox import *
+# from vendor.tartanair_tools.evaluation import *
+# from vendor.TanksAndTemples.python_toolbox import *
+from wrappers.meshroomy import MeshroomParser, MeshroomTransform
 
 try:
     import airsim
@@ -32,5 +37,29 @@ def make_record_line(timestamp, position, orientation, as_string=True):
     )
 
 
+def parse_timestamp(file_path):
+    return os.path.splitext(os.path.basename(file_path))[0].split("_")[1]  # HACK
+
+
+def main(args):
+    assert os.path.isfile(args.cameras_file_path), f"File not found: '{args.cameras_file_path}'"
+
+    views, poses = MeshroomParser.parse_cameras(args.cameras_file_path)
+    views_dict, poses_dict = MeshroomParser.extract_views_and_poses(views, poses)
+
+    for view_id, view in views_dict.items():
+        print(f"{view_id=}")
+        position = MeshroomTransform.translation(poses_dict[view.pose_id].center)
+        orientation = MeshroomTransform.rotation(poses_dict[view.pose_id].rotation, as_quaternion=True)
+        line_str = make_record_line(parse_timestamp(view.path), position, orientation)
+        print(line_str)
+        break
+
+
 if __name__ == "__main__":
-    pass
+    parser = argparse.ArgumentParser(description="")
+    parser.add_argument("cameras_file_path", type=str, help="Path to Meshroom's cameras.json")
+    # TODO get AirSim's data
+    args = parser.parse_args()
+
+    main(args)
