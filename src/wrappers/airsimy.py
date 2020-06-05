@@ -1,19 +1,23 @@
 import numpy as np
 
 import ff
-import airsim
+
+try:
+    import airsim
+except ModuleNotFoundError:
+    ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
+    import airsim
 
 ###############################################################################
 ###############################################################################
 
 
 class AirSimImage:
-
-    @property
+    @staticmethod
     def array_from_uncompressed(image, height, width):
         return np.flipud(np.fromstring(image, dtype=np.uint8).reshape(height, width, -1))
 
-    @property
+    @staticmethod
     def get_mono(client, camera_name=ff.CameraName.front_center, vehicle_name=None):
         request = {
             "requests": [
@@ -28,9 +32,11 @@ class AirSimImage:
 
         response, *_ = client.simGetImages(**request)
 
-        return self.array_from_uncompressed(response.image_data_uint8, response.height, response.width)
+        return AirSimImage.array_from_uncompressed(
+            response.image_data_uint8, response.height, response.width
+        )
 
-    @property
+    @staticmethod
     def get_stereo(client, vehicle_name=None):
         request = {
             "requests": [
@@ -55,10 +61,10 @@ class AirSimImage:
         response_left, response_right, *_ = client.simGetImages(**request)
 
         return (
-            self.array_from_uncompressed(
+            AirSimImage.array_from_uncompressed(
                 response_left.image_data_uint8, response_left.height, response_left.width
             ),
-            self.array_from_uncompressed(
+            AirSimImage.array_from_uncompressed(
                 response_right.image_data_uint8, response_right.height, response_right.width
             ),
         )
