@@ -122,6 +122,10 @@ class MeshroomParser:
             return pose_id, rotation, center
 
 
+###############################################################################
+###############################################################################
+
+
 class MeshroomTransform:
     """ See https://github.com/alicevision/meshroom/blob/develop/meshroom/ui/reconstruction.py """
 

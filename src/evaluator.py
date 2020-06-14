@@ -2,11 +2,12 @@ import os
 import sys
 import argparse
 
+import numpy as np
+
 import ff
 
-# from vendor.tartanair_tools.evaluation import *
-# from vendor.TanksAndTemples.python_toolbox import *
 from wrappers.meshroomy import MeshroomParser, MeshroomTransform
+from wrappers.vendory import Vendor
 
 try:
     import airsim
@@ -43,27 +44,10 @@ def make_record_line(timestamp, position, orientation, as_string=True):
 ###############################################################################
 
 
-def parse_timestamp(file_path):
-    return os.path.splitext(os.path.basename(file_path))[0].split("_")[1]  # HACK
+def convert_meshroom_to_log(cameras_fpath):
+    assert os.path.isfile(cameras_fpath), f"File not found: '{cameras_fpath}'"
 
-
-###############################################################################
-###############################################################################
-
-
-def main(args):
-    assert os.path.isfile(
-        args.meshroom_cameras_file_path
-    ), f"File not found: '{args.meshroom_cameras_file_path}'"
-    assert os.path.isfile(
-        args.airsim_recording_file_path
-    ), f"File not found: '{args.airsim_recording_file_path}'"
-
-    ##
-    ## Meshroom
-    ##
-
-    views, poses = MeshroomParser.parse_cameras(args.meshroom_cameras_file_path)
+    views, poses = MeshroomParser.parse_cameras(cameras_fpath)
     views_dict, poses_dict = MeshroomParser.extract_views_and_poses(views, poses)
 
     record_lines = []
@@ -80,20 +64,37 @@ def main(args):
     # sort by timestamp and filter out the first element in the tuple
     meshroom_record = ["timestamp tx ty tz qx qy qz qw"]
     meshroom_record.extend([_[1] for _ in sorted(record_lines)])
+    print("\n".join(meshroom_record))
 
-    ##
-    ## AirSim
-    ##
 
-    with open(args.airsim_recording_file_path) as f:
-        airsim_record = [line.rstrip() for line in f]
+###############################################################################
+###############################################################################
 
-    ##
-    ## Evaluation
-    ##
 
-    print(len(meshroom_record))
-    print(len(airsim_record))
+def evaluate(airsim_traj_fpath, meshroom_traj_fpath):
+    assert os.path.isfile(airsim_traj_fpath), f"File not found: '{airsim_traj_fpath}'"
+    assert os.path.isfile(meshroom_traj_fpath), f"File not found: '{meshroom_traj_fpath}'"
+
+    # with open(airsim_traj_fpath) as f:
+    #     airsim_record = [line.rstrip() for line in f]
+
+    # with open(meshroom_traj_fpath) as f:
+    #     meshroom_record = [line.rstrip() for line in f]
+
+    try:
+        print(
+            Vendor.TartanAir.evaluate(
+                Vendor.TartanAir.traj_from_file(airsim_traj_fpath),
+                Vendor.TartanAir.traj_from_file(meshroom_traj_fpath)
+            )
+        )
+    except ValueError:
+        print(
+            Vendor.TartanAir.evaluate(
+                Vendor.TartanAir.traj_from_file(airsim_traj_fpath, True),
+                Vendor.TartanAir.traj_from_file(meshroom_traj_fpath, True)
+            )
+        )
 
 
 ###############################################################################
@@ -103,14 +104,28 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
     parser.add_argument(
-        "meshroom_cameras_file_path", type=str, help="Path to Meshroom's cameras.json"
+        "--convert",
+        nargs=1,
+        metavar="MESHROOM_CAMERAS_FPATH",
+        help="Convert Meshroom's cameras.json to .log format",
     )
     parser.add_argument(
-        "airsim_recording_file_path", type=str, help="Path to AirSim's .log formatted file"
+        "--eval",
+        nargs=2,
+        metavar=("GT_TRAJECTORY_FPATH", "EST_TRAJECTORY_FPATH"),
+        help="Compare (AirSim) ground-truth to (Meshroom) estimate reconstruction .log files",
     )
     args = parser.parse_args()
 
-    main(args)
+    if args.convert is not None:
+        convert_meshroom_to_log(args.convert[0])
+
+    if args.eval is not None:
+        gt_traj_fpath, est_traj_fpath = args.eval
+        evaluate(
+            airsim_traj_fpath=gt_traj_fpath,
+            meshroom_traj_fpath=est_traj_fpath
+        )
 
 
 ###############################################################################
