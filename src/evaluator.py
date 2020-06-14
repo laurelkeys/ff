@@ -47,13 +47,17 @@ def main(args):
     views, poses = MeshroomParser.parse_cameras(args.cameras_file_path)
     views_dict, poses_dict = MeshroomParser.extract_views_and_poses(views, poses)
 
+    print("timestamp tx ty tz qx qy qz qw")
+    record_lines = []
     for view_id, view in views_dict.items():
-        print(f"{view_id=}")
         position = MeshroomTransform.translation(poses_dict[view.pose_id].center)
         orientation = MeshroomTransform.rotation(poses_dict[view.pose_id].rotation, as_quaternion=True)
-        line_str = make_record_line(parse_timestamp(view.path), position, orientation)
-        print(line_str)
-        break
+        timestamp = parse_timestamp(view.path)
+        line_str = make_record_line(timestamp, position, orientation)
+        record_lines.append((timestamp, line_str))
+
+    # sort by timestamp
+    print("\n".join(map(lambda _: _[1], sorted(record_lines))))
 
 
 if __name__ == "__main__":
