@@ -93,7 +93,7 @@ def get_record_line_from(client_or_image_response):
     """ Modified implementation of AirSim's recording function.
         See: AirSim/Unreal/Plugins/AirSim/Source/PawnSimApi.cpp#L554
     """
-    # NOTE AirSim uses WXYZ for quaternions, here we return XYZW, also,
+    # NOTE AirSim uses WXYZ for quaternions, here we return XYZW. Also,
     #      while it uses the client's pose, there's a slight difference
     #      in the `position` captured by image_response, owing to the camera,
     #      and there can be large ones in `orientation` when using MaxDegreeOfFreedom
