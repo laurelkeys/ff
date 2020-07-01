@@ -3,10 +3,12 @@ import os, sys
 from __vendor_to_path__ import __vendor_path
 
 __TanksAndTemples_path = os.path.join(__vendor_path, "TanksAndTemples")
+
+sys.path.insert(0,  os.path.join(__TanksAndTemples_path, "python_toolbox"))
 sys.path.insert(0,  os.path.join(__TanksAndTemples_path, "python_toolbox", "evaluation"))
 
 from TanksAndTemples.python_toolbox import (
-    # convert_to_logfile,   # imports read_model (?)
+    convert_to_logfile,     # imports read_model (copied from COLMAP)
     interpolate_log_file,
 )
 
@@ -23,7 +25,7 @@ from TanksAndTemples.python_toolbox.evaluation import (
     run,                    # imports open3d, config, registration, evaluation, util, plot
 )
 
-del sys.path[0], sys, os
+del sys.path[0:2], sys, os
 
 if __name__ == "__main__":
     print(f"vendor path = '{__vendor_path}'")
