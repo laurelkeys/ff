@@ -8,7 +8,7 @@ sys.path.insert(0,  os.path.join(__TanksAndTemples_path, "python_toolbox"))
 sys.path.insert(0,  os.path.join(__TanksAndTemples_path, "python_toolbox", "evaluation"))
 
 from TanksAndTemples.python_toolbox import (
-    convert_to_logfile,     # imports read_model (copied from COLMAP)
+    # convert_to_logfile,   # imports read_model (NOTE needs to be copied from https://github.com/colmap/colmap)
     interpolate_log_file,
 )
 
