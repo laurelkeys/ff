@@ -51,7 +51,7 @@ def convert_meshroom_to_log(cameras_fpath):
     views_dict, poses_dict = MeshroomParser.extract_views_and_poses(views, poses)
 
     record_lines = []
-    for view_id, view in views_dict.items():
+    for _view_id, view in views_dict.items():
         timestamp = os.path.splitext(os.path.basename(view.path))[0].split("_")[1]  # HACK
 
         pose = poses_dict[view.pose_id]

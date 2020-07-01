@@ -1,5 +1,4 @@
-import os
-import sys
+import os, sys
 
 __ff_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),

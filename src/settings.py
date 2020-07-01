@@ -5,6 +5,5 @@ ue4editor_exe_path = "D:\\Program Files\\Epic Games\\UE_4.24\\Engine\\Binaries\\
 move_by_velocity = True
 move_by_position = not move_by_velocity
 
-game_resX = 1280
-game_resY = 720
+game_res = (1280, 720)
 windowed = True

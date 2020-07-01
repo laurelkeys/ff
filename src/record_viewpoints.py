@@ -158,7 +158,7 @@ def get_parser() -> argparse.ArgumentParser:
         metavar="OUTPUT_FOLDER",
         type=str,
         default="D:\\Pictures\\Temp\\airsim",
-        help="Image output folder  (default: %(default)s/)",
+        help="Image output folder  (default: %(default)s)",
     )
 
     ff.add_arguments_to(parser)
