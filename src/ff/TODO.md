@@ -4,3 +4,4 @@
 - [ ] https://github.com/harvard-edge/airlearning-rl/blob/master/misc/move_to_airsim/move.py
 - [ ] https://github.com/microsoft/AirSim/issues/1677#issuecomment-469999696
 - [ ] https://github.com/microsoft/AirSim/issues/1677#issuecomment-605440212
+- [ ] automatically change `SimMode` for `cv_*.py` files (also restore it)
