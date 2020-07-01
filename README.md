@@ -22,5 +22,10 @@
 │   │   └── ff              # Drone scripts common code wrapper
 │   └── viewpoints          # Images captured in the simulator
 │
+├── src                     # 🚧 WIP revamping of the whole code
+│
 └── visualization           # Open3D related code
 ```
+
+## 🚧 WIP
+Currently, everything is being rewritten in `src/`, so there's no work being done on other folders as they will either be copied and updated inside of `src/`, or deleted once it's done and the project is reestructured.
