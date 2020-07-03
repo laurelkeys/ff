@@ -1,8 +1,5 @@
 import os
-import sys
 import json
-import time
-import msvcrt
 import argparse
 
 from pynput import keyboard
@@ -42,37 +39,42 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     points, poses, names = [], [], []
     for position, orientation in args.viewpoints:
         position = airsim.Vector3r(*position)
-        orientation = airsim.Quaternionr(*orientation)  # FIXME wxyz or xyzw?
+        orientation = airsim.Quaternionr(*orientation)  # xyzw
         points.append(position)
         poses.append(airsim.Pose(position, orientation))
         names.append(ff.to_xyz_str(position) + "\n" + ff.to_xyzw_str(orientation))
 
-    # client.simPlotPoints(points, duration=10)
-    # client.simPlotLineStrip(points, thickness = 2.0, duration=10)
-    # client.simPlotTransforms(poses, scale = 20.0, thickness = 4.0, duration=10)
-    # client.simPlotTransformsWithNames(poses, names, tf_scale = 20.0, tf_thickness = 4.0, text_scale = 1.0, duration=10)
+    plot_linestrips = True  # else plot_transforms
+    curr_press_keys = set()
+    key_combination = {keyboard.Key.space, keyboard.Key.shift}
 
-    checked = False
     def on_press(key):
-        nonlocal checked
-        # https://pythonhosted.org/pynput/keyboard.html#pynput.keyboard.Key
-        if key == keyboard.Key.space:
-            checked = not checked
-            if checked:
-                client.simPlotLineStrip(points, thickness = 2.0, is_persistent=True)
-            else:
-                client.simFlushPersistentMarkers()
+        nonlocal plot_linestrips, curr_press_keys, key_combination
+        if key in key_combination:
+            curr_press_keys.add(key)
+            if curr_press_keys == {keyboard.Key.space}:
+                if (plot_linestrips := not plot_linestrips) :
+                    client.simPlotLineStrip(points, thickness=3, duration=10)
+                else:
+                    client.simPlotTransforms(poses, thickness=3, scale=40, duration=10)
 
     def on_release(key):
+        nonlocal curr_press_keys, key_combination
         if key == keyboard.Key.esc:
             return False  # stop the listener
+        if key in key_combination:
+            curr_press_keys.remove(key)
 
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
-        listener.join()
+        print("[ff] Press [esc] to quit")
+        listener.join()  # NOTE waits for an on_release() callback to return False
 
-    # TODO https://stackoverflow.com/questions/24072790/detect-key-press-in-python
-    # https://pythonhosted.org/pynput/keyboard.html
-    # https://zsiegel92.github.io/evilpython/lesson_6.html
+    # TODO only listen for keys in the environment application:
+    # - https://stackoverflow.com/a/53210441
+    # - https://stackoverflow.com/a/43791403
+    # - https://stackoverflow.com/a/58333425
+    # - https://askubuntu.com/a/909678
+    # - https://askubuntu.com/a/1199313
 
     print("[ff] Done")
 

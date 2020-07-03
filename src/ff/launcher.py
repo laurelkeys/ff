@@ -1,5 +1,4 @@
 import os
-import warnings
 import subprocess
 
 from glob import glob
