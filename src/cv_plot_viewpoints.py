@@ -1,9 +1,11 @@
 import os
 import sys
-import time
 import json
+import time
 import msvcrt
 import argparse
+
+from pynput import keyboard
 
 import ff
 
@@ -37,15 +39,40 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.verbose:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
 
-    points, poses = [], []
+    points, poses, names = [], [], []
     for position, orientation in args.viewpoints:
-        point = airsim.Vector3r(*position)
-        points.append(point)
-        poses.append(airsim.Pose(point, airsim.Quaternionr(*orientation)))  # FIXME wxyz or xyzw?
+        position = airsim.Vector3r(*position)
+        orientation = airsim.Quaternionr(*orientation)  # FIXME wxyz or xyzw?
+        points.append(position)
+        poses.append(airsim.Pose(position, orientation))
+        names.append(ff.to_xyz_str(position) + "\n" + ff.to_xyzw_str(orientation))
 
     # client.simPlotPoints(points, duration=10)
-    # client.simPlotLineStrip(points, duration=10)
-    client.simPlotArrows(points, points[1:] + [points[0]], duration=10)
+    # client.simPlotLineStrip(points, thickness = 2.0, duration=10)
+    # client.simPlotTransforms(poses, scale = 20.0, thickness = 4.0, duration=10)
+    # client.simPlotTransformsWithNames(poses, names, tf_scale = 20.0, tf_thickness = 4.0, text_scale = 1.0, duration=10)
+
+    checked = False
+    def on_press(key):
+        nonlocal checked
+        # https://pythonhosted.org/pynput/keyboard.html#pynput.keyboard.Key
+        if key == keyboard.Key.space:
+            checked = not checked
+            if checked:
+                client.simPlotLineStrip(points, thickness = 2.0, is_persistent=True)
+            else:
+                client.simFlushPersistentMarkers()
+
+    def on_release(key):
+        if key == keyboard.Key.esc:
+            return False  # stop the listener
+
+    with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
+        listener.join()
+
+    # TODO https://stackoverflow.com/questions/24072790/detect-key-press-in-python
+    # https://pythonhosted.org/pynput/keyboard.html
+    # https://zsiegel92.github.io/evilpython/lesson_6.html
 
     print("[ff] Done")
 
