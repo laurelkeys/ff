@@ -7,3 +7,7 @@ move_by_position = not move_by_velocity
 
 game_res = (1280, 720)
 windowed = True
+
+# NOTE the settings.json location can now be specified,
+#      instead of being hard-coded to Documents\AirSim\
+#      https://microsoft.github.io/AirSim/settings/#where-are-settings-stored
