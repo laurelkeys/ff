@@ -1,20 +1,34 @@
+from enum import Enum
+
 from .types import to_xyz_str, to_xyzw_str, angles_to_str
 
 ###############################################################################
 ###############################################################################
 
+class Color(Enum):
+    RESET   = '\033[0m'
+    GREY    = '\033[90m'
+    RED     = '\033[91m'
+    GREEN   = '\033[92m'
+    YELLOW  = '\033[93m'
+    BLUE    = '\033[94m'
+    MAGENTA = '\033[95m'
+
+def log_colored(color: Color, *args, **kwargs):
+    print(color.value, end="")
+    print(*args, Color.RESET.value, **kwargs)
 
 def log_info(*args, **kwargs):
-    print("[INFO]", *args, **kwargs)
+    log_colored(Color.YELLOW, "[INFO]", *args, **kwargs)
 
 def log_error(*args, **kwargs):
-    print("[ERROR]", *args, **kwargs)
+    log_colored(Color.RED, "[ERROR]", *args, **kwargs)
 
 def log_debug(*args, **kwargs):
-    print("[DEBUG]", *args, **kwargs)
+    log_colored(Color.GREY, "[DEBUG]", *args, **kwargs)
 
 def log_warning(*args, **kwargs):
-    print("[WARNING]", *args, **kwargs)
+    log_colored(Color.MAGENTA, "[WARNING]", *args, **kwargs)
 
 
 ###############################################################################
