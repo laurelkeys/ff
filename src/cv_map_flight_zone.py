@@ -42,10 +42,9 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         assert False, f"Please change the SimMode from '{sim_mode}' to 'ComputerVision'"
 
     zone = Rect(Vector3r(), Vector3r(0, 10, 0), Vector3r(10, 0, 0))
-    corners = zone.corners()
-    corners.append(corners[0])  # repeat the first coordinate to close the line strip
 
-    client.simPlotLineStrip(points=corners, duration=5)
+    # repeat the first coordinate to close the line strip
+    client.simPlotLineStrip(points=zone.corners(repeat_first=True), is_persistent=True)
 
     # NOTE available keys, not used by AirSim:
     # ,----------------------------------------------------------------------------------------.
@@ -64,13 +63,34 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     swap_mode_key = keyboard.Key.shift_l
 
     def on_press(key):
-        nonlocal edit_mode, swap_mode_key
+        nonlocal edit_mode, swap_mode_key, zone
         if key == swap_mode_key:
             edit_mode = EditMode.next(edit_mode)
             client.simPrintLogMessage("Current edit mode: ", message_param=edit_mode.name)
+            client.simPrintLogMessage("ROI coordinates: ", message_param=str(zone))
+        else:
+            try:
+                # NOTE AirSim uses NED coordinates
+                if edit_mode == EditMode.TRANSLATING:
+                    if   key.char == "z": zone.center.y_val += 1  # right
+                    elif key.char == "x": zone.center.y_val -= 1  # left
+                    elif key.char == "c": zone.center.x_val += 1  # front
+                    elif key.char == "v": zone.center.x_val -= 1  # back
+                    else: return
+                elif edit_mode == EditMode.SCALING:
+                    if   key.char == "z": zone.half_width *= 1.1  # inc. horizontally
+                    elif key.char == "x": zone.half_width *= 0.9  # dec. horizontally
+                    elif key.char == "c": zone.half_height *= 1.1  # inc. vertically
+                    elif key.char == "v": zone.half_height *= 0.9  # dec. vertically
+                    else: return
+                else: return
+                # FIXME calling this too many times causes UE4 to crash..
+                #       see "./simPlotLineStrip crash.png" for more info
+                client.simFlushPersistentMarkers()
+                client.simPlotLineStrip(points=zone.corners(repeat_first=True), is_persistent=True)
+            except: pass
 
     def on_release(key):
-        print("{0} released".format(key))
         if key == keyboard.Key.esc:
             return False  # stop the listener
 
@@ -115,13 +135,17 @@ class Rect:
         self.half_width = width / 2.0
         self.half_height = height / 2.0
 
-    def corners(self) -> List[airsim.Vector3r]:
-        return [
+    def corners(self, repeat_first: bool = False) -> List[airsim.Vector3r]:
+        corners = [
             self.center - self.half_width - self.half_height,
             self.center + self.half_width - self.half_height,
             self.center + self.half_width + self.half_height,
             self.center - self.half_width + self.half_height,
         ]
+        return corners if not repeat_first else corners + [corners[0]]
+
+    def __str__(self) -> str:
+        return f"Rect({', '.join([ff.to_xyz_str(_) for _ in (self.center, self.half_width, self.half_height)])})"
 
 
 def main(args: argparse.Namespace) -> None:
