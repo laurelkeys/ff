@@ -53,10 +53,11 @@ class LaunchEnvArgs:
         log_warning("env_name=None, trying to find a valid environment file in env_root..")
         assert possibilities, f"No environment was found for {env_root=}"
         if len(possibilities) > 1:
+            lpad = len(str(len(possibilities)))  # left padding
             print(
                 f"\nMultiple environment files were found for {env_root=}"
-                + "\nChoosing the first one from the following:\n- "
-                + "\n- ".join(possibilities)
+                + "\nChoosing the first one from the following:\n"
+                + "\n".join([f" {i+1:{lpad}}. {env}" for i, env in enumerate(possibilities)])
                 + "\n"
             )
         return possibilities[0]

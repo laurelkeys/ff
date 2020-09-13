@@ -18,6 +18,9 @@ def log_colored(color: Color, *args, **kwargs):
     print(color.value, end="")
     print(*args, Color.RESET.value, **kwargs)
 
+def log(*args, **kwargs):
+    log_colored(Color.GREEN, "[ff]", *args, **kwargs)
+
 def log_info(*args, **kwargs):
     log_colored(Color.YELLOW, "[INFO]", *args, **kwargs)
 

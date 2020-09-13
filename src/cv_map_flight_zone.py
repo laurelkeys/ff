@@ -2,10 +2,11 @@
 # https://www.pix4d.com/product/pix4dcapture
 # https://heighttech.nl/flight-planning-software/
 
-import os
-import json
+from __future__ import annotations
+
 import argparse
 
+from enum import Enum
 from typing import List
 
 from pynput import keyboard
@@ -17,8 +18,8 @@ try:
 except ModuleNotFoundError:
     ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
     import airsim
-
-from airsim.types import Vector3r
+finally:
+    from airsim.types import Vector3r
 
 
 ###############################################################################
@@ -42,9 +43,41 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
     zone = Rect(Vector3r(), Vector3r(0, 10, 0), Vector3r(10, 0, 0))
     corners = zone.corners()
-    corners.append(corners[0]) # repeat the first coordinate to close the line strip
+    corners.append(corners[0])  # repeat the first coordinate to close the line strip
 
     client.simPlotLineStrip(points=corners, duration=5)
+
+    # NOTE available keys, not used by AirSim:
+    # ,----------------------------------------------------------------------------------------.
+    # |  ` |     |     |     |  4  |  5  |  6  |  7  |  8  |  9  |     |  -* |  =  |           |
+    # |----------------------------------------------------------------------------------------+
+    # |  Tab   |     |     |     |     |     |  Y  |  U  |  I* |  O  |  P  |  [  |  ]  |       |
+    # |----------------------------------------------------------------------------------------+
+    # |  CpsLck |     |     |     |     |  G  |  H  |  J  |  K*  |  L  |     |  '  |    Enter  |
+    # |----------------------------------------------------------------------------------------+
+    # |   Shift   |  Z  |  X  |  C  |  V  |     |  N  |     |  ,  |  .  |     |      Shift     |
+    # `----------------------------------------------------------------------------------------'
+
+    edit_mode: EditMode = EditMode.TRANSLATING
+
+    # define keyboard callbacks
+    swap_mode_key = keyboard.Key.shift_l
+
+    def on_press(key):
+        nonlocal edit_mode, swap_mode_key
+        if key == swap_mode_key:
+            edit_mode = EditMode.next(edit_mode)
+            client.simPrintLogMessage("Current edit mode: ", message_param=edit_mode.name)
+
+    def on_release(key):
+        print("{0} released".format(key))
+        if key == keyboard.Key.esc:
+            return False  # stop the listener
+
+    # collect events untill released
+    with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
+        ff.log("Press [esc] to quit")
+        listener.join()
 
     # TODO plot a circle (maybe get its initial position form args)
     # https://github.com/microsoft/AirSim/pull/2304
@@ -56,12 +89,22 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
     # TODO save the circle position so that it can be used to fly a drone later
 
-    print("[ff] Done")
+    ff.log("Done")
 
 
 ###############################################################################
 ## main #######################################################################
 ###############################################################################
+
+
+class EditMode(Enum):
+    SCALING = 0
+    TRANSLATING = 1
+
+    @staticmethod
+    def next(edit_mode: EditMode) -> EditMode:
+        edit_modes = list(EditMode)
+        return edit_modes[(edit_mode.value + 1) % len(edit_modes)]
 
 
 class Rect:
