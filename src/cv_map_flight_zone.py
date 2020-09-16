@@ -2,8 +2,12 @@
 # https://www.pix4d.com/product/pix4dcapture
 # https://heighttech.nl/flight-planning-software/
 
+# TODO try using UE4's specific API calls for plotting
+
 from __future__ import annotations
 
+import json
+import time
 import argparse
 
 from enum import Enum
@@ -61,16 +65,28 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
     # define keyboard callbacks
     swap_mode_key = keyboard.Key.shift_l
+    save_rect_key = keyboard.Key.shift_r
 
     def on_press(key):
         nonlocal edit_mode, swap_mode_key, zone
+
+        client.simPrintLogMessage("ROI coordinates: ", message_param=str(zone))
+
         if key == swap_mode_key:
             edit_mode = EditMode.next(edit_mode)
             client.simPrintLogMessage("Current edit mode: ", message_param=edit_mode.name)
-            client.simPrintLogMessage("ROI coordinates: ", message_param=str(zone))
+
+        elif key == save_rect_key:
+            # TODO prefix by the UE4 env name:
+            roi_filename = '-'.join(("roi", time.strftime(r"%Y%m%d-%H%M%S")))
+            with open(roi_filename, 'w') as f:
+                json.dump(zone, f)
+            client.simPrintLogMessage(f"Saved ROI coordinates to '{roi_filename}'")
+
         else:
             try:
                 # NOTE AirSim uses NED coordinates
+                # TODO refactor the if-statements below with a dict (?)
                 if edit_mode == EditMode.TRANSLATING:
                     if   key.char == "z": zone.center.y_val += 1  # right
                     elif key.char == "x": zone.center.y_val -= 1  # left
@@ -85,10 +101,11 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
                     else: return
                 else: return
                 # FIXME calling this too many times causes UE4 to crash..
-                #       see "./simPlotLineStrip crash.png" for more info
+                #       see "./images/simPlotLineStrip crash.png" for more info
                 client.simFlushPersistentMarkers()
                 client.simPlotLineStrip(points=zone.corners(repeat_first=True), is_persistent=True)
             except: pass
+
 
     def on_release(key):
         if key == keyboard.Key.esc:
@@ -98,14 +115,6 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
         ff.log("Press [esc] to quit")
         listener.join()
-
-    # TODO plot a circle (maybe get its initial position form args)
-    # https://github.com/microsoft/AirSim/pull/2304
-    # https://github.com/microsoft/AirSim/pull/2506
-
-    # TODO scale the circle using the keyboard
-    # TODO move the circle using the keyboard
-    # TODO switch between "input types": scaling / moving
 
     # TODO save the circle position so that it can be used to fly a drone later
 
