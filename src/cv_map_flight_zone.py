@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 import argparse
 
@@ -45,7 +46,12 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if (sim_mode := ff.curr_sim_mode()) != ff.SimMode.ComputerVision:
         assert False, f"Please change the SimMode from '{sim_mode}' to 'ComputerVision'"
 
-    zone = Rect(Vector3r(), Vector3r(0, 10, 0), Vector3r(10, 0, 0))
+    if args.roi is not None:
+        ff.log_info(f"Loading ROI from '{args.roi}'\n")
+        with open(args.roi, "r") as f:
+            zone = Rect.from_dump(f.read())
+    else:
+        zone = Rect(Vector3r(), Vector3r(0, 10, 0), Vector3r(10, 0, 0))
 
     # repeat the first coordinate to close the line strip
     client.simPlotLineStrip(points=zone.corners(repeat_first=True), is_persistent=True)
@@ -60,6 +66,9 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     # |----------------------------------------------------------------------------------------+
     # |   Shift   |  Z  |  X  |  C  |  V  |     |  N  |     |  ,  |  .  |     |      Shift     |
     # `----------------------------------------------------------------------------------------'
+    ff.log("Use [z], [x], [c], [v] to move the region of interest (ROI)")
+    ff.log("Press [lshift] to swap editing modes (translating, scaling)")
+    ff.log("Press [rshift] to save the current ROI to json")
 
     edit_mode: EditMode = EditMode.TRANSLATING
 
@@ -77,35 +86,14 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             client.simPrintLogMessage("Current edit mode: ", message_param=edit_mode.name)
 
         elif key == save_rect_key:
-            # TODO prefix by the UE4 env name:
-            roi_filename = '-'.join(("roi", time.strftime(r"%Y%m%d-%H%M%S")))
-            with open(roi_filename, 'w') as f:
-                json.dump(zone, f)
-            client.simPrintLogMessage(f"Saved ROI coordinates to '{roi_filename}'")
+            filename = save_zone(args.outputdir, zone)
+            client.simPrintLogMessage(f"Saved ROI coordinates to '{filename}'")
 
-        else:
-            try:
-                # NOTE AirSim uses NED coordinates
-                # TODO refactor the if-statements below with a dict (?)
-                if edit_mode == EditMode.TRANSLATING:
-                    if   key.char == "z": zone.center.y_val += 1  # right
-                    elif key.char == "x": zone.center.y_val -= 1  # left
-                    elif key.char == "c": zone.center.x_val += 1  # front
-                    elif key.char == "v": zone.center.x_val -= 1  # back
-                    else: return
-                elif edit_mode == EditMode.SCALING:
-                    if   key.char == "z": zone.half_width *= 1.1  # inc. horizontally
-                    elif key.char == "x": zone.half_width *= 0.9  # dec. horizontally
-                    elif key.char == "c": zone.half_height *= 1.1  # inc. vertically
-                    elif key.char == "v": zone.half_height *= 0.9  # dec. vertically
-                    else: return
-                else: return
-                # FIXME calling this too many times causes UE4 to crash..
-                #       see "./images/simPlotLineStrip crash.png" for more info
-                client.simFlushPersistentMarkers()
-                client.simPlotLineStrip(points=zone.corners(repeat_first=True), is_persistent=True)
-            except: pass
-
+        elif edit_zone(key, edit_mode, zone):
+            # FIXME calling this too many times causes UE4 to crash..
+            #       see "./images/simPlotLineStrip crash.png" for more info
+            client.simFlushPersistentMarkers()
+            client.simPlotLineStrip(points=zone.corners(repeat_first=True), is_persistent=True)
 
     def on_release(key):
         if key == keyboard.Key.esc:
@@ -116,9 +104,40 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         ff.log("Press [esc] to quit")
         listener.join()
 
-    # TODO save the circle position so that it can be used to fly a drone later
-
     ff.log("Done")
+    if args.clear:
+        client.simFlushPersistentMarkers()
+
+def save_zone(dir, zone):
+    # TODO prefix by the UE4 env name:
+    filename = "_".join(("roi", time.strftime(r"%Y-%m-%d_%H-%M-%S"))) + ".txt"
+    if dir is not None: filename = os.path.join(dir, filename)
+    with open(filename, "w") as f: f.write(Rect.to_dump(zone))
+    return filename
+
+
+def edit_zone(key, edit_mode, zone) -> bool:
+    try:
+        if key.char not in ["z", "x", "c", "v"]:
+            return False
+    except: return False
+
+    # NOTE AirSim uses NED coordinates
+    if edit_mode == EditMode.TRANSLATING:
+        if   key.char == "z": zone.center.y_val += 1  # right
+        elif key.char == "x": zone.center.y_val -= 1  # left
+        elif key.char == "c": zone.center.x_val += 1  # front
+        elif key.char == "v": zone.center.x_val -= 1  # back
+
+    elif edit_mode == EditMode.SCALING:
+        if   key.char == "z": zone.half_width  *= 1.1  # inc. horizontally
+        elif key.char == "x": zone.half_width  *= 0.9  # dec. horizontally
+        elif key.char == "c": zone.half_height *= 1.1  # inc. vertically
+        elif key.char == "v": zone.half_height *= 0.9  # dec. vertically
+
+    else: assert False
+
+    return True  # we edited the zone, so it need to be redrawn
 
 
 ###############################################################################
@@ -156,6 +175,25 @@ class Rect:
     def __str__(self) -> str:
         return f"Rect({', '.join([ff.to_xyz_str(_) for _ in (self.center, self.half_width, self.half_height)])})"
 
+    @staticmethod
+    def to_dump(dump_rect: Rect) -> str:
+        return json.dumps(
+            {
+                "center": ff.to_xyz_tuple(dump_rect.center),
+                "half_width": ff.to_xyz_tuple(dump_rect.half_width),
+                "half_height": ff.to_xyz_tuple(dump_rect.half_height),
+            }
+        )
+
+    @staticmethod
+    def from_dump(dump_str: str) -> Rect:
+        json_repr = json.loads(dump_str)
+        return Rect(
+            Vector3r(*json_repr["center"]),
+            Vector3r(*[2 * _ for _ in json_repr["half_width"]]),
+            Vector3r(*[2 * _ for _ in json_repr["half_height"]]),
+        )
+
 
 def main(args: argparse.Namespace) -> None:
     if args.verbose:
@@ -187,6 +225,10 @@ def connect_to_airsim() -> airsim.MultirotorClient:
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="")
+
+    parser.add_argument("--roi", type=str, help="Load in an initial ROI")
+    parser.add_argument("--clear", action="store_true", help="Clear plot lines on exit")
+    parser.add_argument("--outputdir", type=str, help="Output directory to save ROI files")
 
     ff.add_arguments_to(parser)
     return parser

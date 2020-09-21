@@ -100,10 +100,11 @@ class Vec3:
         return Vec3.dot(self, self)
 
     def length(self):
-        return sqrt(self.length_squared)
+        return sqrt(self.length_squared())
 
     def normalized(self):
-        return self / self.length()
+        l = self.length()
+        return Vec3(self.x / l, self.y / l, self.z / l)
 
     @staticmethod
     def from_GeoPoint(geopoint):
