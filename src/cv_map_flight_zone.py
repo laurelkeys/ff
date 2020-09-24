@@ -90,8 +90,6 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             client.simPrintLogMessage(f"Saved ROI coordinates to '{filename}'")
 
         elif edit_zone(key, edit_mode, zone):
-            # FIXME calling this too many times causes UE4 to crash..
-            #       see "./images/simPlotLineStrip crash.png" for more info
             client.simFlushPersistentMarkers()
             client.simPlotLineStrip(points=zone.corners(repeat_first=True), is_persistent=True)
 

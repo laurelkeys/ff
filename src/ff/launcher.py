@@ -170,7 +170,7 @@ def _run_env(env_path, env_ext, env_proc=None, **kwargs):
 def _build_run_cmds(
     env_path, env_ext,
     ue4editor_exe_path=None, devenv_exe_path=None,
-    res=(1280, 720), windowed=True,
+    res=(1280, 720), windowed=True, settings=None
 ):
     if env_ext == ".uproject":
         assert os.path.isfile(ue4editor_exe_path), ue4editor_exe_path
@@ -179,6 +179,8 @@ def _build_run_cmds(
             cmds.extend([f"-ResX={res[0]}", f"-ResY={res[1]}"])
         if windowed:
             cmds.append("-windowed")
+        if settings is not None:
+            cmds.extend(["--settings", f"{settings}"])
 
     elif env_ext == ".sln":
         assert os.path.isfile(devenv_exe_path), devenv_exe_path
@@ -190,9 +192,15 @@ def _build_run_cmds(
             cmds.extend([f"-ResX={res[0]}", f"-ResY={res[1]}"])
         if windowed:
             cmds.append("-windowed")
+        if settings is not None:
+            cmds.extend(["--settings", f"{settings}"])
 
     else:
         assert False, env_path
+
+    if settings is not None:
+        # TODO debug this further
+        log_warning("The '--settings' argument for AirSim does not seem to work")
 
     return cmds
 
