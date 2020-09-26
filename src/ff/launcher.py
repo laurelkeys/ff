@@ -163,14 +163,17 @@ def _run_env(env_path, env_ext, env_proc=None, **kwargs):
             return []
 
     run_cmds = _build_run_cmds(env_path, env_ext, **kwargs)
-    subprocess.Popen(run_cmds, shell=True, stdout=subprocess.PIPE)
+    proc = subprocess.Popen(run_cmds, shell=True, stdout=subprocess.PIPE)
+    log_debug(f"pid={proc.pid}")
+
     return run_cmds
 
 
 def _build_run_cmds(
     env_path, env_ext,
     ue4editor_exe_path=None, devenv_exe_path=None,
-    res=(1280, 720), windowed=True, settings=None
+    res=(1280, 720), windowed=True,
+    settings=None  # NOTE use `helper.py`'s methods to create this value
 ):
     if env_ext == ".uproject":
         assert os.path.isfile(ue4editor_exe_path), ue4editor_exe_path
@@ -197,10 +200,6 @@ def _build_run_cmds(
 
     else:
         assert False, env_path
-
-    if settings is not None:
-        # TODO debug this further
-        log_warning("The '--settings' argument for AirSim does not seem to work")
 
     return cmds
 

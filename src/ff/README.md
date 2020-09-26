@@ -24,3 +24,4 @@
 - [ ] Make sure every script uses `ff.add_airsim_to_path` when importing AirSim, and that `airsim`-specific imports are done in a `finally` block (e.g. `from airsim.types import Vector3r`)
 - [ ] Check `args.verbose` and use something like `ff.log_debug` where appropriate
 - [ ] Run `black` on all scripts, remove unused imports with `Pylance`, and add missing docstrings
+- [ ] Check out [Unreal Engine](https://docs.unrealengine.com/en-US/Programming/Basics/CommandLineArguments/index.html)'s commands: `LOG`, `VADEBUG`, `VERBOSE`

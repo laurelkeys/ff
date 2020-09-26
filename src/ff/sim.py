@@ -19,6 +19,17 @@ class SimMode:
     _list_all      = [Default, Car, Multirotor, ComputerVision]
 
 
+class ViewMode:
+    Default        = ""
+    FlyWithMe      = "FlyWithMe"
+    GroundObserver = "GroundObserver"
+    Fpv            = "Fpv"
+    Manual         = "Manual"
+    SpringArmChase = "SpringArmChase"
+    NoDisplay      = "NoDisplay"
+    _list_all      = [Default, FlyWithMe, GroundObserver, Fpv, Manual, SpringArmChase, NoDisplay]
+
+
 ###############################################################################
 ###############################################################################
 
