@@ -1,6 +1,6 @@
 import os, sys
 
-from __vendor_to_path__ import __vendor_path
+from .__vendor_to_path__ import __vendor_path
 
 __TanksAndTemples_path = os.path.join(__vendor_path, "TanksAndTemples")
 
