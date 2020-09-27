@@ -17,6 +17,7 @@
 - [ ] See https://github.com/harvard-edge/airlearning-rl/blob/master/misc/move_to_airsim/move.py
 - [ ] See https://github.com/microsoft/AirSim/issues/1677#issuecomment-469999696
 - [ ] See https://github.com/microsoft/AirSim/issues/1677#issuecomment-605440212
+- [ ] See https://github.com/microsoft/AirSim/pull/2324
 - [ ] Automatically change `SimMode` for `cv_*.py` files (and also restore it)
 - [ ] Only choose the first environment (when there's more than one possibility) if a flag `--choose` is passed, it might be better for this to be the default behavior instead
   - [ ] Add an argument to it, so that calling `$ ... --launch --choose 2` starts the second environment from the list of possibilities
@@ -25,3 +26,4 @@
 - [ ] Check `args.verbose` and use something like `ff.log_debug` where appropriate
 - [ ] Run `black` on all scripts, remove unused imports with `Pylance`, and add missing docstrings
 - [ ] Check out [Unreal Engine](https://docs.unrealengine.com/en-US/Programming/Basics/CommandLineArguments/index.html)'s commands: `LOG`, `VADEBUG`, `VERBOSE`
+- [ ] Add a method to `airsimy.AirSimRotation` to convert from/to `airsim.Quaternionr`

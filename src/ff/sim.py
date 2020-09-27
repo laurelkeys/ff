@@ -9,6 +9,7 @@ class CameraName:
     front_left    = "front_left"    # 2
     bottom_center = "bottom_center" # 3
     back_center   = "back_center"   # 4
+    _list_all     = ["0", "1", "2", "3", "4", front_center, front_right, front_left, bottom_center, back_center]
 
 
 class SimMode:
