@@ -1,6 +1,4 @@
 from __future__ import annotations
-from ff.sim import SimMode
-from ff.helper import settings_dict, settings_dict_to_json
 
 import os
 import argparse
@@ -8,6 +6,9 @@ import argparse
 import numpy as np
 
 import ff
+
+from ff.helper import settings_str_from_dict
+from wrappers.airsimy import AirSimSettings
 
 try:
     import airsim
@@ -28,7 +29,19 @@ def preflight(args: argparse.Namespace) -> None:
         # the --launch option was passed
         ff.launch_env(
             *ff.LaunchEnvArgs(args),
-            settings=settings_dict_to_json(settings_dict())
+            settings=settings_str_from_dict(
+                AirSimSettings(
+                    sim_mode=ff.SimMode.Multirotor,
+                    view_mode=ff.ViewMode.Fpv,
+                    vehicles=[
+                        AirSimSettings.Vehicle(
+                            "Drone1",
+                            default_vehicle_state=AirSimSettings.Vehicle.DefaultVehicleState.Armed,
+                            position=airsim.Vector3r(0, 10, -10),
+                        )
+                    ],
+                ).as_dict()
+            )
             # settings='"D:\\Documents\\Github\\ff\\src\\logs\\car_settings.json"'
             # settings='"{ \\"SettingsVersion\\": 1.2, \\"SimMode\\": \\"Car\\" }"'
             # settings='D:/Documents/Temp/Blocks/settings.json'
@@ -96,6 +109,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
 
 from cv_map_flight_zone import Rect
+
 # TODO extract this to another file (maybe inside ff/), as this script
 #      and cv_map_flight_zone.py depend on it being synced between them.
 

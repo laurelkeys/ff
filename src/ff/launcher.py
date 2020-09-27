@@ -173,7 +173,7 @@ def _build_run_cmds(
     env_path, env_ext,
     ue4editor_exe_path=None, devenv_exe_path=None,
     res=(1280, 720), windowed=True,
-    settings=None  # NOTE use `helper.py`'s methods to create this value
+    settings=None  # NOTE use helper.py's methods to create this
 ):
     if env_ext == ".uproject":
         assert os.path.isfile(ue4editor_exe_path), ue4editor_exe_path

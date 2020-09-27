@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Type, Union
 
 import ff
 import numpy as np
@@ -87,30 +87,40 @@ class AirSimRotation:
     def nanRotation() -> AirSimRotation:
         return AirSimRotation(np.nan, np.nan, np.nan)
 
+    def as_dict(self) -> dict:
+        return {"Yaw": self.yaw, "Pitch": self.pitch, "Roll": self.roll}
+
 
 ###############################################################################
 ###############################################################################
 
 
 class AirSimSettings:
+    """ Creates a `dict` representation of AirSim's `settings.json` file. """
+
+    DictType = Dict[str, Union[str, int, float, dict, list]]
+
     def __init__(
         self,
         sim_mode: str = ff.SimMode.Multirotor,
         view_mode: str = ff.ViewMode.Default,
-        ## origin_geopoint: airsim.GeoPoint = None,
-        subwindows: List[AirSimSettings.Subwindow] = None,  # FIXME handle
+        clock_speed: float = 1.0,
+        camera_defaults: AirSimSettings.Camera = None,
+        origin_geopoint: airsim.GeoPoint = None,
+        subwindows: List[AirSimSettings.Subwindow] = None,
         vehicles: List[AirSimSettings.Vehicle] = None,
-        camera_defaults: AirSimSettings.Camera = None,  # FIXME handle
     ):
         self.settings_version = 1.2  # NOTE keep this synced with AirSim
         self.sim_mode = sim_mode
         self.view_mode = view_mode
+        self.clock_speed = clock_speed
+        self.camera_defaults = camera_defaults
+        self.origin_geopoint = origin_geopoint
         self.subwindows = subwindows
         self.vehicles = vehicles
-        self.camera_defaults = camera_defaults
 
-    def as_dict(self) -> dict:
-        settings: Dict[str, Any] = {"SettingsVersion": self.settings_version}
+    def as_dict(self) -> AirSimSettings.DictType:
+        settings: AirSimSettings.DictType = {"SettingsVersion": self.settings_version}
 
         if self.sim_mode != ff.SimMode.Default:
             settings["SimMode"] = self.sim_mode
@@ -118,84 +128,103 @@ class AirSimSettings:
         if self.view_mode != ff.ViewMode.Default:
             settings["ViewMode"] = self.view_mode
 
+        if self.clock_speed != 1.0:
+            settings["ClockSpeed"] = self.clock_speed
+
+        if self.camera_defaults is not None:
+            settings["CameraDefaults"] = self.camera_defaults.as_dict()
+
+        if self.origin_geopoint is not None:
+            settings["OriginGeopoint"] = {
+                "Latitude": self.origin_geopoint.latitude,
+                "Longitude": self.origin_geopoint.longitude,
+                "Altitude": self.origin_geopoint.altitude,
+            }
+
+        if self.subwindows is not None:
+            settings["SubWindows"] = [_.as_dict() for _ in self.subwindows]
+
         if self.vehicles is not None:
             settings["Vehicles"] = {_.name: _.as_dict() for _ in self.vehicles}
 
         return settings
-
-    class Subwindow:
-        def __init__(
-            self,
-            window_id: int = 0,
-            image_type: int = airsim.ImageType.Scene,
-            visible: bool = False,
-            camera_name: str = None,
-            vehicle_name: str = None,
-        ):
-            assert 0 <= window_id <= 2, window_id
-            self.window_id = window_id
-            self.image_type = image_type
-            self.visible = visible
-            self.camera_name = camera_name
-            self.vehicle_name = vehicle_name
 
     class CaptureSettings:
         def __init__(
             self,
             width: int = 960,
             height: int = 540,
-            fov_degrees: int = 90,
             image_type: int = airsim.ImageType.Scene,
+            fov_degrees: int = 90,
         ):
             self.width = width
             self.height = height
-            self.fov_degrees = fov_degrees
             self.image_type = image_type
+            self.fov_degrees = fov_degrees
 
-        def as_dict(self) -> dict:
-            capture_settings: Dict[str, Any] = {"ImageType": self.image_type}
-
-            if self.width is not None:
-                capture_settings["Width"] = self.width
-            if self.height is not None:
-                capture_settings["Height"] = self.height
-            if self.fov_degrees is not None:
-                capture_settings["FOV_Degrees"] = self.fov_degrees
-
+        def as_dict(self) -> AirSimSettings.DictType:
+            capture_settings: AirSimSettings.DictType = {"ImageType": self.image_type}
+            if self.width is not None: capture_settings["Width"] = self.width
+            if self.height is not None: capture_settings["Height"] = self.height
+            if self.fov_degrees is not None: capture_settings["FOV_Degrees"] = self.fov_degrees
             return capture_settings
 
-    ## class Gimbal:
-    ##     def __init__(
-    ##         self,
-    ##         stabilization: float = 0.0,
-    ##         rotation: AirSimRotation = None,
-    ##     ):
-    ##         self.stabilization = stabilization
-    ##         self.rotation = rotation
+    class Gimbal:
+        def __init__(
+            self, stabilization: float = 0.0, rotation: AirSimRotation = None,
+        ):
+            self.stabilization = stabilization
+            self.rotation = rotation
+
+        def as_dict(self) -> AirSimSettings.DictType:
+            gimbal: AirSimSettings.DictType = {"Stabilization": self.stabilization}
+            if self.rotation is not None: gimbal.update(self.rotation.as_dict())
+            return gimbal
 
     class Camera:
         def __init__(
             self,
-            position: airsim.Vector3r = None,
-            ## rotation: AirSimRotation = None,
-            ## gimbal: Gimbal = None,
             capture_settings: List[AirSimSettings.CaptureSettings] = None,
+            position: airsim.Vector3r = None,
+            rotation: AirSimRotation = None,
+            gimbal: AirSimSettings.Gimbal = None,
         ):
-            self.position = position
             self.capture_settings = capture_settings
+            self.position = position
+            self.rotation = rotation
+            self.gimbal = gimbal
 
-        def as_dict(self) -> dict:
-            camera = {}
-
-            if self.position is not None:
-                camera["X"] = self.position.x_val
-                camera["Y"] = self.position.y_val
-                camera["Z"] = self.position.z_val
-
-            if self.capture_settings is not None:
-                camera["CaptureSettings"] = [_.as_dict() for _ in self.capture_settings]
-
+        def as_dict(self) -> AirSimSettings.DictType:
+            camera: AirSimSettings.DictType = {}
+            if self.capture_settings is not None: camera["CaptureSettings"] = [_.as_dict() for _ in self.capture_settings]
+            if self.position is not None: camera.update({"X": self.position.x_val, "Y": self.position.y_val, "Z": self.position.z_val})
+            if self.rotation is not None: camera.update(self.rotation.as_dict())
+            if self.gimbal is not None: camera["Gimbal"] = self.gimbal.as_dict()
             return camera
+
+    class Subwindow:
+        def __init__(
+            self,
+            window_id: int = 0,
+            visible: bool = False,
+            image_type: int = airsim.ImageType.Scene,
+            camera_name: str = None,
+            vehicle_name: str = None,
+        ):
+            assert 0 <= window_id <= 2, window_id
+            self.window_id = window_id
+            self.visible = visible
+            self.image_type = image_type
+            self.camera_name = camera_name
+            self.vehicle_name = vehicle_name
+
+        def as_dict(self) -> AirSimSettings.DictType:
+            subwindow: AirSimSettings.DictType = {"WindowID": self.window_id}
+            if self.visible: subwindow["Visible"] = self.visible
+            if self.image_type is not None: subwindow["ImageType"] = self.image_type
+            if self.camera_name is not None: subwindow["CameraName"] = self.camera_name
+            if self.vehicle_name is not None: subwindow["VehicleName"] = self.vehicle_name
+            return subwindow
 
     class Vehicle:
         class VehicleType:
@@ -216,8 +245,7 @@ class AirSimSettings:
             rotation: AirSimRotation = None,
             cameras: Dict[str, AirSimSettings.Camera] = None,
         ):
-            if cameras is not None:
-                assert all([_ in ff.CameraName._list_all for _ in cameras.keys()]), cameras
+            assert cameras is None or all([_ in ff.CameraName._list_all for _ in cameras.keys()]), cameras
             self.name = name
             self.vehicle_type = vehicle_type
             self.default_vehicle_state = default_vehicle_state
@@ -225,26 +253,12 @@ class AirSimSettings:
             self.rotation = rotation
             self.cameras = cameras
 
-        def as_dict(self) -> dict:
-            # NOTE there's no default VehicleType, so it must be specified
-            vehicle: Dict[str, Any] = {"VehicleType": self.vehicle_type}
-
-            if self.default_vehicle_state is not None:
-                vehicle["DefaultVehicleState"] = self.default_vehicle_state
-
-            if self.position is not None:
-                vehicle["X"] = self.position.x_val
-                vehicle["Y"] = self.position.y_val
-                vehicle["Z"] = self.position.z_val
-
-            if self.rotation is not None:
-                vehicle["Yaw"] = self.rotation.yaw
-                vehicle["Pitch"] = self.rotation.pitch
-                vehicle["Roll"] = self.rotation.roll
-
-            if self.cameras is not None:
-                vehicle["Cameras"] = {name: _.as_dict() for name, _ in self.cameras.items()}
-
+        def as_dict(self) -> AirSimSettings.DictType:
+            vehicle: AirSimSettings.DictType = {"VehicleType": self.vehicle_type}
+            if self.default_vehicle_state is not None: vehicle["DefaultVehicleState"] = self.default_vehicle_state
+            if self.position is not None: vehicle.update({"X": self.position.x_val, "Y": self.position.y_val, "Z": self.position.z_val})
+            if self.rotation is not None: vehicle.update(self.rotation.as_dict())
+            if self.cameras is not None: vehicle["Cameras"] = {name: _.as_dict() for name, _ in self.cameras.items()}
             return vehicle
 
 
