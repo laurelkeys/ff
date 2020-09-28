@@ -113,26 +113,26 @@ def launch_env_from_args(args):
 
 def launch_env(env_path, ue4editor_exe=None, devenv_exe=None, verbose=True, **kwargs):
     """ Use `launch_env(*LaunchEnvArgs(args))` for convenience.\n
-        Note: `res: (int, int)` and `windowed: bool` can be passed through `**kwargs`
-              for "uproject" and "exe" files.
+        Note: `res: (int, int)`, `windowed: bool` and `settings: str` can be passed
+              through `**kwargs` for "uproject" and "exe" files.
     """
     _, ext = os.path.splitext(env_path)
     if ext == ".uproject":
-        run_cmds = _run_env(
+        run_cmds, pid = _run_env(
             env_path, ext,
             env_proc="UE4Editor.exe",
             ue4editor_exe_path=ue4editor_exe,
             **kwargs
         )
     elif ext == ".sln":
-        run_cmds = _run_env(
+        run_cmds, pid = _run_env(
             env_path, ext,
             env_proc="devenv.exe",  # Visual Studio
             devenv_exe_path=devenv_exe,
             **kwargs
         )
     elif ext == ".exe":
-        run_cmds = _run_env(
+        run_cmds, pid = _run_env(
             env_path, ext,
             env_proc=os.path.basename(env_path),
             **kwargs
@@ -143,7 +143,10 @@ def launch_env(env_path, ue4editor_exe=None, devenv_exe=None, verbose=True, **kw
     if run_cmds:
         print("Launching environment... (this may take a few seconds)")
         if verbose:
-            log_info("run_cmds=" + " ".join(run_cmds) + "\n")
+            log_info(f"\npid={pid}")
+            log_info(f"run_cmds={' '.join(run_cmds)}\n")
+
+    return pid
 
 
 def _run_env(env_path, env_ext, env_proc=None, **kwargs):
@@ -160,13 +163,12 @@ def _run_env(env_path, env_ext, env_proc=None, **kwargs):
             print(f"'{os.path.basename(env_path)}' is already running:")
             for p in already_running:  # there should (usually) only be one
                 print(f" - name='{p['name']}', pid={p['pid']}")
-            return []
+            return [], already_running[0]['pid']
 
     run_cmds = _build_run_cmds(env_path, env_ext, **kwargs)
-    proc = subprocess.Popen(run_cmds, shell=True, stdout=subprocess.PIPE)
-    log_debug(f"pid={proc.pid}")
+    p = subprocess.Popen(run_cmds, shell=True, stdout=subprocess.PIPE)
 
-    return run_cmds
+    return run_cmds, p.pid
 
 
 def _build_run_cmds(

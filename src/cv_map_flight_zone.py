@@ -33,7 +33,10 @@ finally:
 
 
 def preflight(args: argparse.Namespace) -> None:
-    pass
+    if args.env_name is not None:
+        # the --launch option was passed
+        ff.launch_env(*ff.LaunchEnvArgs(args))
+        ff.input_or_exit("\nPress [enter] to connect to AirSim ")
 
 
 ###############################################################################
@@ -143,6 +146,25 @@ def edit_zone(key, edit_mode, zone) -> bool:
 ###############################################################################
 
 
+def main(args: argparse.Namespace) -> None:
+    if args.verbose:
+        ff.print_airsim_path(airsim.__path__)
+
+    preflight(args)  # setup
+    client = connect_to_airsim()
+    try:
+        fly(client, args)  # do stuff
+    except KeyboardInterrupt:
+        client.reset()  # avoid UE4 'fatal error' when exiting with Ctrl+C
+
+
+def connect_to_airsim() -> airsim.MultirotorClient:
+    client = airsim.MultirotorClient()
+    client.confirmConnection()
+    # NOTE don't `enableApiControl` or `armDisarm` since we are in CV mode
+    return client
+
+
 class EditMode(Enum):
     SCALING = 0
     TRANSLATING = 1
@@ -191,29 +213,6 @@ class Rect:
             Vector3r(*[2 * _ for _ in json_repr["half_width"]]),
             Vector3r(*[2 * _ for _ in json_repr["half_height"]]),
         )
-
-
-def main(args: argparse.Namespace) -> None:
-    if args.verbose:
-        ff.print_airsim_path(airsim.__path__)
-
-    if args.env_name is not None:
-        # the --launch option was passed
-        ff.launch_env(*ff.LaunchEnvArgs(args))
-        input("\nPress [enter] to connect to AirSim ")
-
-    preflight(args)  # setup
-    client = connect_to_airsim()
-    try:
-        fly(client, args)  # do stuff
-    except KeyboardInterrupt:
-        client.reset()  # avoid UE4 'fatal error' when exiting with Ctrl+C
-
-
-def connect_to_airsim() -> airsim.MultirotorClient:
-    client = airsim.MultirotorClient()
-    client.confirmConnection()
-    return client
 
 
 ###############################################################################

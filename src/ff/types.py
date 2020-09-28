@@ -31,11 +31,11 @@ def angles_to_str(angles, n=4, show_hints=True):
 
 
 def to_xyz_str(vector3r, n=2, show_hints=True):
-    return xyz_to_str(to_xyz_tuple(vector3r))
+    return xyz_to_str(to_xyz_tuple(vector3r), n, show_hints)
 
 
 def to_xyzw_str(quaternionr, n=2, show_hints=True):
-    return xyzw_to_str(to_xyzw_tuple(quaternionr))
+    return xyzw_to_str(to_xyzw_tuple(quaternionr), n, show_hints)
 
 
 ###############################################################################

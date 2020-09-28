@@ -25,40 +25,34 @@ finally:
 
 
 def preflight(args: argparse.Namespace) -> None:
+    assert os.path.isfile(args.roi), f"Invalid file path: '{args.roi}'"
+
+    with open(args.roi, "r") as f:
+        args.roi = Rect.from_dump(f.read())  # region of interest
+
     if args.env_name is not None:
         # the --launch option was passed
+        start_pos = args.roi.center
+        start_pos.z_val -= 10  # start higher up, to avoid crashing with objects
         ff.launch_env(
             *ff.LaunchEnvArgs(args),
             settings=settings_str_from_dict(
                 AirSimSettings(
                     sim_mode=ff.SimMode.Multirotor,
                     view_mode=ff.ViewMode.Fpv,
-                    vehicles=[
-                        AirSimSettings.Vehicle(
-                            "Drone1",
-                            default_vehicle_state=AirSimSettings.Vehicle.DefaultVehicleState.Armed,
-                            position=airsim.Vector3r(0, 10, -10),
-                        )
-                    ],
+                    vehicles=[AirSimSettings.Vehicle("Drone1", position=start_pos)],
                 ).as_dict()
-            )
-            # settings='"D:\\Documents\\Github\\ff\\src\\logs\\car_settings.json"'
-            # settings='"{ \\"SettingsVersion\\": 1.2, \\"SimMode\\": \\"Car\\" }"'
-            # settings='D:/Documents/Temp/Blocks/settings.json'
+            ),
         )
-        # FIXME see https://github.com/microsoft/AirSim/issues/2824#issuecomment-658988789
 
-        input_or_exit("\nPress [enter] to connect to AirSim ")
+        ff.log("Spawning at ROI...")
+        args.fly_to_roi = False
+
+        ff.input_or_exit("\nPress [enter] to connect to AirSim ")
 
     else:
-        ff.log("Flying to ROI...")
-
-
-def input_or_exit(prompt: str):
-    try:
-        input(prompt)
-    except KeyboardInterrupt:
-        exit()
+        # ff.log("Flying to ROI...")
+        args.fly_to_roi = True
 
 
 ###############################################################################
@@ -67,36 +61,30 @@ def input_or_exit(prompt: str):
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
-    assert os.path.isfile(args.roi), f"Invalid file path: '{args.roi}'"
-
-    client.reset()
+    # client.reset()
     initial_pose = client.simGetVehiclePose()
     initial_state = client.getMultirotorState()
+
     if args.verbose:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
     if initial_state.landed_state == airsim.LandedState.Landed:
-        print("[ff] Taking off")
+        ff.log("Taking off")
         client.takeoffAsync(timeout_sec=2).join()
 
-    ff.log_info(f"Loading ROI from '{args.roi}'")
-    with open(args.roi, "r") as f:
-        zone = Rect.from_dump(f.read())
-        if args.verbose:
-            ff.log_info(zone)
-    print()
+    if args.fly_to_roi:
+        args.fly_to_roi = False
+        ff.log("Flying to ROI...")
+        x, y, z = ff.to_xyz_tuple(args.roi)
+        # NOTE ideally, we'd use `client.simSetVehiclePose(args.roi, True)`
+        #      in here, but it doesn't work reliably in Multirotor mode...
+        client.moveToPositionAsync(x, y, z, velocity=4).join()
 
-    # NOTE AirSim uses NED coordinates (hence, negative z values are up)
-    ff.log("Teleporting to the center of the ROI..")
+    if args.verbose:
+        ff.log(f"Center coordinates: {ff.to_xyz_str(args.roi.center)}")
 
-    # FIXME this doesn't work reliably in Multirotor mode...
-    #       in this case, maybe it's best to load in the ROI on
-    #       a settings.json file we pass AirSim to start up, such that:
-    #       - if AirSim is alread launched, we simply fly to the ROI
-    #       - otherwise, we read the file first, then launch AirSim
-    client.simSetVehiclePose(Vector3r(np.nan, -10, np.nan), ignore_collison=True)
-
-    ff.log("Rising and then hovering..")
-    client.moveByVelocityZAsync(vx=0, vy=1, z=-7, duration=10).join()
+    ff.log("Rising then hovering..")
+    client.moveByVelocityZAsync(vx=0, vy=0, z=-7, duration=10).join()
+    # client.moveToZAsync(z=-10, velocity=4).join()
     client.hoverAsync().join()
 
     client.reset()
@@ -106,12 +94,6 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 ###############################################################################
 ## main #######################################################################
 ###############################################################################
-
-
-from cv_map_flight_zone import Rect
-
-# TODO extract this to another file (maybe inside ff/), as this script
-#      and cv_map_flight_zone.py depend on it being synced between them.
 
 
 def main(args: argparse.Namespace) -> None:
@@ -132,6 +114,11 @@ def connect_to_airsim() -> airsim.MultirotorClient:
     client.enableApiControl(True)
     client.armDisarm(True)
     return client
+
+
+# TODO extract this to another file (maybe inside ff/), as this script
+#      and cv_map_flight_zone.py depend on it being synced between them.
+from cv_map_flight_zone import Rect
 
 
 ###############################################################################

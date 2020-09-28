@@ -6,6 +6,7 @@ from glob import glob
 from os.path import join
 
 from .sim import SimMode
+from .logger import log_error
 from .defaults import Default
 
 ###############################################################################
@@ -59,6 +60,19 @@ def possible_env_paths(env_root, exts=["uproject", "sln", "exe"]):
         env_paths.extend(glob(join(env_root, f"*.{ext}")))
         env_paths.extend(glob(join(env_root, "*", f"*.{ext}")))
     return env_paths
+
+
+###############################################################################
+###############################################################################
+
+
+def input_or_exit(prompt: str) -> str:
+    """ Simple wrapper around `input()` to catch `KeyboardInterrupt` and exit. """
+    try:
+        return input(prompt)
+    except KeyboardInterrupt:
+        log_error("\n[Ctrl]+[C]")
+        exit()
 
 
 ###############################################################################
