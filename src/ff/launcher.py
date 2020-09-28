@@ -143,7 +143,7 @@ def launch_env(env_path, ue4editor_exe=None, devenv_exe=None, verbose=True, **kw
     if run_cmds:
         print("Launching environment... (this may take a few seconds)")
         if verbose:
-            log_info(f"\npid={pid}")
+            # log_info(f"pid={pid}")
             log_info(f"run_cmds={' '.join(run_cmds)}\n")
 
     return pid
@@ -168,6 +168,7 @@ def _run_env(env_path, env_ext, env_proc=None, **kwargs):
     run_cmds = _build_run_cmds(env_path, env_ext, **kwargs)
     p = subprocess.Popen(run_cmds, shell=True, stdout=subprocess.PIPE)
 
+    log_debug(f"pid={p.pid}")
     return run_cmds, p.pid
 
 

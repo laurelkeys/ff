@@ -77,15 +77,15 @@ class AirSimImage:
 ###############################################################################
 
 
-class AirSimRotation:
+class Rotation:
     def __init__(self, yaw: float = 0.0, pitch: float = 0.0, roll: float = 0.0):
         self.yaw = yaw
         self.pitch = pitch
         self.roll = roll
 
     @staticmethod
-    def nanRotation() -> AirSimRotation:
-        return AirSimRotation(np.nan, np.nan, np.nan)
+    def nanRotation() -> Rotation:
+        return Rotation(np.nan, np.nan, np.nan)
 
     def as_dict(self) -> dict:
         return {"Yaw": self.yaw, "Pitch": self.pitch, "Roll": self.roll}
@@ -171,7 +171,7 @@ class AirSimSettings:
 
     class Gimbal:
         def __init__(
-            self, stabilization: float = 0.0, rotation: AirSimRotation = None,
+            self, stabilization: float = 0.0, rotation: Rotation = None,
         ):
             self.stabilization = stabilization
             self.rotation = rotation
@@ -186,7 +186,7 @@ class AirSimSettings:
             self,
             capture_settings: List[AirSimSettings.CaptureSettings] = None,
             position: airsim.Vector3r = None,
-            rotation: AirSimRotation = None,
+            rotation: Rotation = None,
             gimbal: AirSimSettings.Gimbal = None,
         ):
             self.capture_settings = capture_settings
@@ -242,7 +242,7 @@ class AirSimSettings:
             vehicle_type: str = VehicleType.SimpleFlight,
             default_vehicle_state: str = None,
             position: airsim.Vector3r = None,  # NOTE in global NED
-            rotation: AirSimRotation = None,
+            rotation: Rotation = None,
             cameras: Dict[str, AirSimSettings.Camera] = None,
         ):
             assert cameras is None or all([_ in ff.CameraName._list_all for _ in cameras.keys()]), cameras

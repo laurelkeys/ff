@@ -32,26 +32,31 @@ def preflight(args: argparse.Namespace) -> None:
 
     if args.env_name is not None:
         # the --launch option was passed
-        start_pos = args.roi.center
+
+        # FIXME debugging..
+        start_pos = Vector3r(*ff.to_xyz_tuple(args.roi.center))
+        start_pos.y_val += 4
         start_pos.z_val -= 10  # start higher up, to avoid crashing with objects
+
         ff.launch_env(
             *ff.LaunchEnvArgs(args),
             settings=settings_str_from_dict(
                 AirSimSettings(
                     sim_mode=ff.SimMode.Multirotor,
-                    view_mode=ff.ViewMode.Fpv,
-                    vehicles=[AirSimSettings.Vehicle("Drone1", position=start_pos)],
+                    ##view_mode=ff.ViewMode.SpringArmChase,
+                    ##vehicles=[AirSimSettings.Vehicle("Drone1", position=start_pos)],
                 ).as_dict()
             ),
         )
 
-        ff.log("Spawning at ROI...")
-        args.fly_to_roi = False
+        # FIXME check if there's actually an env already running
+        ##ff.log("Spawning at ROI...")
+        args.fly_to_roi = True  ##False
 
         ff.input_or_exit("\nPress [enter] to connect to AirSim ")
 
     else:
-        # ff.log("Flying to ROI...")
+        ##ff.log("Flying to ROI...")
         args.fly_to_roi = True
 
 
@@ -61,33 +66,31 @@ def preflight(args: argparse.Namespace) -> None:
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
-    # client.reset()
-    initial_pose = client.simGetVehiclePose()
-    initial_state = client.getMultirotorState()
+    client.reset()
+    client.enableApiControl(True)
+    client.armDisarm(True)
 
+    client.simFlushPersistentMarkers()
+    client.simPlotLineStrip(points=args.roi.corners(repeat_first=True), is_persistent=True)
+
+    initial_pose = client.simGetVehiclePose()
     if args.verbose:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
-    if initial_state.landed_state == airsim.LandedState.Landed:
-        ff.log("Taking off")
-        client.takeoffAsync(timeout_sec=2).join()
 
     if args.fly_to_roi:
         args.fly_to_roi = False
-        ff.log("Flying to ROI...")
-        x, y, z = ff.to_xyz_tuple(args.roi)
-        # NOTE ideally, we'd use `client.simSetVehiclePose(args.roi, True)`
-        #      in here, but it doesn't work reliably in Multirotor mode...
-        client.moveToPositionAsync(x, y, z, velocity=4).join()
+        center = ff.to_xyz_tuple(args.roi.center)
+        ff.log(f"Flying to ROI {ff.xyz_to_str(center)}...")
+        # NOTE ideally, we'd use `client.simSetVehiclePose(center, True)`
+        #      in here, but it doesn't work reliably in Multirotor mode..
 
-    if args.verbose:
-        ff.log(f"Center coordinates: {ff.to_xyz_str(args.roi.center)}")
+        corners_and_dists = [(corner, corner.distance_to(initial_pose.position)) for corner in args.roi.corners()]
+        closest_corner, _ = min(corners_and_dists, key=lambda corner_and_dist: corner_and_dist[1])
 
-    ff.log("Rising then hovering..")
-    client.moveByVelocityZAsync(vx=0, vy=0, z=-7, duration=10).join()
-    # client.moveToZAsync(z=-10, velocity=4).join()
-    client.hoverAsync().join()
+        ff.log_debug(f"Closest corner {ff.to_xyz_str(closest_corner)}")
+        client.simPlotPoints([closest_corner], color_rgba=[1.0] * 4, duration=11)
+        client.moveToPositionAsync(*ff.to_xyz_tuple(closest_corner), velocity=5, timeout_sec=12).join()
 
-    client.reset()
     ff.log("Done")
 
 

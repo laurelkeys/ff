@@ -45,7 +45,7 @@ def print_airsim_path(airsim_path):
 
 def print_pose(vehicle_pose, to_eularian_angles=None):
     print_str = [
-        " VehiclePose \n",
+        "VehiclePose \n",
         f"     .position    = {to_xyz_str(vehicle_pose.position)}\n",
         f"     .orientation = {to_xyzw_str(vehicle_pose.orientation)}\n",
         f"                    {angles_to_str(to_eularian_angles(vehicle_pose.orientation))}\n",

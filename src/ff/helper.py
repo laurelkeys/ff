@@ -6,7 +6,6 @@ from glob import glob
 from os.path import join
 
 from .sim import SimMode
-from .logger import log_error
 from .defaults import Default
 
 ###############################################################################
@@ -71,7 +70,6 @@ def input_or_exit(prompt: str) -> str:
     try:
         return input(prompt)
     except KeyboardInterrupt:
-        log_error("\n[Ctrl]+[C]")
         exit()
 
 
