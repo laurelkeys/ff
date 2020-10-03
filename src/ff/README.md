@@ -28,3 +28,4 @@
 - [ ] Check out [Unreal Engine](https://docs.unrealengine.com/en-US/Programming/Basics/CommandLineArguments/index.html)'s commands: `LOG`, `VADEBUG`, `VERBOSE`
 - [ ] Add a method to `airsimy.AirSimRotation` to convert from/to `airsim.Quaternionr`
 - [ ] Pass an option to add `-log` in `_build_run_cmds` for `.uproject` files
+- [ ] See https://github.com/microsoft/AirSim/issues/543

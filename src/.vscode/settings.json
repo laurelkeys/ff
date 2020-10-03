@@ -19,9 +19,10 @@
     "python.formatting.blackArgs": ["--line-length", "100"],
 
     "python.sortImports.args": [
-        "-rc",
         "--atomic",
-        "-ls", "-lbt", "1", "-l", "100",
+        "--length-sort",
+        "--line-length", "100",
+        "--lines-between-types", "1",
     ],
 
     "files.exclude": {

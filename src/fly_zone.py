@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import os
+import time
 import argparse
-
-import numpy as np
+from typing import List
 
 import ff
 
@@ -43,6 +43,7 @@ def preflight(args: argparse.Namespace) -> None:
             settings=settings_str_from_dict(
                 AirSimSettings(
                     sim_mode=ff.SimMode.Multirotor,
+                    clock_speed=3.0
                     ##view_mode=ff.ViewMode.SpringArmChase,
                     ##vehicles=[AirSimSettings.Vehicle("Drone1", position=start_pos)],
                 ).as_dict()
@@ -91,7 +92,84 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         client.simPlotPoints([closest_corner], color_rgba=[1.0] * 4, duration=11)
         client.moveToPositionAsync(*ff.to_xyz_tuple(closest_corner), velocity=5, timeout_sec=12).join()
 
+        time.sleep(2)
+        fly_zone(client, args.roi)
+
     ff.log("Done")
+
+
+def fly_zone(client: airsim.MultirotorClient, zone: Rect) -> None:
+    path = [
+        Vector3r(corner.x_val, corner.y_val, corner.z_val - 5)
+        for corner in zone.corners(repeat_first=True)
+    ]
+    client.simPlotLineStrip(points=path, is_persistent=True)
+    client.moveOnPathAsync(path, velocity=2).join()
+
+    ff.log_debug("Stretching path and surveying over it...")
+    altitude_shift = Vector3r(0, 0, -8)
+    test_zone = Rect(
+        altitude_shift + zone.center,
+        altitude_shift + zone.half_width * 4,
+        altitude_shift + zone.half_height * 4
+    )
+    test_path = [
+        Vector3r(corner.x_val, corner.y_val, corner.z_val - 5)
+        for corner in test_zone.corners(repeat_first=True)
+    ]
+    client.simPlotLineStrip(points=test_path, is_persistent=True)
+    # client.moveOnPathAsync(test_path, velocity=2).join()
+    test_zigzag_path = zigzag_path(client, test_path)
+    client.simPlotLineStrip(points=test_zigzag_path, is_persistent=True, color_rgba=[0.0, 1.0, 0.0, 1.0])
+    client.moveOnPathAsync(test_zigzag_path, velocity=2).join()
+
+
+# TODO after testing, improve this and move it over to ff or airsimy
+# NOTE 1 / alpha is approximately the number of "stripes" in the path
+def zigzag_path(
+    client: airsim.MultirotorClient, path: List[Vector3r], alpha: float = 0.25
+) -> List[Vector3r]:
+    #
+    #  D---C
+    #  |   | TODO interpolate between AB->DC and BC->AD for non-rects
+    #  A---B
+    #
+    a, b, c, d, *_ = path
+    w, h, _w = b - a, c - b, a - b
+    zigzag = [
+        a, b,
+
+        b + (c-b) * 0.25,
+        a + (d-a) * 0.25, # b + h * 0.25 + _w
+        a + (d-a) * 0.5,
+
+        b + (c-b) * 0.5,
+        b + (c-b) * 0.75,
+        a + (d-a) * 0.75,
+        a + (d-a),
+
+        c, d,
+        a
+    ]
+    return zigzag
+    # return [a, b, c, d]
+    # client.simPlotArrows([a, c], [b, b], color_rgba=[0.0, 1.0, 0.0, 1.0], is_persistent=True)
+
+    # initial_pos = client.simGetVehiclePose().position
+    # zigzag, accum, box_size = [initial_pos + Vector3r(0, 0, -5)], 0, 10
+    # while accum < 1:
+    #     zigzag.extend([
+    #         initial_pos + Vector3r(0, box_size, 0),
+    #         initial_pos + Vector3r(0, 0, alpha * box_size),
+    #         initial_pos + Vector3r(0, -box_size, 0),
+    #         initial_pos + Vector3r(0, 0, alpha * box_size),
+    #         # w, h * alpha,
+    #         # _w, h * alpha
+    #     ])
+    #     accum += 2 * alpha
+    #     initial_pos.x_val += accum
+
+    # return zigzag
 
 
 ###############################################################################
