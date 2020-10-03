@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Type, Union
+from typing import Dict, List, Union
 
 import ff
 import numpy as np
@@ -241,7 +241,7 @@ class AirSimSettings:
             name: str,
             vehicle_type: str = VehicleType.SimpleFlight,
             default_vehicle_state: str = None,
-            position: airsim.Vector3r = None,  # NOTE in global NED
+            position: airsim.Vector3r = None,  # NOTE in global NED coordinates
             rotation: Rotation = None,
             cameras: Dict[str, AirSimSettings.Camera] = None,
         ):

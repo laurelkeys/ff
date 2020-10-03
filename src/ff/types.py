@@ -43,7 +43,9 @@ def to_xyzw_str(quaternionr, n=2, show_hints=True):
 
 
 class Vec3:
-    """ Simple 3D vector class to abstract operations with `airsim.GeoPoint` and `airsim.Vector3r` """
+    """ Simple 3D vector class to abstract operations
+        with `airsim.GeoPoint` and `airsim.Vector3r`
+    """
 
     def __init__(self, x=0, y=0, z=0):
         self.x = x
@@ -127,6 +129,11 @@ class Vec3:
 
     def __len__(self):
         return 3
+
+    @staticmethod
+    def all_close(a, b, eps=1e-7):
+        """ Returns true iff `a` and `b` are element-wise equal within `eps` tolerance """
+        return abs(a.x - b.x) <= eps and abs(a.y - b.y) <= eps and abs(a.y - b.y) <= eps
 
 
 ###############################################################################

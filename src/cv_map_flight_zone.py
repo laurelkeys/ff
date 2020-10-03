@@ -2,21 +2,19 @@
 # https://www.pix4d.com/product/pix4dcapture
 # https://heighttech.nl/flight-planning-software/
 
-# TODO try using UE4's specific API calls for plotting
-
 from __future__ import annotations
 
-import json
 import os
 import time
 import argparse
 
 from enum import Enum
-from typing import List
 
 from pynput import keyboard
 
 import ff
+
+from Rect import Rect
 
 try:
     import airsim
@@ -173,46 +171,6 @@ class EditMode(Enum):
     def next(edit_mode: EditMode) -> EditMode:
         edit_modes = list(EditMode)
         return edit_modes[(edit_mode.value + 1) % len(edit_modes)]
-
-
-class Rect:
-    def __init__(
-        self, center: airsim.Vector3r, width: airsim.Vector3r, height: airsim.Vector3r
-    ) -> None:
-        self.center = center
-        self.half_width = width / 2.0
-        self.half_height = height / 2.0
-
-    def corners(self, repeat_first: bool = False) -> List[airsim.Vector3r]:
-        corners = [
-            self.center - self.half_width - self.half_height,
-            self.center + self.half_width - self.half_height,
-            self.center + self.half_width + self.half_height,
-            self.center - self.half_width + self.half_height,
-        ]
-        return corners if not repeat_first else corners + [corners[0]]
-
-    def __str__(self) -> str:
-        return f"Rect({', '.join([ff.to_xyz_str(_) for _ in (self.center, self.half_width, self.half_height)])})"
-
-    @staticmethod
-    def to_dump(dump_rect: Rect) -> str:
-        return json.dumps(
-            {
-                "center": ff.to_xyz_tuple(dump_rect.center),
-                "half_width": ff.to_xyz_tuple(dump_rect.half_width),
-                "half_height": ff.to_xyz_tuple(dump_rect.half_height),
-            }
-        )
-
-    @staticmethod
-    def from_dump(dump_str: str) -> Rect:
-        json_repr = json.loads(dump_str)
-        return Rect(
-            Vector3r(*json_repr["center"]),
-            Vector3r(*[2 * _ for _ in json_repr["half_width"]]),
-            Vector3r(*[2 * _ for _ in json_repr["half_height"]]),
-        )
 
 
 ###############################################################################
