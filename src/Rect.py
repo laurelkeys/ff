@@ -14,6 +14,8 @@ finally:
 
 
 class Rect:
+    # TODO add docstrings to methods
+
     def __init__(self, center: Vector3r, width: Vector3r, height: Vector3r):
         self.center = center
         self.half_width = width / 2.0
@@ -75,11 +77,11 @@ class Rect:
         #         /  /
         #        /  <-----------------^
         #   e2  /                    /
-        #      /  ^---------------->    ^
+        #      /  ^----------------->   ^
         #     /  /                     / "dy" == e2 / lanes
-        #    /  <-----------------^   --
+        #    /  <-----------------^   +
         #   /                    /
-        #  --  *---------------->
+        #  +   *---------------->
         #          e1 == "dx"
 
         curr_pos, path = start_corner, [start_corner]

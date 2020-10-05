@@ -95,6 +95,14 @@ class Rotation:
 ###############################################################################
 
 
+# TODO create a ColorRGBA class to use with simPlot APIs (simply create a
+#      static method and some contants that return `List[float]`)
+
+
+###############################################################################
+###############################################################################
+
+
 class AirSimSettings:
     """ Creates a `dict` representation of AirSim's `settings.json` file. """
 

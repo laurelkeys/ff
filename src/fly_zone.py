@@ -43,6 +43,7 @@ def preflight(args: argparse.Namespace) -> None:
             settings=settings_str_from_dict(
                 AirSimSettings(
                     sim_mode=ff.SimMode.Multirotor,
+                    clock_speed=4.0,  # TODO remove after testing (or pass as an arg)
                     ##view_mode=ff.ViewMode.SpringArmChase,
                     ##vehicles=[AirSimSettings.Vehicle("Drone1", position=start_pos)],
                 ).as_dict()
@@ -79,48 +80,44 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
     if args.fly_to_roi:
         args.fly_to_roi = False
+
         center = ff.to_xyz_tuple(args.roi.center)
         ff.log(f"Flying to ROI {ff.xyz_to_str(center)}...")
+
         # NOTE ideally, we'd use `client.simSetVehiclePose(center, True)`
         #      in here, but it doesn't work reliably in Multirotor mode..
 
-        corners_and_dists = [(corner, corner.distance_to(initial_pose.position)) for corner in args.roi.corners()]
-        closest_corner, _ = min(corners_and_dists, key=lambda corner_and_dist: corner_and_dist[1])
-
+        closest_corner = args.roi.closest_corner(initial_pose.position)
         ff.log_debug(f"Closest corner {ff.to_xyz_str(closest_corner)}")
         client.simPlotPoints([closest_corner], color_rgba=[1.0] * 4, duration=11)
+
         client.moveToPositionAsync(*ff.to_xyz_tuple(closest_corner), velocity=5, timeout_sec=12).join()
 
         time.sleep(2)
-        fly_zone(client, args.roi)
+        fly_zone(client, args.roi, altitude_shift=6.5)
 
     ff.log("Done")
 
 
-def fly_zone(client: airsim.MultirotorClient, zone: Rect) -> None:
+def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float = 0.0) -> None:
     path = [
-        Vector3r(corner.x_val, corner.y_val, corner.z_val - 5)
+        Vector3r(corner.x_val, corner.y_val, corner.z_val - altitude_shift)
         for corner in zone.corners(repeat_first=True)
     ]
+
     client.simPlotLineStrip(points=path, is_persistent=True)
     client.moveOnPathAsync(path, velocity=2).join()
 
-    ff.log_debug("Stretching path and surveying over it...")
-    altitude_shift = Vector3r(0, 0, -8)
-    test_zone = Rect(
-        altitude_shift + zone.center,
-        altitude_shift + zone.half_width * 4,
-        altitude_shift + zone.half_height * 4
-    )
-    test_path = [
-        Vector3r(corner.x_val, corner.y_val, corner.z_val - 5)
-        for corner in test_zone.corners(repeat_first=True)
-    ]
-    client.simPlotLineStrip(points=test_path, is_persistent=True)
-    # client.moveOnPathAsync(test_path, velocity=2).join()
-    test_zigzag_path = test_zone.zigzag(4)
+    # FIXME testing.. stretching Rect, zigzagging path and flying over it
+    test_zigzag_path = Rect(
+        Vector3r(0, 0, -altitude_shift) + zone.center,
+        Vector3r(0, 0, -altitude_shift) + zone.half_width * 4,
+        Vector3r(0, 0, -altitude_shift) + zone.half_height * 4,
+    ).zigzag(4)
+
     client.simPlotLineStrip(points=test_zigzag_path, is_persistent=True, color_rgba=[0.0, 1.0, 0.0, 1.0])
     client.moveOnPathAsync(test_zigzag_path, velocity=2).join()
+
 
 ###############################################################################
 ## main #######################################################################
