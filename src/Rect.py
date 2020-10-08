@@ -91,7 +91,9 @@ class Rect:
             curr_pos += dy; path.append(curr_pos)
             dx *= -1  # zig zag
 
-        return path + [end_corner]
+        # NOTE if the `lanes` count is odd, the `end_corner` will already have
+        #      been added to the `path`, otherwise, we append it to the end
+        return path if lanes % 2 == 1 else path + [end_corner]
 
     def __str__(self) -> str:
         return f"Rect({', '.join([ff.to_xyz_str(_) for _ in (self.center, self.half_width, self.half_height)])})"

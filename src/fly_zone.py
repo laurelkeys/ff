@@ -8,6 +8,7 @@ import ff
 
 from Rect import Rect
 from ff.helper import settings_str_from_dict
+from Controller import Controller
 from wrappers.airsimy import AirSimSettings
 
 try:
@@ -43,7 +44,7 @@ def preflight(args: argparse.Namespace) -> None:
             settings=settings_str_from_dict(
                 AirSimSettings(
                     sim_mode=ff.SimMode.Multirotor,
-                    clock_speed=4.0,  # TODO remove after testing (or pass as an arg)
+                    clock_speed=2.0,  # TODO remove after testing (or pass as an arg)
                     ##view_mode=ff.ViewMode.SpringArmChase,
                     ##vehicles=[AirSimSettings.Vehicle("Drone1", position=start_pos)],
                 ).as_dict()
@@ -106,9 +107,9 @@ def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float 
     ]
 
     client.simPlotLineStrip(points=path, is_persistent=True)
-    client.moveOnPathAsync(path, velocity=2).join()
+    Controller.fly_path(client, path) ##client.moveOnPathAsync(path, velocity=2).join()
 
-    # FIXME testing.. stretching Rect, zigzagging path and flying over it
+    # NOTE testing.. stretching Rect, zigzagging path and flying over it
     test_zigzag_path = Rect(
         Vector3r(0, 0, -altitude_shift) + zone.center,
         Vector3r(0, 0, -altitude_shift) + zone.half_width * 4,
@@ -116,7 +117,7 @@ def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float 
     ).zigzag(4)
 
     client.simPlotLineStrip(points=test_zigzag_path, is_persistent=True, color_rgba=[0.0, 1.0, 0.0, 1.0])
-    client.moveOnPathAsync(test_zigzag_path, velocity=2).join()
+    Controller.fly_path(client, test_zigzag_path) ##client.moveOnPathAsync(test_zigzag_path, velocity=2).join()
 
 
 ###############################################################################

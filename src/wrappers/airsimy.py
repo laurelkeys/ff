@@ -95,8 +95,31 @@ class Rotation:
 ###############################################################################
 
 
-# TODO create a ColorRGBA class to use with simPlot APIs (simply create a
-#      static method and some contants that return `List[float]`)
+class ColorRGBa:
+    White   = [1.0, 1.0, 1.0, 1.0]
+    Black   = [0.0, 0.0, 0.0, 1.0]
+    Red     = [1.0, 0.0, 0.0, 1.0]
+    Green   = [0.0, 1.0, 0.0, 1.0]
+    Blue    = [0.0, 0.0, 1.0, 1.0]
+    Cyan    = [0.0, 1.0, 1.0, 1.0]
+    Magenta = [1.0, 0.0, 1.0, 1.0]
+    Yellow  = [1.0, 1.0, 0.0, 1.0]
+
+    @staticmethod
+    def _from(
+        r: Union[int, float], g: Union[int, float], b: Union[int, float], alpha: float = 1.0
+    ) -> List[float]:
+        assert 0.0 <= alpha <= 1.0
+
+        def saturate(ch):
+            return 0.0 if ch < 0.0 else ch if ch <= 1.0 else 1.0
+
+        return [
+            saturate(r if not isinstance(r, int) else r / 255),
+            saturate(g if not isinstance(r, int) else g / 255),
+            saturate(b if not isinstance(r, int) else b / 255),
+            alpha
+        ]
 
 
 ###############################################################################

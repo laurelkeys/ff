@@ -133,7 +133,7 @@ class Vec3:
     @staticmethod
     def all_close(a, b, eps=1e-7):
         """ Returns true iff `a` and `b` are element-wise equal within `eps` tolerance """
-        return abs(a.x - b.x) <= eps and abs(a.y - b.y) <= eps and abs(a.y - b.y) <= eps
+        return abs(a.x - b.x) <= eps and abs(a.y - b.y) <= eps and abs(a.z - b.z) <= eps
 
 
 ###############################################################################
