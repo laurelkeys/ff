@@ -1,14 +1,10 @@
-from __future__ import annotations
-
 import os
 import time
 import argparse
 
 import ff
 
-from Rect import Rect
-from ff.helper import settings_str_from_dict
-from Controller import Controller
+from ds import Rect, Controller
 from wrappers.airsimy import AirSimSettings
 
 try:
@@ -41,10 +37,10 @@ def preflight(args: argparse.Namespace) -> None:
 
         ff.launch_env(
             *ff.LaunchEnvArgs(args),
-            settings=settings_str_from_dict(
+            settings=ff.settings_str_from_dict(
                 AirSimSettings(
                     sim_mode=ff.SimMode.Multirotor,
-                    clock_speed=2.0,  # TODO remove after testing (or pass as an arg)
+                    clock_speed=args.clock or 1.0,
                     ##view_mode=ff.ViewMode.SpringArmChase,
                     ##vehicles=[AirSimSettings.Vehicle("Drone1", position=start_pos)],
                 ).as_dict()
@@ -97,8 +93,6 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         time.sleep(2)
         fly_zone(client, args.roi, altitude_shift=6.5)
 
-    ff.log("Done")
-
 
 def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float = 0.0) -> None:
     path = [
@@ -135,6 +129,8 @@ def main(args: argparse.Namespace) -> None:
         fly(client, args)  # do stuff
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting with Ctrl+C
+    finally:
+        ff.log("Done")
 
 
 def connect_to_airsim() -> airsim.MultirotorClient:
@@ -154,6 +150,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="")
 
     parser.add_argument("roi", type=str, help="Path to the flight zone (ROI) file")
+    parser.add_argument("--clock", type=float, help="Change AirSim's clock speed  (default: 1.0)")
 
     ff.add_arguments_to(parser)
     return parser

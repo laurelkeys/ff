@@ -1,20 +1,12 @@
-# https://www.dji.com/br/ground-station-pro
-# https://www.pix4d.com/product/pix4dcapture
-# https://heighttech.nl/flight-planning-software/
-
-from __future__ import annotations
-
 import os
 import time
 import argparse
-
-from enum import Enum
 
 from pynput import keyboard
 
 import ff
 
-from Rect import Rect
+from ds import Rect, EditMode
 
 try:
     import airsim
@@ -48,7 +40,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         assert False, f"Please change the SimMode from '{sim_mode}' to 'ComputerVision'"
 
     if args.roi is not None:
-        ff.log_info(f"Loading ROI from '{args.roi}'\n")
+        if args.verbose: ff.log_info(f"Loading ROI from '{args.roi}'\n")
         with open(args.roi, "r") as f:
             zone = Rect.from_dump(f.read())
     else:
@@ -57,7 +49,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     # repeat the first coordinate to close the line strip
     client.simPlotLineStrip(points=zone.corners(repeat_first=True), is_persistent=True)
 
-    # NOTE available keys, not used by AirSim:
+    # available keys (i.e. not used by AirSim)
     # ,----------------------------------------------------------------------------------------.
     # |  ` |     |     |     |  4  |  5  |  6  |  7  |  8  |  9  |     |  -* |  =  |           |
     # |----------------------------------------------------------------------------------------+
@@ -71,7 +63,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     ff.log("Press [lshift] to swap editing modes (translating, scaling)")
     ff.log("Press [rshift] to save the current ROI to json")
 
-    edit_mode: EditMode = EditMode.TRANSLATING
+    edit_mode = EditMode.TRANSLATING
 
     # define keyboard callbacks
     swap_mode_key = keyboard.Key.shift_l
@@ -89,6 +81,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         elif key == save_rect_key:
             filename = save_zone(args.outputdir, zone)
             client.simPrintLogMessage(f"Saved ROI coordinates to '{filename}'")
+            if args.verbose: ff.log_info(f"Saved ROI coordinates to '{filename}'")
 
         elif edit_zone(key, edit_mode, zone):
             client.simFlushPersistentMarkers()
@@ -98,17 +91,17 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         if key == keyboard.Key.esc:
             return False  # stop the listener
 
-    # collect events untill released
+    # collect events until released
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
         ff.log("Press [esc] to quit")
         listener.join()
 
-    ff.log("Done")
     if args.clear:
         client.simFlushPersistentMarkers()
 
+
 def save_zone(dir, zone):
-    # TODO prefix by the UE4 env name:
+    # TODO prefix `filename` by the UE4 environment name
     filename = "_".join(("roi", time.strftime(r"%Y-%m-%d_%H-%M-%S"))) + ".txt"
     if dir is not None: filename = os.path.join(dir, filename)
     with open(filename, "w") as f: f.write(Rect.to_dump(zone))
@@ -154,6 +147,8 @@ def main(args: argparse.Namespace) -> None:
         fly(client, args)  # do stuff
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting with Ctrl+C
+    finally:
+        ff.log("Done")
 
 
 def connect_to_airsim() -> airsim.MultirotorClient:
@@ -161,16 +156,6 @@ def connect_to_airsim() -> airsim.MultirotorClient:
     client.confirmConnection()
     # NOTE don't `enableApiControl` or `armDisarm` since we are in CV mode
     return client
-
-
-class EditMode(Enum):
-    SCALING = 0
-    TRANSLATING = 1
-
-    @staticmethod
-    def next(edit_mode: EditMode) -> EditMode:
-        edit_modes = list(EditMode)
-        return edit_modes[(edit_mode.value + 1) % len(edit_modes)]
 
 
 ###############################################################################
@@ -194,3 +179,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
+
+# https://www.dji.com/br/ground-station-pro
+# https://www.pix4d.com/product/pix4dcapture
+# https://heighttech.nl/flight-planning-software/
