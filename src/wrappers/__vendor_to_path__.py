@@ -1,11 +1,13 @@
 import os, sys
 
-__vendor_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "..", "vendor"
+__vendor_path = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..", "vendor"
+    )
 )
 
-sys.path.insert(0,  __vendor_path)
+sys.path.insert(0, __vendor_path)
 
 del sys, os
 

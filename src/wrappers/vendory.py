@@ -4,8 +4,13 @@ import sys
 import numpy as np
 
 sys.path.append(
-    os.path.join(os.path.abspath(os.path.dirname(__file__)),
-    "..", "vendor", "tartanair_tools", "evaluation")  # FIXME
+    # FIXME
+    os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "vendor", "tartanair_tools", "evaluation"
+        )
+    )
 )
 
 from tartanair_evaluator import TartanAirEvaluator, transform_trajs, quats2SEs
@@ -35,7 +40,7 @@ class Vendor:
                 gt_traj_fname, est_traj_fname, scale
             )
 
-        
+
         @staticmethod
         def traj_from_file(traj_fname, skip_header=False):
             """ Returns a numpy array representation of `traj_fname`. """
