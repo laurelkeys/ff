@@ -79,6 +79,11 @@ class AirSimImage:
 
 class Rotation:
     def __init__(self, yaw: float = 0.0, pitch: float = 0.0, roll: float = 0.0):
+        """ Represents a 3D rotation along the normal / vertical axis (`yaw`), transverse
+            / lateral axis (`pitch`) and longitudinal axis (`roll`).
+
+            Note: some of AirSim's API calls expect values in the order `roll, pitch, yaw`.
+        """
         self.yaw = yaw
         self.pitch = pitch
         self.roll = roll
@@ -90,36 +95,47 @@ class Rotation:
     def as_dict(self) -> dict:
         return {"Yaw": self.yaw, "Pitch": self.pitch, "Roll": self.roll}
 
+    def as_quaternion(self) -> airsim.Quaternionr:
+        """ Returns a quaternion representing the rotation angles.
+
+            Note: AirSim's `Quaternionr` expresses coordinates in WXYZ order.
+        """
+        return airsim.to_quaternion(
+            pitch=self.pitch,
+            roll=self.roll,
+            yaw=self.yaw,
+        )
+
 
 ###############################################################################
 ###############################################################################
 
 
-class ColorRGBa:
-    White   = [1.0, 1.0, 1.0, 1.0]
-    Black   = [0.0, 0.0, 0.0, 1.0]
-    Red     = [1.0, 0.0, 0.0, 1.0]
-    Green   = [0.0, 1.0, 0.0, 1.0]
-    Blue    = [0.0, 0.0, 1.0, 1.0]
-    Cyan    = [0.0, 1.0, 1.0, 1.0]
-    Magenta = [1.0, 0.0, 1.0, 1.0]
-    Yellow  = [1.0, 1.0, 0.0, 1.0]
+class Rgba(tuple):
+    White   = (1.0, 1.0, 1.0, 1.0)
+    Black   = (0.0, 0.0, 0.0, 1.0)
+    Red     = (1.0, 0.0, 0.0, 1.0)
+    Green   = (0.0, 1.0, 0.0, 1.0)
+    Blue    = (0.0, 0.0, 1.0, 1.0)
+    Cyan    = (0.0, 1.0, 1.0, 1.0)
+    Magenta = (1.0, 0.0, 1.0, 1.0)
+    Yellow  = (1.0, 1.0, 0.0, 1.0)
 
-    @staticmethod
-    def _from(
-        r: Union[int, float], g: Union[int, float], b: Union[int, float], alpha: float = 1.0
-    ) -> List[float]:
-        assert 0.0 <= alpha <= 1.0
+    def __new__(cls, r: float, g: float, b: float, alpha: float = 1.0):
+        rgba = (r, g, b, alpha)
+        assert all(0.0 <= ch <= 1.0 for ch in rgba), rgba
+        return super(Rgba, cls).__new__(cls, rgba)
 
-        def saturate(ch):
-            return 0.0 if ch < 0.0 else ch if ch <= 1.0 else 1.0
+    def __init__(self, r: float, g: float, b: float, alpha: float = 1.0):
+        """ Construct a new color, with values RGBA in `[0.0, 1.0]`. """
+        self.r = self[0]
+        self.g = self[1]
+        self.b = self[2]
+        self.a = self[3]
 
-        return [
-            saturate(r if not isinstance(r, int) else r / 255),
-            saturate(g if not isinstance(r, int) else g / 255),
-            saturate(b if not isinstance(r, int) else b / 255),
-            alpha
-        ]
+    def from255(self, r: int, g: int, b: int, alpha: float = 1.0) -> Rgba:
+        """ Construct a new color by converting RGB values from `[0, 255]` to `[0.0, 1.0]`. """
+        return Rgba(r / 255, g / 255, b / 255, alpha)
 
 
 ###############################################################################
@@ -272,8 +288,8 @@ class AirSimSettings:
             name: str,
             vehicle_type: str = VehicleType.SimpleFlight,
             default_vehicle_state: str = None,
-            position: airsim.Vector3r = None,  # NOTE in global NED coordinates
-            rotation: Rotation = None,
+            position: airsim.Vector3r = None,  # NOTE in global NED coordinates, SI units and origin at PlayerStart
+            rotation: Rotation = None,  # NOTE in degrees
             cameras: Dict[str, AirSimSettings.Camera] = None,
         ):
             assert cameras is None or all([_ in ff.CameraName._list_all for _ in cameras.keys()]), cameras

@@ -5,7 +5,7 @@ import argparse
 import ff
 
 from ds import Rect, Controller
-from wrappers.airsimy import AirSimSettings
+from wrappers.airsimy import AirSimSettings, Rgba
 
 try:
     import airsim
@@ -13,7 +13,7 @@ except ModuleNotFoundError:
     ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
     import airsim
 finally:
-    from airsim.types import Vector3r
+    from airsim.types import Vector3r, Pose, Quaternionr
 
 
 ###############################################################################
@@ -25,36 +25,35 @@ def preflight(args: argparse.Namespace) -> None:
     assert os.path.isfile(args.roi), f"Invalid file path: '{args.roi}'"
 
     with open(args.roi, "r") as f:
-        args.roi = Rect.from_dump(f.read())  # region of interest
+        args.roi = Rect.from_dump(f.read())
+
+    args.start_pos = Vector3r(*ff.to_xyz_tuple(args.roi.center))
+    if (z := args.z_offset) is not None:
+        args.start_pos.z_val -= z # start higher up, to avoid crashing with objects
+    else:
+        # XXX debugging...
+        args.start_pos.y_val += 4
+        args.start_pos.z_val -= 10
 
     if args.env_name is not None:
         # the --launch option was passed
-
-        # FIXME debugging..
-        start_pos = Vector3r(*ff.to_xyz_tuple(args.roi.center))
-        start_pos.y_val += 4
-        start_pos.z_val -= 10  # start higher up, to avoid crashing with objects
-
         ff.launch_env(
             *ff.LaunchEnvArgs(args),
             settings=ff.settings_str_from_dict(
                 AirSimSettings(
                     sim_mode=ff.SimMode.Multirotor,
-                    clock_speed=args.clock or 1.0,
-                    ##view_mode=ff.ViewMode.SpringArmChase,
-                    ##vehicles=[AirSimSettings.Vehicle("Drone1", position=start_pos)],
+                    clock_speed=1.0 if not args.clock else args.clock,
+                    view_mode=ff.ViewMode.SpringArmChase,
                 ).as_dict()
             ),
         )
-
-        # FIXME check if there's actually an env already running
-        ##ff.log("Spawning at ROI...")
-        args.fly_to_roi = True  ##False
-
         ff.input_or_exit("\nPress [enter] to connect to AirSim ")
 
+        ff.log(f"Teleporting to {ff.to_xyz_str(args.start_pos)}...")
+        args.fly_to_roi = False
+
     else:
-        ##ff.log("Flying to ROI...")
+        ff.log(f"Flying to {ff.to_xyz_str(args.start_pos)}...")
         args.fly_to_roi = True
 
 
@@ -75,23 +74,29 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.verbose:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
 
+    closest_corner = args.roi.closest_corner(initial_pose.position)
+    ff.log_debug(f"Closest corner {ff.to_xyz_str(closest_corner)}")
+    client.simPlotPoints([closest_corner], color_rgba=Rgba.White, duration=11)
+
+    # FIXME use args.start_pos instead of closest_corner
     if args.fly_to_roi:
-        args.fly_to_roi = False
-
-        center = ff.to_xyz_tuple(args.roi.center)
-        ff.log(f"Flying to ROI {ff.xyz_to_str(center)}...")
-
         # NOTE ideally, we'd use `client.simSetVehiclePose(center, True)`
         #      in here, but it doesn't work reliably in Multirotor mode..
+        client.moveToPositionAsync(
+            *ff.to_xyz_tuple(closest_corner),
+            velocity=5, timeout_sec=12
+        ).join()
+        ff.log(f"Flying to ROI {ff.to_xyz_str(closest_corner)}...")
 
-        closest_corner = args.roi.closest_corner(initial_pose.position)
-        ff.log_debug(f"Closest corner {ff.to_xyz_str(closest_corner)}")
-        client.simPlotPoints([closest_corner], color_rgba=[1.0] * 4, duration=11)
+    else:
+        # NOTE using `nanQuaternionr()` should work for `simSetVehiclePose`.. but it doesn't
+        new_pose = Pose(position_val=closest_corner, orientation_val=initial_pose.orientation)
+        ff.log(f"Teleporting to ROI {ff.to_xyz_str(new_pose.position)}...")
+        Controller.teleport(client, to=new_pose, ignore_collison=True)
 
-        client.moveToPositionAsync(*ff.to_xyz_tuple(closest_corner), velocity=5, timeout_sec=12).join()
-
-        time.sleep(2)
-        fly_zone(client, args.roi, altitude_shift=6.5)
+    ff.log("Flying over zone...")
+    time.sleep(2)
+    fly_zone(client, args.roi, altitude_shift=6.5)
 
 
 def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float = 0.0) -> None:
@@ -149,8 +154,10 @@ def connect_to_airsim() -> airsim.MultirotorClient:
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="")
 
-    parser.add_argument("roi", type=str, help="Path to the flight zone (ROI) file")
+    parser.add_argument("roi", type=str, help="Path to the region of interest (ROI) file")
     parser.add_argument("--clock", type=float, help="Change AirSim's clock speed  (default: 1.0)")
+    parser.add_argument("--z_offset", type=float, help="Set a positive value in meters to start higher up (e.g. to avoid crashing)")
+    parser.add_argument("--closest_corner", type=float, help="Instead of flying to the center of the ROI, go to its closest corner to the drone")
 
     ff.add_arguments_to(parser)
     return parser

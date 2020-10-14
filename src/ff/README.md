@@ -27,3 +27,5 @@
 - [ ] Add a method to `airsimy.Rotation` to convert from/to `airsim.Quaternionr`
 - [ ] Pass an option to add `-log` in `_build_run_cmds` for `.uproject` files
 - [ ] See https://github.com/microsoft/AirSim/issues/543
+- [ ] See https://github.com/microsoft/AirSim/blob/master/PythonClient/computer_vision/capture_ir_segmentation.py#L10
+- [ ] See https://github.com/microsoft/AirSim/blob/master/ros/src/airsim_tutorial_pkgs/scripts/multi_drone_json_creator.py
