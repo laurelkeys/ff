@@ -142,9 +142,7 @@ def launch_env(env_path, ue4editor_exe=None, devenv_exe=None, verbose=True, **kw
 
     if run_cmds:
         print("Launching environment... (this may take a few seconds)")
-        if verbose:
-            # log_info(f"pid={pid}")
-            log_info(f"run_cmds={' '.join(run_cmds)}\n")
+        if verbose: log_info(f"run_cmds={' '.join(run_cmds)}\n")
 
     return pid
 

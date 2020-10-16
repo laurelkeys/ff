@@ -9,5 +9,6 @@ class EditMode(Enum):
 
     @staticmethod
     def next(edit_mode: EditMode) -> EditMode:
+        """ Returns the next `EditMode` value, in circular fashion. """
         edit_modes = list(EditMode)
         return edit_modes[(edit_mode.value + 1) % len(edit_modes)]

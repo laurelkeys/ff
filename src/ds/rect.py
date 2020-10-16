@@ -14,14 +14,14 @@ finally:
 
 
 class Rect:
-    # TODO add docstrings to methods
-
     def __init__(self, center: Vector3r, width: Vector3r, height: Vector3r):
+        """ Create a new rectangle representation in 3D. """
         self.center = center
         self.half_width = width / 2.0
         self.half_height = height / 2.0
 
     def corners(self, repeat_first: bool = False) -> List[Vector3r]:
+        """ Return a list of the rectangle's corner coordinates. """
         corners = [
             self.center - self.half_width - self.half_height,
             self.center + self.half_width - self.half_height,
@@ -31,6 +31,7 @@ class Rect:
         return corners if not repeat_first else corners + [corners[0]]
 
     def closest_corner(self, point: Vector3r) -> Vector3r:
+        """ Return the rectangle's closest corner to `point`. """
         closest_corner, _ = min(
             [(corner, corner.distance_to(point)) for corner in self.corners()],
             key=lambda corner_and_distance: corner_and_distance[1],
@@ -40,6 +41,10 @@ class Rect:
     def zigzag(
         self, lanes: int, start_corner: Union[int, Vector3r] = 0, clock_wise: bool = False
     ) -> List[Vector3r]:
+        """ Create a path that zigzags through the rectangle, starting at `start_corner`,
+            finishing at the opposite corner, and dividing the path in `lanes` sections.
+            Returns the list of waypoints that define the zigzagging path.
+        """
         corners = self.corners()
 
         if not isinstance(start_corner, int):
@@ -100,6 +105,7 @@ class Rect:
 
     @staticmethod
     def to_dump(dump_rect: Rect) -> str:
+        """ Convert `dump_rect` to a JSON-like string representation. """
         import json
 
         return json.dumps(
@@ -112,6 +118,10 @@ class Rect:
 
     @staticmethod
     def from_dump(dump_str: str) -> Rect:
+        """ Convert `dump_str`, a string representation of a rectangle, back to a `Rect`.
+
+            Note: `dump_str` is assumed to have been created by calling the `Rect.to_dump` method.
+        """
         import json
 
         json_repr = json.loads(dump_str)

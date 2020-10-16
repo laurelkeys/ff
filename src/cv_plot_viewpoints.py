@@ -19,10 +19,17 @@ except ModuleNotFoundError:
 
 
 def preflight(args: argparse.Namespace) -> None:
-    assert os.path.isfile(args.viewpoints_path), f"Couldn't find file '{args.viewpoints_path}'"
+    assert os.path.isfile(args.viewpoints_path), f"Invalid file path: '{args.viewpoints_path}'"
+
     with open(args.viewpoints_path, "r") as viewpoints_file:
         viewpoints = json.load(viewpoints_file)
+
     args.viewpoints = zip(viewpoints["positions"], viewpoints["orientations"])
+
+    if args.env_name is not None:
+        # the --launch option was passed
+        ff.launch_env(*ff.LaunchEnvArgs(args))
+        ff.input_or_exit("\nPress [enter] to connect to AirSim ")
 
 
 ###############################################################################
@@ -76,8 +83,6 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     # - https://askubuntu.com/a/909678
     # - https://askubuntu.com/a/1199313
 
-    print("[ff] Done")
-
 
 ###############################################################################
 ## main #######################################################################
@@ -88,22 +93,20 @@ def main(args: argparse.Namespace) -> None:
     if args.verbose:
         ff.print_airsim_path(airsim.__path__)
 
-    if args.env_name is not None:
-        # the --launch option was passed
-        ff.launch_env(*ff.LaunchEnvArgs(args))
-        input("\nPress [enter] to connect to AirSim ")
-
     preflight(args)  # setup
     client = connect_to_airsim()
     try:
         fly(client, args)  # do stuff
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting with Ctrl+C
+    finally:
+        ff.log("Done")
 
 
 def connect_to_airsim() -> airsim.MultirotorClient:
-    client = airsim.VehicleClient()
+    client = airsim.MultirotorClient()
     client.confirmConnection()
+    # NOTE don't `enableApiControl` or `armDisarm` since we are in CV mode
     return client
 
 
@@ -115,9 +118,7 @@ def connect_to_airsim() -> airsim.MultirotorClient:
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="")
 
-    parser.add_argument(
-        "viewpoints_path", type=str, help="Path to a viewpoints file .json",
-    )
+    parser.add_argument("viewpoints_path", type=str, help="Path to a viewpoints JSON file")
 
     ff.add_arguments_to(parser)
     return parser

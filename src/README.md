@@ -13,19 +13,17 @@
 
 # To-do list
 - [ ] Use `settings.py` as an alternative for command line arguments
+- [ ] Automatically change `SimMode` for `cv_*.py` files (and also restore it)
+- [ ] Only choose the first environment (when there's more than one possibility) if a flag `--choose` is passed, it might be better for this to be the default behavior instead
+  - [ ] Add an argument to it, so that calling `$ ... --launch --choose 2` starts the second environment from the list of possibilities
+- [ ] Make sure every script uses `ff.add_airsim_to_path` when importing AirSim, and that `airsim`-specific imports are done in a `finally` block
+- [ ] Pass an option to add `-log` in `_build_run_cmds` for `.uproject` files
+- [ ] Move `src/*.py` files to `src/scripts/`
 - [ ] See https://github.com/harvard-edge/airlearning-rl/blob/master/game_handling/game_handler_class.py#L30
 - [ ] See https://github.com/harvard-edge/airlearning-rl/blob/master/misc/move_to_airsim/move.py
 - [ ] See https://github.com/microsoft/AirSim/issues/1677#issuecomment-469999696
 - [ ] See https://github.com/microsoft/AirSim/issues/1677#issuecomment-605440212
 - [ ] See https://github.com/microsoft/AirSim/pull/2324
-- [ ] Automatically change `SimMode` for `cv_*.py` files (and also restore it)
-- [ ] Only choose the first environment (when there's more than one possibility) if a flag `--choose` is passed, it might be better for this to be the default behavior instead
-  - [ ] Add an argument to it, so that calling `$ ... --launch --choose 2` starts the second environment from the list of possibilities
-- [ ] See https://blog.miguelgrinberg.com/post/sync-vs-async-python-what-is-the-difference
-- [ ] Make sure every script uses `ff.add_airsim_to_path` when importing AirSim, and that `airsim`-specific imports are done in a `finally` block (e.g. `from airsim.types import Vector3r`)
-- [ ] Check `args.verbose` and use something like `ff.log_debug` where appropriate
-- [ ] Add a method to `airsimy.Rotation` to convert from/to `airsim.Quaternionr`
-- [ ] Pass an option to add `-log` in `_build_run_cmds` for `.uproject` files
 - [ ] See https://github.com/microsoft/AirSim/issues/543
 - [ ] See https://github.com/microsoft/AirSim/blob/master/PythonClient/computer_vision/capture_ir_segmentation.py#L10
 - [ ] See https://github.com/microsoft/AirSim/blob/master/ros/src/airsim_tutorial_pkgs/scripts/multi_drone_json_creator.py
