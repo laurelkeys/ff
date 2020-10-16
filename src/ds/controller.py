@@ -44,7 +44,7 @@ class Controller:
         client: airsim.MultirotorClient, path: List[Vector3r], velocity: float = 2.0
     ) -> None:
         # TODO expose other arguments for more customization (e.g. `timeout_sec`)
-        ff.log_info(f"USE_AIRSIM_HL_CONTROLLER={USE_AIRSIM_HL_CONTROLLER}")
+        ff.log_warning(f"USE_AIRSIM_HL_CONTROLLER={USE_AIRSIM_HL_CONTROLLER}")
 
         if USE_AIRSIM_HL_CONTROLLER:
             client.moveOnPathAsync(path, velocity).join()

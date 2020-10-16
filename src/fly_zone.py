@@ -27,34 +27,19 @@ def preflight(args: argparse.Namespace) -> None:
     with open(args.roi, "r") as f:
         args.roi = Rect.from_dump(f.read())
 
-    args.start_pos = Vector3r(*ff.to_xyz_tuple(args.roi.center))
-    if (z := args.z_offset) is not None:
-        args.start_pos.z_val -= z # start higher up, to avoid crashing with objects
-    else:
-        # XXX debugging...
-        args.start_pos.y_val += 4
-        args.start_pos.z_val -= 10
-
     if args.env_name is not None:
         # the --launch option was passed
         ff.launch_env(
             *ff.LaunchEnvArgs(args),
             settings=ff.settings_str_from_dict(
                 AirSimSettings(
+                    clock_speed=args.clock,
                     sim_mode=ff.SimMode.Multirotor,
-                    clock_speed=1.0 if not args.clock else args.clock,
                     view_mode=ff.ViewMode.SpringArmChase,
                 ).as_dict()
-            ),
+            )
         )
         ff.input_or_exit("\nPress [enter] to connect to AirSim ")
-
-        ff.log(f"Teleporting to {ff.to_xyz_str(args.start_pos)}...")
-        args.fly_to_roi = False
-
-    else:
-        ff.log(f"Flying to {ff.to_xyz_str(args.start_pos)}...")
-        args.fly_to_roi = True
 
 
 ###############################################################################
@@ -63,40 +48,53 @@ def preflight(args: argparse.Namespace) -> None:
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
+    # Reset the drone
     client.reset()
     client.enableApiControl(True)
     client.armDisarm(True)
 
+    # Draw the ROI outline (erasing previous plots)
     client.simFlushPersistentMarkers()
     client.simPlotLineStrip(points=args.roi.corners(repeat_first=True), is_persistent=True)
 
+    # Get the first position the drone will fly to
     initial_pose = client.simGetVehiclePose()
+    closest_corner = args.roi.closest_corner(initial_pose.position)
+
     if args.verbose:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
+        ff.log_info(f"Closest corner {ff.to_xyz_str(closest_corner)}")
 
-    closest_corner = args.roi.closest_corner(initial_pose.position)
-    ff.log_debug(f"Closest corner {ff.to_xyz_str(closest_corner)}")
-    client.simPlotPoints([closest_corner], color_rgba=Rgba.White, duration=11)
+    start_pos = Vector3r(*ff.to_xyz_tuple(
+        closest_corner if args.corner else args.roi.center
+    ))
 
-    # FIXME use args.start_pos instead of closest_corner
-    if args.fly_to_roi:
-        # NOTE ideally, we'd use `client.simSetVehiclePose(center, True)`
-        #      in here, but it doesn't work reliably in Multirotor mode..
-        client.moveToPositionAsync(
-            *ff.to_xyz_tuple(closest_corner),
-            velocity=5, timeout_sec=12
-        ).join()
-        ff.log(f"Flying to ROI {ff.to_xyz_str(closest_corner)}...")
+    # NOTE AirSim uses NED coordinates, so negative Z values are "up" actually
+    if (z := args.z_offset): start_pos.z_val -= z  # start higher up, to avoid crashing with objects
+    if (y := args.y_offset): start_pos.y_val += y
+    if (x := args.x_offset): start_pos.x_val += x
 
-    else:
-        # NOTE using `nanQuaternionr()` should work for `simSetVehiclePose`.. but it doesn't
-        new_pose = Pose(position_val=closest_corner, orientation_val=initial_pose.orientation)
-        ff.log(f"Teleporting to ROI {ff.to_xyz_str(new_pose.position)}...")
+    # Plot a point at the start position and go to it
+    client.simPlotPoints([start_pos], color_rgba=Rgba.White, is_persistent=True)
+
+    if args.teleport:
+        ff.log(f"Teleporting to {ff.to_xyz_str(start_pos)}...")
+        # NOTE using `nanQuaternionr` for the orientation should work for `simSetVehiclePose`
+        #      not to change it (which is called by `Controller.teleport`)... but it doesn't
+        new_pose = Pose(start_pos, initial_pose.orientation)
         Controller.teleport(client, to=new_pose, ignore_collison=True)
 
+    else:
+        ff.log(f"Flying to {ff.to_xyz_str(start_pos)}...")
+        client.moveToPositionAsync(
+            *ff.to_xyz_tuple(start_pos),
+            velocity=5, timeout_sec=12
+        ).join()
+
+    # Fly over the region of interest now that we reached the starting position
     ff.log("Flying over zone...")
     time.sleep(2)
-    fly_zone(client, args.roi, altitude_shift=6.5)
+    fly_zone(client, args.roi, altitude_shift=6.5)  # XXX testing `altitude_shift`
 
 
 def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float = 0.0) -> None:
@@ -108,7 +106,7 @@ def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float 
     client.simPlotLineStrip(points=path, is_persistent=True)
     Controller.fly_path(client, path) ##client.moveOnPathAsync(path, velocity=2).join()
 
-    # NOTE testing.. stretching Rect, zigzagging path and flying over it
+    # XXX testing.. stretching Rect, zigzagging path and flying over it
     test_zigzag_path = Rect(
         Vector3r(0, 0, -altitude_shift) + zone.center,
         Vector3r(0, 0, -altitude_shift) + zone.half_width * 4,
@@ -155,9 +153,12 @@ def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="")
 
     parser.add_argument("roi", type=str, help="Path to the region of interest (ROI) file")
-    parser.add_argument("--clock", type=float, help="Change AirSim's clock speed  (default: 1.0)")
-    parser.add_argument("--z_offset", type=float, help="Set a positive value in meters to start higher up (e.g. to avoid crashing)")
-    parser.add_argument("--closest_corner", type=float, help="Instead of flying to the center of the ROI, go to its closest corner to the drone")
+    parser.add_argument("--clock", type=float, default=1.0, help="Change AirSim's clock speed")
+    parser.add_argument("--corner", action="store_true", help="Fly to the corner closest to the drone, instead of to the ROI center")
+    parser.add_argument("--teleport", action="store_true", help="Teleport the drone, instead of flying it")
+    parser.add_argument("--z_offset", type=float, help="Set a positive value (in meters) to offset the starting position")
+    parser.add_argument("--y_offset", type=float, help="Set a value (in meters) to offset the starting position")
+    parser.add_argument("--x_offset", type=float, help="Set a value (in meters) to offset the starting position")
 
     ff.add_arguments_to(parser)
     return parser

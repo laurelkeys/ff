@@ -82,7 +82,7 @@ class Rotation:
         """ Represents a 3D rotation along the normal / vertical axis (`yaw`), transverse
             / lateral axis (`pitch`) and longitudinal axis (`roll`).
 
-            Note: some of AirSim's API calls expect values in the order `roll, pitch, yaw`.
+            Note: some of AirSim's API calls expect values in the order `pitch, roll, yaw`.
         """
         self.yaw = yaw
         self.pitch = pitch
