@@ -113,7 +113,7 @@ def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float 
         Vector3r(0, 0, -altitude_shift) + zone.half_height * 4,
     ).zigzag(4)
 
-    client.simPlotLineStrip(points=test_zigzag_path, is_persistent=True, color_rgba=[0.0, 1.0, 0.0, 1.0])
+    client.simPlotLineStrip(points=test_zigzag_path, is_persistent=True, color_rgba=Rgba.Green)
     Controller.fly_path(client, test_zigzag_path) ##client.moveOnPathAsync(test_zigzag_path, velocity=2).join()
 
 

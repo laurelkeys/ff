@@ -68,6 +68,35 @@ class Controller:
         else:
             _fly_path(client, path, velocity, timeout_sec)
 
+    ###########################################################################
+    ## Auxiliary methods (i.e. don't receive a `client`) ######################
+    ###########################################################################
+
+    @staticmethod
+    def augment_path(path: List[Vector3r], max_dist: float) -> List[Vector3r]:
+        """ Adds new (intermediate) waypoints to `path` so that no two consecutive
+            points are more than `max_dist` apart.
+
+            Note that `max_dist` is assumed to be a positive distance value in meters.
+        """
+        augmented_path = [path[0]]
+        for next_point in path[0::]:
+            curr_point = augmented_path[-1]
+
+            dist_vector = next_point - curr_point  # vector pointing to next waypoint
+            dist = dist_vector.get_length()  # same as `curr_point.distance_to(next_point)`
+            ff.log_debug(f"{dist=}")
+
+            while dist > max_dist:
+                curr_point = curr_point + dist_vector * (max_dist / dist)
+                augmented_path.append(curr_point)
+
+                dist_vector = next_point - curr_point
+                dist = dist_vector.get_length()
+
+            augmented_path.append(next_point)
+
+        return augmented_path
 
 ###############################################################################
 ## Internal functions #########################################################
@@ -76,7 +105,7 @@ class Controller:
 
 def _fly_path(
     client: airsim.MultirotorClient, path: List[Vector3r], velocity: float, timeout_sec: float
-):
+) -> None:
     waypoint_count = len(path)
     assert waypoint_count >= 2  # FIXME handle corner cases
 
