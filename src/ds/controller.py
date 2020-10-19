@@ -6,8 +6,6 @@ from typing import List
 
 import ff
 
-from ff.types import Vec3
-
 try:
     import airsim
 except ModuleNotFoundError:
@@ -17,62 +15,94 @@ finally:
     from airsim.types import Vector3r, Pose
 
 
-USE_AIRSIM_HL_CONTROLLER = True
+###############################################################################
+## Config #####################################################################
+###############################################################################
+
+
+# https://microsoft.github.io/AirSim/apis/#apis-for-multirotor
+USE_AIRSIM_HIGH_LEVEL_CONTROL = True
+
 CONFIRMATION_DISTANCE = 3.0
 WAIT_TIME = 0.1
 
 
+###############################################################################
+## Flight controller ##########################################################
+###############################################################################
+
+
+# TODO make a "builder" way to use the controller, e.g.:
+#      |
+#      |  Controller.teleport(client, to=Pose())
+#      |  Controller.fly_path(client, path=[])
+#
+#      would become something like:
+#      |
+#      |  Controller.with(client)
+#      |            .teleport(to=Pose())
+#      |            .fly_path(path=[])
+
+
 class Controller:
-    """ A (currently) blocking flight controller which abstracts the flying method """
+    """ A (currently) blocking flight controller which abstracts the flying method. """
 
     @staticmethod
-    def teleport(
-        client: airsim.MultirotorClient, to: Pose, ignore_collison: bool = True, name: str = ""
-    ) -> None:
+    def teleport(client: airsim.MultirotorClient, to: Pose, ignore_collison: bool = True) -> None:
         # HACK see https://github.com/Microsoft/AirSim/issues/1618#issuecomment-689152817
-        client.simSetVehiclePose(pose=to, ignore_collison=ignore_collison)
-        client.moveToPositionAsync(
-            x=to.position.x_val,
-            y=to.position.y_val,
-            z=to.position.z_val,
-            velocity=1,
-            vehicle_name=name,
-        )
+        client.simSetVehiclePose(to, ignore_collison)
+        client.moveToPositionAsync(*ff.to_xyz_tuple(to.position), velocity=1)
 
     @staticmethod
     def fly_path(
-        client: airsim.MultirotorClient, path: List[Vector3r], velocity: float = 2.0
+        client: airsim.MultirotorClient,
+        path: List[Vector3r],
+        velocity: float = 2.0,
+        timeout_sec: float = 3e38,  # FIXME make this a constant
     ) -> None:
-        # TODO expose other arguments for more customization (e.g. `timeout_sec`)
-        ff.log_warning(f"USE_AIRSIM_HL_CONTROLLER={USE_AIRSIM_HL_CONTROLLER}")
+        ff.log_warning(f"{USE_AIRSIM_HIGH_LEVEL_CONTROL=}")
 
-        if USE_AIRSIM_HL_CONTROLLER:
-            client.moveOnPathAsync(path, velocity).join()
-
+        if USE_AIRSIM_HIGH_LEVEL_CONTROL:
+            client.moveOnPathAsync(path, velocity, timeout_sec).join()
         else:
-            for i, point in enumerate(path):
-                ff.log_debug(f"Going to {ff.to_xyz_str(point)}")
-                try:
-                    next_point = path[i + 1]
-                except:
-                    next_point = None  # NOTE final point
+            _fly_path(client, path, velocity, timeout_sec)
 
-                future = client.moveToPositionAsync(*ff.to_xyz_tuple(point), velocity)
-                curr_pos = client.simGetVehiclePose().position
 
-                # ref.: Issue#1677, Issue#2974
-                if next_point is not None:
-                    if i == 0:
-                        future.join()
-                    else:
-                        while not Vec3.all_close(
-                            Vec3.from_Vector3r(curr_pos),
-                            Vec3.from_Vector3r(point),
-                            eps=CONFIRMATION_DISTANCE,
-                        ):
-                            # "spin lock" untill we are close to the next point
-                            curr_pos = client.simGetVehiclePose().position
-                            time.sleep(WAIT_TIME)
+###############################################################################
+## Internal functions #########################################################
+###############################################################################
 
-                        future.join()
-                        time.sleep(0.5)  # FIXME testing
+
+def _fly_path(
+    client: airsim.MultirotorClient, path: List[Vector3r], velocity: float, timeout_sec: float
+):
+
+    for i, point in enumerate(path):
+        ff.log_debug(f"Going to {ff.to_xyz_str(point)}")
+
+        try:
+            next_point = path[i + 1]
+        except:
+            next_point = None  # NOTE final point
+
+        future = client.moveToPositionAsync(*ff.to_xyz_tuple(point), velocity, timeout_sec)
+        curr_pos = client.simGetVehiclePose().position
+
+        # https://github.com/Microsoft/AirSim/issues/1677
+        # https://github.com/Microsoft/AirSim/issues/2974
+
+        if next_point is not None:
+            if i == 0:
+                future.join()  # NOTE first point
+            else:
+                # "spin lock" untill we are close to the next point
+                while not ff.Vec3.all_close(
+                    ff.Vec3.from_Vector3r(curr_pos),
+                    ff.Vec3.from_Vector3r(point),
+                    eps=CONFIRMATION_DISTANCE,
+                ):
+                    curr_pos = client.simGetVehiclePose().position
+                    time.sleep(WAIT_TIME)
+
+                future.join()
+                time.sleep(0.5)  # FIXME testing
