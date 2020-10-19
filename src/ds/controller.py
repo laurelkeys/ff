@@ -6,13 +6,15 @@ from typing import List
 
 import ff
 
+from ff.types import Vec3
+
 try:
     import airsim
 except ModuleNotFoundError:
     ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
     import airsim
 finally:
-    from airsim.types import Vector3r, Pose
+    from airsim.types import Pose, Vector3r
 
 
 ###############################################################################
@@ -21,10 +23,11 @@ finally:
 
 
 # https://microsoft.github.io/AirSim/apis/#apis-for-multirotor
-USE_AIRSIM_HIGH_LEVEL_CONTROL = True
+USE_AIRSIM_HIGH_LEVEL_CONTROL = False
+ff.log_warning(f"{USE_AIRSIM_HIGH_LEVEL_CONTROL=}")
 
 CONFIRMATION_DISTANCE = 3.0
-WAIT_TIME = 0.1
+WAIT_TIME = 0.1  # FIXME using `time.sleep` won't go well with changing clock speeds
 
 
 ###############################################################################
@@ -60,8 +63,6 @@ class Controller:
         velocity: float = 2.0,
         timeout_sec: float = 3e38,  # FIXME make this a constant
     ) -> None:
-        ff.log_warning(f"{USE_AIRSIM_HIGH_LEVEL_CONTROL=}")
-
         if USE_AIRSIM_HIGH_LEVEL_CONTROL:
             client.moveOnPathAsync(path, velocity, timeout_sec).join()
         else:
@@ -76,33 +77,26 @@ class Controller:
 def _fly_path(
     client: airsim.MultirotorClient, path: List[Vector3r], velocity: float, timeout_sec: float
 ):
+    waypoint_count = len(path)
+    assert waypoint_count >= 2  # FIXME handle corner cases
 
-    for i, point in enumerate(path):
-        ff.log_debug(f"Going to {ff.to_xyz_str(point)}")
+    first_point, *middle_points, final_point = [Vec3.from_Vector3r(waypoint) for waypoint in path]
 
-        try:
-            next_point = path[i + 1]
-        except:
-            next_point = None  # NOTE final point
+    client.moveToPositionAsync(*first_point, velocity, timeout_sec).join()
 
-        future = client.moveToPositionAsync(*ff.to_xyz_tuple(point), velocity, timeout_sec)
-        curr_pos = client.simGetVehiclePose().position
-
+    for next_pos in middle_points:
         # https://github.com/Microsoft/AirSim/issues/1677
         # https://github.com/Microsoft/AirSim/issues/2974
 
-        if next_point is not None:
-            if i == 0:
-                future.join()  # NOTE first point
-            else:
-                # "spin lock" untill we are close to the next point
-                while not ff.Vec3.all_close(
-                    ff.Vec3.from_Vector3r(curr_pos),
-                    ff.Vec3.from_Vector3r(point),
-                    eps=CONFIRMATION_DISTANCE,
-                ):
-                    curr_pos = client.simGetVehiclePose().position
-                    time.sleep(WAIT_TIME)
+        future = client.moveToPositionAsync(*next_pos, velocity, timeout_sec)
+        curr_pos = Vec3.from_Vector3r(client.simGetVehiclePose().position)
 
-                future.join()
-                time.sleep(0.5)  # FIXME testing
+        # "spin lock" until we are close to the next point
+        while not Vec3.all_close(curr_pos, next_pos, eps=CONFIRMATION_DISTANCE):
+            curr_pos = Vec3.from_Vector3r(client.simGetVehiclePose().position)
+            time.sleep(WAIT_TIME)
+
+        future.join()  # wait for AirSim's API to also recognize we've arrived
+        time.sleep(0.5)  # FIXME stopping for some time minimizes overshooting
+
+    client.moveToPositionAsync(*final_point, velocity, timeout_sec).join()
