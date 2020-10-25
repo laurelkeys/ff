@@ -98,6 +98,7 @@ class Controller:
 
         return augmented_path
 
+
 ###############################################################################
 ## Internal functions #########################################################
 ###############################################################################
@@ -125,6 +126,8 @@ def _fly_path(
             curr_pos = Vec3.from_Vector3r(client.simGetVehiclePose().position)
             time.sleep(WAIT_TIME)
 
+        # FIXME slow down instead of calling `.join()`... otherwise we're just
+        #       using the high level controller in fact (and remove `.sleep()`)
         future.join()  # wait for AirSim's API to also recognize we've arrived
         time.sleep(0.5)  # FIXME stopping for some time minimizes overshooting
 

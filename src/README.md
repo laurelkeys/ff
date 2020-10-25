@@ -18,6 +18,7 @@
   - [ ] Add an argument to it, so that calling `$ ... --launch --choose 2` starts the second environment from the list of possibilities
 - [ ] Make sure every script uses `ff.add_airsim_to_path` when importing AirSim, and that `airsim`-specific imports are done in a `finally` block
 - [ ] Pass an option to add `-log` in `_build_run_cmds` for `.uproject` files
+  - [ ] See [UE4's Stat Commands](https://docs.unrealengine.com/en-US/Engine/Performance/StatCommands/index.html) for monitoring performance, e.g. `Stat FPS`, `Stat UnitGraph`, `r.VSync`, `t.maxFPS`
 - [ ] Move `src/*.py` files to `src/scripts/`
 - [ ] See https://github.com/harvard-edge/airlearning-rl/blob/master/game_handling/game_handler_class.py#L30
 - [ ] See https://github.com/harvard-edge/airlearning-rl/blob/master/misc/move_to_airsim/move.py

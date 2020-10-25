@@ -13,7 +13,7 @@ except ModuleNotFoundError:
     ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
     import airsim
 finally:
-    from airsim.types import Vector3r, Pose, Quaternionr
+    from airsim.types import Vector3r, Pose
 
 
 ###############################################################################
@@ -36,6 +36,11 @@ def preflight(args: argparse.Namespace) -> None:
                     clock_speed=args.clock,
                     sim_mode=ff.SimMode.Multirotor,
                     view_mode=ff.ViewMode.SpringArmChase,
+                    subwindows=[
+                        AirSimSettings.Subwindow(0, camera_name=ff.CameraName.front_center),
+                        AirSimSettings.Subwindow(1, camera_name=ff.CameraName.back_center),
+                        AirSimSettings.Subwindow(2, camera_name=ff.CameraName.bottom_center),
+                    ]
                 ).as_dict()
             )
         )

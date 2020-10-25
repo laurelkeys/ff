@@ -157,6 +157,11 @@ class AirSimSettings:
         subwindows: List[AirSimSettings.Subwindow] = None,
         vehicles: List[AirSimSettings.Vehicle] = None,
     ):
+        if subwindows is not None:
+            assert len((ids := [_.window_id for _ in subwindows])) == len(set(ids)), "duplicate window ids"
+        if vehicles is not None:
+            assert len((names := [_.name for _ in vehicles])) == len(set(names)), "duplicate vehicle names"
+
         self.settings_version = 1.2  # NOTE keep this synced with AirSim
         self.sim_mode = sim_mode
         self.view_mode = view_mode

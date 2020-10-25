@@ -22,11 +22,11 @@ class SimMode:
 
 class ViewMode:
     Default        = ""
-    FlyWithMe      = "FlyWithMe"
+    FlyWithMe      = "FlyWithMe"       # Multirotor's default
     GroundObserver = "GroundObserver"
     Fpv            = "Fpv"
     Manual         = "Manual"
-    SpringArmChase = "SpringArmChase"
+    SpringArmChase = "SpringArmChase"  # Car's default
     NoDisplay      = "NoDisplay"
     _list_all      = [Default, FlyWithMe, GroundObserver, Fpv, Manual, SpringArmChase, NoDisplay]
 
