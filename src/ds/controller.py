@@ -66,7 +66,7 @@ class Controller:
         if USE_AIRSIM_HIGH_LEVEL_CONTROL:
             client.moveOnPathAsync(path, velocity, timeout_sec).join()
         else:
-            _fly_path(client, path, velocity, timeout_sec)
+            _fly_path2(client, path, velocity, timeout_sec)
 
     ###########################################################################
     ## Auxiliary methods (i.e. don't receive a `client`) ######################
@@ -130,5 +130,51 @@ def _fly_path(
         #       using the high level controller in fact (and remove `.sleep()`)
         future.join()  # wait for AirSim's API to also recognize we've arrived
         time.sleep(0.5)  # FIXME stopping for some time minimizes overshooting
+
+    client.moveToPositionAsync(*final_point, velocity, timeout_sec).join()
+
+
+def _fly_path2(
+    client: airsim.MultirotorClient, path: List[Vector3r], velocity: float, timeout_sec: float
+) -> None:
+    # NOTE testing changes to _fly_path (the same FIXMEs apply)
+
+    assert len(path) >= 2
+
+    first_point, *middle_points, final_point = [Vec3.from_Vector3r(waypoint) for waypoint in path]
+
+    client.moveToPositionAsync(*first_point, velocity, timeout_sec).join()
+
+    for next_pos, next_next_pos in zip(middle_points, middle_points[1:] + [final_point]):
+        future = client.moveToPositionAsync(*next_pos, velocity, timeout_sec)
+        curr_pos = Vec3.from_Vector3r(client.simGetVehiclePose().position)
+        while not Vec3.all_close(curr_pos, next_pos, eps=CONFIRMATION_DISTANCE):
+            curr_pos = Vec3.from_Vector3r(client.simGetVehiclePose().position)
+            time.sleep(WAIT_TIME)
+
+        # TODO Interpolate between no slowdown before the next waypoint and a
+        #      "full stop" if the turning angle is too high:
+        #
+        #            No stop              ...       Full stop
+        #
+        #  curr       next     next_next        curr       next
+        #    o -------> o -------> o              o -------> o
+        #             \___/               ...            \__ |
+        #            θ = 180                         θ = 90  |
+        #                                                    v
+        #                                                    o
+        #                                                next_next
+
+        curr_to_next = next_pos - curr_pos
+        next_to_next_next = next_next_pos - next_pos
+
+        theta = Vec3.angle_between(curr_to_next, next_to_next_next)
+        ff.log_debug(f"θ = {theta}")
+
+        if theta > 1.0:
+            client.cancelLastTask()
+            future = client.moveToPositionAsync(*next_pos, 1, timeout_sec)
+            future.join()
+            time.sleep(0.2)
 
     client.moveToPositionAsync(*final_point, velocity, timeout_sec).join()

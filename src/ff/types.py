@@ -1,4 +1,4 @@
-from math import sqrt
+from math import acos, sqrt
 
 ###############################################################################
 ###############################################################################
@@ -84,6 +84,11 @@ class Vec3:
             return Vec3(self.x / v, self.y / v, self.z / v)
         return Vec3(self.x / v.x, self.y / v.y, self.z / v.z)
 
+    def __truediv__(self, v):
+        if not isinstance(v, Vec3):
+            return Vec3(self.x / v, self.y / v, self.z / v)
+        return Vec3(self.x / v.x, self.y / v.y, self.z / v.z)
+
     def __iter__(self):
         return iter((self.x, self.y, self.z))
 
@@ -134,6 +139,22 @@ class Vec3:
     def all_close(a, b, eps=1e-7):
         """ Returns true iff `a` and `b` are element-wise equal within `eps` tolerance """
         return abs(a.x - b.x) <= eps and abs(a.y - b.y) <= eps and abs(a.z - b.z) <= eps
+
+    @staticmethod
+    def angle_between(v1, v2):
+        """ Returns the angle (in radians) between `v1` and `v2`. """
+        unit_v1 = v1 / v1.length()
+        unit_v2 = v2 / v2.length()
+
+        def clipped_acos(x):
+            if x < -1.0:
+                return 3.141592653589793  # acos(-1.0)
+            if x > 1.0:
+                return 0.0  # acos(1.0)
+            return acos(x)
+
+        return clipped_acos(Vec3.dot(unit_v1, unit_v2))
+        # return clipped_acos(Vec3.dot(v1, v2) / (v1.length() * v2.length())
 
 
 ###############################################################################

@@ -28,3 +28,6 @@ reconstruction/models/**/*.json
 
 # temp script files
 reconstruction/models/_*.py
+
+# temp files
+**/~*

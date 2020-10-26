@@ -41,8 +41,11 @@ class Rect:
             self.center - self.half_width + self.half_height,
         ]
 
+        def multiply(a: Vector3r, b: Vector3r) -> Vector3r:
+            return Vector3r(a.x_val * b.x_val, a.y_val * b.y_val, a.z_val * b.z_val)
+
         # apply scaling and translation
-        corners = [(corner * self._S) + self._T for corner in corners]
+        corners = [multiply(corner, self._S) + self._T for corner in corners]
 
         return corners if not repeat_first else corners + [corners[0]]
 
