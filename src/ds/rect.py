@@ -19,6 +19,18 @@ class Rect:
         self.center = center
         self.half_width = width / 2.0
         self.half_height = height / 2.0
+        self._S = Vector3r(1.0, 1.0, 1.0)  # scaling
+        self._T = Vector3r(0.0, 0.0, 0.0)  # translation
+
+    def scale_inplace(self, x: float = 1.0, y: float = 1.0, z: float = 1.0) -> None:
+        self._S.x_val *= x
+        self._S.y_val *= y
+        self._S.z_val *= z
+
+    def translate_inplace(self, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> None:
+        self._T.x_val += x
+        self._T.y_val += y
+        self._T.z_val += z
 
     def corners(self, repeat_first: bool = False) -> List[Vector3r]:
         """ Return a list of the rectangle's corner coordinates. """
@@ -28,6 +40,10 @@ class Rect:
             self.center + self.half_width + self.half_height,
             self.center - self.half_width + self.half_height,
         ]
+
+        # apply scaling and translation
+        corners = [(corner * self._S) + self._T for corner in corners]
+
         return corners if not repeat_first else corners + [corners[0]]
 
     def closest_corner(self, point: Vector3r) -> Vector3r:

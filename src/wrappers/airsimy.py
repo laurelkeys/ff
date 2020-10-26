@@ -152,6 +152,7 @@ class AirSimSettings:
         sim_mode: str = ff.SimMode.Multirotor,
         view_mode: str = ff.ViewMode.Default,
         clock_speed: float = 1.0,
+        # TODO include Recording to adjust the RecordInterval
         camera_defaults: AirSimSettings.Camera = None,
         origin_geopoint: airsim.GeoPoint = None,
         subwindows: List[AirSimSettings.Subwindow] = None,
@@ -200,6 +201,23 @@ class AirSimSettings:
             settings["Vehicles"] = {_.name: _.as_dict() for _ in self.vehicles}
 
         return settings
+
+    class Recording:
+        def __init__(
+            self,
+            record_on_move: bool = False,
+            record_interval: float = 0.05,
+            # FIXME add a cameras parameter (see master/docs/settings.md#recording)
+        ):
+            self.record_on_move = record_on_move
+            self.record_interval = record_interval
+
+        def as_dict(self) -> AirSimSettings.DictType:
+            recording: AirSimSettings.DictType = {
+                "RecordOnMove": self.record_on_move,
+                "RecordInterval": self.record_interval,
+            }
+            return recording
 
     class CaptureSettings:
         def __init__(
