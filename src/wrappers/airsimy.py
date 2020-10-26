@@ -10,6 +10,8 @@ try:
 except ModuleNotFoundError:
     ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
     import airsim
+finally:
+    from airsim.types import Vector3r, Quaternionr
 
 ###############################################################################
 ###############################################################################
@@ -71,6 +73,61 @@ class AirSimImage:
                 response_right.image_data_uint8, response_right.height, response_right.width
             ),
         )
+
+
+###############################################################################
+###############################################################################
+
+
+class AirSimRecord:
+    def __init__(
+        self,
+        time_stamp: int,
+        pos_x: float, pos_y: float, pos_z: float,
+        q_w: float, q_x: float, q_y: float, q_z: float,
+        image_file: str,
+    ):
+        """ Represents an item from AirSim's recording file (i.e. a row in `airsim_rec.txt`). """
+        # assert os.path.isfile(image_file), image_file
+        self.time_stamp = time_stamp
+        self.image_file = image_file
+        self.position = Vector3r(pos_x, pos_y, pos_z)
+        self.orientation = Quaternionr(q_x, q_y, q_z, q_w)
+
+    @staticmethod
+    def _parse(
+        time_stamp: str,
+        pos_x: str, pos_y: str, pos_z: str,
+        q_w: str, q_x: str, q_y: str, q_z: str,
+        image_file: str
+    ) -> AirSimRecord:
+        return AirSimRecord(
+            int(time_stamp),
+            float(pos_x), float(pos_y), float(pos_z),
+            float(q_w), float(q_x), float(q_y), float(q_z),
+            image_file
+        )
+
+    @staticmethod
+    def list_from(rec_file: str) -> List[AirSimRecord]:
+        """ Parses `airsim_rec.txt` into a list of records. """
+        with open(rec_file, "r") as f:
+            next(f)  # skip the column header "TimeStamp POS_X POS_Y POS_Z Q_W Q_X Q_Y Q_Z ImageFile"
+            record_list = []
+            for record_row in f:
+                record_list.append(AirSimRecord._parse(*record_row.rstrip('\n').split('\t')))
+        return record_list
+
+    @staticmethod
+    def dict_from(rec_file: str) -> Dict[AirSimRecord]:
+        """ Parses `airsim_rec.txt` into a dictionary mapping image file to records. """
+        with open(rec_file, "r") as f:
+            next(f)  # skip the column header "TimeStamp POS_X POS_Y POS_Z Q_W Q_X Q_Y Q_Z ImageFile"
+            record_dict = {}
+            for record_row in f:
+                record = AirSimRecord._parse(*record_row.rstrip('\n').split('\t'))
+                record_dict[record.image_file] = record
+        return record_dict
 
 
 ###############################################################################
