@@ -3,7 +3,7 @@ import argparse
 
 import ff
 
-from wrappers.airsimy import AirSimRecord
+from wrappers.meshroomy import MeshroomParser, MeshroomTransform
 
 try:
     import airsim
@@ -20,9 +20,16 @@ finally:
 
 
 def preflight(args: argparse.Namespace) -> None:
-    assert os.path.isfile(args.rec), f"Invalid file path: '{args.rec}'"
+    assert os.path.isfile(args.sfm), f"Invalid file path: '{args.sfm}'"
 
-    args.recording = AirSimRecord.dict_from(rec_file=args.rec)
+    views, poses = MeshroomParser.parse_cameras(cameras_file_path=args.sfm)
+    ff.log(views); print(); ff.log(poses)
+    # TODO get transforms (i.e. poses / position + orientation from each camera)
+    # TODO plot them and compare with cv_plot_airsim_rec.py
+    # TODO compute the transformation matrix that aligns Meshroom's reference system with AirSim's
+    # TODO compare the aligned camera transforms (i.e. how good is the pose estimation?)
+    # TODO test Meshroom's `matchFromKnownCameraPoses`?
+    # TODO can we match Meshroom's image filenames with the ones stored in airsim_rec.txt?
 
     if args.env_name is not None:
         # the --launch option was passed
@@ -42,12 +49,12 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
 
     client.simFlushPersistentMarkers()
-    client.simPlotTransforms(
-        poses=[Pose(record.position, record.orientation) for record in args.recording.values()],
-        scale=7.5,
-        thickness=2.5,
-        is_persistent=True,
-    )
+    # client.simPlotTransforms(
+    #     poses=[Pose(record.position, record.orientation) for record in args.recording.values()],
+    #     scale=7.5,
+    #     thickness=2.5,
+    #     is_persistent=True,
+    # )
 
 
 ###############################################################################
@@ -84,7 +91,8 @@ def connect_to_airsim() -> airsim.MultirotorClient:
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="")
 
-    parser.add_argument("rec", type=str, help="Path to airsim_rec.txt")
+    # NOTE Meshroom's `StructureFromMotion` node output
+    parser.add_argument("sfm", type=str, help="Path to cameras.sfm")
 
     ff.add_arguments_to(parser)
     return parser

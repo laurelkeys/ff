@@ -28,3 +28,4 @@
 - [ ] See https://github.com/microsoft/AirSim/issues/543
 - [ ] See https://github.com/microsoft/AirSim/blob/master/PythonClient/computer_vision/capture_ir_segmentation.py#L10
 - [ ] See https://github.com/microsoft/AirSim/blob/master/ros/src/airsim_tutorial_pkgs/scripts/multi_drone_json_creator.py
+- [ ] Prefix all classes from `airsimy` with `AirSim`, like in `meshroomy`?
