@@ -264,7 +264,7 @@ class AirSimSettings:
             self,
             record_on_move: bool = False,
             record_interval: float = 0.05,
-            # FIXME add a cameras parameter (see master/docs/settings.md#recording)
+            # FIXME add a cameras parameter (see blob/master/docs/settings.md#recording)
         ):
             self.record_on_move = record_on_move
             self.record_interval = record_interval
