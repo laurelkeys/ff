@@ -113,6 +113,9 @@ class MeshroomParser:
             self.rotation = rotation
             self.center = center
 
+        def __repr__(self) -> str:
+            return f"Pose(rotation={self.rotation}, center={self.center})"
+
         @staticmethod
         def extract_from(poses_dict):
             """ Returns a `(pose_id, rotation, center)` tuple. """

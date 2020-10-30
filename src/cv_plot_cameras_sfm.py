@@ -11,7 +11,7 @@ except ModuleNotFoundError:
     ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
     import airsim
 finally:
-    from airsim.types import Pose
+    from airsim.types import Pose, Vector3r, Quaternionr
 
 
 ###############################################################################
@@ -22,14 +22,9 @@ finally:
 def preflight(args: argparse.Namespace) -> None:
     assert os.path.isfile(args.sfm), f"Invalid file path: '{args.sfm}'"
 
-    views, poses = MeshroomParser.parse_cameras(cameras_file_path=args.sfm)
-    ff.log(views); print(); ff.log(poses)
     # TODO get transforms (i.e. poses / position + orientation from each camera)
-    # TODO plot them and compare with cv_plot_airsim_rec.py
-    # TODO compute the transformation matrix that aligns Meshroom's reference system with AirSim's
-    # TODO compare the aligned camera transforms (i.e. how good is the pose estimation?)
-    # TODO test Meshroom's `matchFromKnownCameraPoses`?
-    # TODO can we match Meshroom's image filenames with the ones stored in airsim_rec.txt?
+    views, poses = MeshroomParser.parse_cameras(cameras_file_path=args.sfm)
+    args.views_dict, args.poses_dict = MeshroomParser.extract_views_and_poses(views, poses)
 
     if args.env_name is not None:
         # the --launch option was passed
@@ -49,12 +44,33 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
 
     client.simFlushPersistentMarkers()
-    # client.simPlotTransforms(
-    #     poses=[Pose(record.position, record.orientation) for record in args.recording.values()],
-    #     scale=7.5,
-    #     thickness=2.5,
-    #     is_persistent=True,
-    # )
+
+    # FIXME move this to wrappers/
+    def pose_from_meshroom_to_airsim(meshroom_pose):
+        rotation = meshroom_pose.rotation
+        center = meshroom_pose.center
+
+        assert len(rotation) == 9 and len(center) == 3, meshroom_pose
+
+        xywz = MeshroomTransform.rotation(rotation, as_quaternion=True)  # FIXME
+
+        return Pose(
+            position_val=Vector3r(center[0], center[1], center[2]),
+            orientation_val=Quaternionr(xywz[3], xywz[0], xywz[1], xywz[2]),
+        )
+
+    # TODO plot them and compare with cv_plot_airsim_rec.py
+    client.simPlotTransforms(
+        poses=[pose_from_meshroom_to_airsim(pose) for pose in args.poses_dict.values()],
+        scale=7.5,
+        thickness=2.5,
+        is_persistent=True,
+    )
+
+    # TODO compute the transformation matrix that aligns Meshroom's reference system with AirSim's
+    # TODO compare the aligned camera transforms (i.e. how good is the pose estimation?)
+    # TODO test Meshroom's `matchFromKnownCameraPoses`?
+    # TODO can we match Meshroom's image filenames with the ones stored in airsim_rec.txt?
 
 
 ###############################################################################
