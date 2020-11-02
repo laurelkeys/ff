@@ -107,7 +107,7 @@ def connect_to_airsim() -> airsim.MultirotorClient:
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="")
 
-    # NOTE Meshroom's `StructureFromMotion` node output
+    # NOTE this is Meshroom's `StructureFromMotion` node output
     parser.add_argument("sfm", type=str, help="Path to cameras.sfm")
 
     ff.add_arguments_to(parser)

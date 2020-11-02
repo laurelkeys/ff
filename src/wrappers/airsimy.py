@@ -265,6 +265,7 @@ class AirSimSettings:
             record_on_move: bool = False,
             record_interval: float = 0.05,
             # FIXME add a cameras parameter (see blob/master/docs/settings.md#recording)
+            # TODO add new options once they are merged (https://github.com/microsoft/AirSim/pull/2861)
         ):
             self.record_on_move = record_on_move
             self.record_interval = record_interval
@@ -282,7 +283,7 @@ class AirSimSettings:
             width: int = 960,
             height: int = 540,
             image_type: int = airsim.ImageType.Scene,
-            fov_degrees: int = 90,
+            fov_degrees: int = 90,  # NOTE horizontal (obs.: vertical fov = height / width * horizontal fov)
         ):
             self.width = width
             self.height = height

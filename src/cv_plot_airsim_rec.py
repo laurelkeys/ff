@@ -84,6 +84,7 @@ def connect_to_airsim() -> airsim.MultirotorClient:
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="")
 
+    # NOTE this is AirSim's `Recording` output
     parser.add_argument("rec", type=str, help="Path to airsim_rec.txt")
 
     ff.add_arguments_to(parser)

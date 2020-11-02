@@ -80,8 +80,8 @@ class MeshroomParser:
 
         _views = {}
         for views_dict in views or []:
-            view_id, pose_id, path, width, hight = MeshroomParser.View.extract_from(views_dict)
-            _views[view_id] = MeshroomParser.View(pose_id, path, width, hight)
+            view_id, pose_id, path, width, height = MeshroomParser.View.extract_from(views_dict)
+            _views[view_id] = MeshroomParser.View(pose_id, path, width, height)
             if _poses:
                 assert pose_id in _poses, f"Unexpected poseId value for {views_dict=}"
             assert pose_id == view_id, f"Differing viewId and poseId in {views_dict=}"
@@ -89,12 +89,12 @@ class MeshroomParser:
         return _views, _poses
 
     class View:
-        def __init__(self, pose_id, path, width, hight):
-            """ E.g.: `_, pose_id, path, width, hight = extract_from(views_dict)` """
+        def __init__(self, pose_id, path, width, height):
+            """ E.g.: `_, pose_id, path, width, height = extract_from(views_dict)` """
             self.pose_id = pose_id
             self.path = path
             self.width = width
-            self.hight = hight
+            self.height = height
 
         @staticmethod
         def extract_from(views_dict):
