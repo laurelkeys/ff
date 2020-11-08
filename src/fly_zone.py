@@ -4,8 +4,8 @@ import argparse
 
 import ff
 
-from ds import Rect, Controller
-from wrappers.airsimy import AirSimSettings, Rgba
+from ds import Rect, Controller, Rgba
+from wrappers.airsimy import AirSimSettings
 
 try:
     import airsim

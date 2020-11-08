@@ -119,7 +119,7 @@ class AirSimRecord:
         return record_list
 
     @staticmethod
-    def dict_from(rec_file: str) -> Dict[AirSimRecord]:
+    def dict_from(rec_file: str) -> Dict[str, AirSimRecord]:
         """ Parses `airsim_rec.txt` into a dictionary mapping image file to records. """
         with open(rec_file, "r") as f:
             next(f)  # skip the column header "TimeStamp POS_X POS_Y POS_Z Q_W Q_X Q_Y Q_Z ImageFile"
@@ -134,7 +134,7 @@ class AirSimRecord:
 ###############################################################################
 
 
-class Rotation:
+class AirSimRotation:
     def __init__(self, yaw: float = 0.0, pitch: float = 0.0, roll: float = 0.0):
         """ Represents a 3D rotation along the normal / vertical axis (`yaw`), transverse
             / lateral axis (`pitch`) and longitudinal axis (`roll`).
@@ -146,8 +146,8 @@ class Rotation:
         self.roll = roll
 
     @staticmethod
-    def nanRotation() -> Rotation:
-        return Rotation(np.nan, np.nan, np.nan)
+    def nanRotation() -> AirSimRotation:
+        return AirSimRotation(np.nan, np.nan, np.nan)
 
     def as_dict(self) -> dict:
         return {"Yaw": self.yaw, "Pitch": self.pitch, "Roll": self.roll}
@@ -162,37 +162,6 @@ class Rotation:
             roll=self.roll,
             yaw=self.yaw,
         )
-
-
-###############################################################################
-###############################################################################
-
-
-class Rgba(tuple):
-    White   = (1.0, 1.0, 1.0, 1.0)
-    Black   = (0.0, 0.0, 0.0, 1.0)
-    Red     = (1.0, 0.0, 0.0, 1.0)
-    Green   = (0.0, 1.0, 0.0, 1.0)
-    Blue    = (0.0, 0.0, 1.0, 1.0)
-    Cyan    = (0.0, 1.0, 1.0, 1.0)
-    Magenta = (1.0, 0.0, 1.0, 1.0)
-    Yellow  = (1.0, 1.0, 0.0, 1.0)
-
-    def __new__(cls, r: float, g: float, b: float, alpha: float = 1.0):
-        rgba = (r, g, b, alpha)
-        assert all(0.0 <= ch <= 1.0 for ch in rgba), rgba
-        return super(Rgba, cls).__new__(cls, rgba)
-
-    def __init__(self, r: float, g: float, b: float, alpha: float = 1.0):
-        """ Construct a new color, with values RGBA in `[0.0, 1.0]`. """
-        self.r = self[0]
-        self.g = self[1]
-        self.b = self[2]
-        self.a = self[3]
-
-    def from255(self, r: int, g: int, b: int, alpha: float = 1.0) -> Rgba:
-        """ Construct a new color by converting RGB values from `[0, 255]` to `[0.0, 1.0]`. """
-        return Rgba(r / 255, g / 255, b / 255, alpha)
 
 
 ###############################################################################
@@ -299,7 +268,7 @@ class AirSimSettings:
 
     class Gimbal:
         def __init__(
-            self, stabilization: float = 0.0, rotation: Rotation = None,
+            self, stabilization: float = 0.0, rotation: AirSimRotation = None,
         ):
             self.stabilization = stabilization
             self.rotation = rotation
@@ -314,7 +283,7 @@ class AirSimSettings:
             self,
             capture_settings: List[AirSimSettings.CaptureSettings] = None,
             position: airsim.Vector3r = None,
-            rotation: Rotation = None,
+            rotation: AirSimRotation = None,
             gimbal: AirSimSettings.Gimbal = None,
         ):
             self.capture_settings = capture_settings
@@ -370,7 +339,7 @@ class AirSimSettings:
             vehicle_type: str = VehicleType.SimpleFlight,
             default_vehicle_state: str = None,
             position: airsim.Vector3r = None,  # NOTE in global NED coordinates, SI units and origin at PlayerStart
-            rotation: Rotation = None,  # NOTE in degrees
+            rotation: AirSimRotation = None,  # NOTE in degrees
             cameras: Dict[str, AirSimSettings.Camera] = None,
         ):
             assert cameras is None or all([_ in ff.CameraName._list_all for _ in cameras.keys()]), cameras
