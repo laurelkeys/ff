@@ -1,7 +1,9 @@
 import os
+import json
 import argparse
 
 import ff
+
 from wrappers.airsimy import AirSimRecord
 from wrappers.meshroomy import MeshroomParser, MeshroomTransform
 
@@ -19,25 +21,64 @@ def main(args: argparse.Namespace) -> None:
     print()
 
     record_dict = AirSimRecord.dict_from(args.rec)
-    view_dict, _pose_dict = MeshroomParser.extract_views_and_poses(
+    view_dict, pose_dict = MeshroomParser.extract_views_and_poses(
         *MeshroomParser.parse_cameras(args.sfm)
     )
 
-    airsim_image_fnames = [os.path.basename(_) for _ in record_dict.keys()]
-    meshroom_image_fnames = [os.path.basename(_.path) for _ in view_dict.values()]
+    # NOTE Meshroom uses absolute paths, while AirSim uses relative
+    airsim_images = [os.path.basename(_) for _ in record_dict.keys()]
+    meshroom_images = [os.path.basename(_.path) for _ in view_dict.values()]
 
-    airsim_image_count = len(airsim_image_fnames)
-    meshroom_image_count = len(meshroom_image_fnames)
+    airsim_image_count = len(airsim_images)
+    meshroom_image_count = len(meshroom_images)
 
-    # ff.log(*airsim_image_fnames)
-    # print()
-    # ff.log(*meshroom_image_fnames)
-
-    matching_image_fnames = set(airsim_image_fnames) & set(meshroom_image_fnames)
-    match_count = len(matching_image_fnames)
+    matching_images = set(airsim_images).intersection(set(meshroom_images))
+    match_count = len(matching_images)
 
     ff.log(f"cameras.sfm: {match_count} out of {meshroom_image_count} images matched")
     ff.log(f"airsim_rec.txt: {match_count} out of {airsim_image_count} images matched")
+    print()
+
+    # Generate a new cameras.sfm file using the poses from airsim.rec to be
+    # used with the `FeatureMatching > matchFromKnownCameraPoses` node option
+    # https://github.com/alicevision/meshroom/wiki/Using-known-camera-positions
+    new_cameras_sfm = json.loads(open(args.sfm, "r").read())
+
+    assert list(new_cameras_sfm.keys()) == [
+        "version",          # keep
+        "featuresFolders",  # remove
+        "matchesFolders",   # remove
+        "views",            # keep
+        "intrinsics",       # keep (TODO find AirSim's camera intrinsics)
+        "poses",            # update 'transform' and set 'locked' from 0 to 1
+    ]
+
+    del new_cameras_sfm["featuresFolders"]
+    del new_cameras_sfm["matchesFolders"]
+
+    for pose in new_cameras_sfm["poses"]:
+        # Replace the 'transform's 'center' with `position`, and 'rotation' with
+        # `orientation` (converted from WXYZ quaternion to a 3x3 rotation matrix)
+        pose_id, rotation, center = MeshroomParser.Pose.extract_from(pose)
+        ff.log_debug(f"old: {center}")
+        ff.log_debug(f"     {rotation}")
+
+        view = view_dict[pose_id]  # NOTE 'poseId' is equal to the 'viewId'
+        assert view.pose_id == pose_id  # so we can simply use it to index
+
+        image_file = os.path.basename(view.path)  # FIXME
+        record = record_dict[image_file]
+
+        new_rotation, new_center = record.orientation, record.position
+        # TODO http://www.j3d.org/matrix_faq/matrfaq_latest.html#Q55
+        new_center = list(ff.to_xyz_tuple(new_center))
+        ff.log_debug(f"new: {new_center}")
+        ff.log_debug(f"     {new_rotation}")
+
+        break
+
+    # TODO see https://github.com/alicevision/meshroom/issues/655
+    # TODO see https://github.com/alicevision/meshroom/issues/453
 
 
 ###############################################################################
