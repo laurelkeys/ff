@@ -2,10 +2,12 @@ import os
 import json
 import argparse
 
+from typing import List
+
 import ff
 
 from wrappers.airsimy import AirSimRecord
-from wrappers.meshroomy import MeshroomParser, MeshroomTransform
+from wrappers.meshroomy import MeshroomParser, MeshroomTransform, MeshroomQuaternion
 
 ###############################################################################
 ## main #######################################################################
@@ -21,7 +23,7 @@ def main(args: argparse.Namespace) -> None:
     print()
 
     record_dict = AirSimRecord.dict_from(args.rec)
-    view_dict, pose_dict = MeshroomParser.extract_views_and_poses(
+    view_dict, _pose_dict = MeshroomParser.extract_views_and_poses(
         *MeshroomParser.parse_cameras(args.sfm)
     )
 
@@ -39,12 +41,12 @@ def main(args: argparse.Namespace) -> None:
     ff.log(f"airsim_rec.txt: {match_count} out of {airsim_image_count} images matched")
     print()
 
-    # Generate a new cameras.sfm file using the poses from airsim.rec to be
+    # Generate a new cameras.sfm file using the poses from airsim.rec, to be
     # used with the `FeatureMatching > matchFromKnownCameraPoses` node option
     # https://github.com/alicevision/meshroom/wiki/Using-known-camera-positions
-    new_cameras_sfm = json.loads(open(args.sfm, "r").read())
+    cameras_sfm = json.loads(open(args.sfm, "r").read())
 
-    assert list(new_cameras_sfm.keys()) == [
+    assert list(cameras_sfm.keys()) == [
         "version",          # keep
         "featuresFolders",  # remove
         "matchesFolders",   # remove
@@ -53,27 +55,33 @@ def main(args: argparse.Namespace) -> None:
         "poses",            # update 'transform' and set 'locked' from 0 to 1
     ]
 
-    del new_cameras_sfm["featuresFolders"]
-    del new_cameras_sfm["matchesFolders"]
+    del cameras_sfm["featuresFolders"]
+    del cameras_sfm["matchesFolders"]
 
-    for pose in new_cameras_sfm["poses"]:
+    for pose in cameras_sfm["poses"]:
         # Replace the 'transform's 'center' with `position`, and 'rotation' with
         # `orientation` (converted from WXYZ quaternion to a 3x3 rotation matrix)
-        pose_id, rotation, center = MeshroomParser.Pose.extract_from(pose)
-        ff.log_debug(f"old: {center}")
-        ff.log_debug(f"     {rotation}")
+        pose_id, _rotation, _center = MeshroomParser.Pose.extract_from(pose)
 
-        view = view_dict[pose_id]  # NOTE 'poseId' is equal to the 'viewId'
+        view = view_dict[pose_id]  # NOTE 'poseId' is equal to the 'viewId',
         assert view.pose_id == pose_id  # so we can simply use it to index
 
-        image_file = os.path.basename(view.path)  # FIXME
+        image_file = os.path.basename(view.path)  # FIXME make this a general solution
         record = record_dict[image_file]
 
-        new_rotation, new_center = record.orientation, record.position
-        # TODO http://www.j3d.org/matrix_faq/matrfaq_latest.html#Q55
-        new_center = list(ff.to_xyz_tuple(new_center))
-        ff.log_debug(f"new: {new_center}")
-        ff.log_debug(f"     {new_rotation}")
+        new_center: List[float] = list(ff.to_xyz_tuple(record.position))
+        new_rotation: List[float] = MeshroomTransform.unparse_rotation(
+            MeshroomQuaternion.XYZW.to_rotation_matrix(
+                record.orientation.to_numpy_array()  # returned in XYZW order
+            )
+        )
+
+        # Update 'transform' values and set 'locked' to 1
+        ff.log_debug(f"old: {pose}")
+        pose["pose"]["transform"]["center"] = new_center
+        pose["pose"]["transform"]["rotation"] = new_rotation
+        pose["pose"]["locked"] = "1"
+        ff.log_debug(f"new: {pose}")
 
         break
 

@@ -87,8 +87,5 @@ def settings_str_from_dict(settings: dict) -> str:
     return json.dumps(settings).replace('"', '\\"')
 
 
-# TODO def settings_str_from_file(json_path: str) -> dict:
-
-
 ###############################################################################
 ###############################################################################

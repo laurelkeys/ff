@@ -4,12 +4,14 @@ from __future__ import annotations
 class Rgba(tuple):
     White = (1.0, 1.0, 1.0, 1.0)
     Black = (0.0, 0.0, 0.0, 1.0)
-    Red = (1.0, 0.0, 0.0, 1.0)
+
+    Red   = (1.0, 0.0, 0.0, 1.0)
     Green = (0.0, 1.0, 0.0, 1.0)
-    Blue = (0.0, 0.0, 1.0, 1.0)
-    Cyan = (0.0, 1.0, 1.0, 1.0)
+    Blue  = (0.0, 0.0, 1.0, 1.0)
+
+    Cyan    = (0.0, 1.0, 1.0, 1.0)
     Magenta = (1.0, 0.0, 1.0, 1.0)
-    Yellow = (1.0, 1.0, 0.0, 1.0)
+    Yellow  = (1.0, 1.0, 0.0, 1.0)
 
     def __new__(cls, r: float, g: float, b: float, alpha: float = 1.0):
         rgba = (r, g, b, alpha)

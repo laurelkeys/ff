@@ -1,4 +1,6 @@
+import os
 import json
+
 from typing import List
 
 import numpy as np
@@ -15,12 +17,8 @@ class MeshroomParser:
             Returns a tuple of lists `(views, poses)`.
         """
         with open(cameras_file_path, "r") as cameras_file:
-            cameras = json.loads(
-                cameras_file.read()
-            )  # { version featuresFolders matchesFolders views intrinsics poses }
-        views = cameras[
-            "views"
-        ]  # { viewId poseId intrinsicId resectionId path width height metadata }
+            cameras = json.loads(cameras_file.read())  # { version featuresFolders matchesFolders views intrinsics poses }
+        views = cameras["views"]  # { viewId poseId intrinsicId resectionId path width height metadata }
         poses = cameras["poses"]  # { poseId pose { transform { rotation center } locked } }
         return views, poses
 
@@ -82,8 +80,40 @@ class MeshroomParser:
             rotation, center = [list(map(float, _)) for _ in pose_dict["transform"].values()]
             return pose_id, rotation, center
 
-    class Viewpoint:
-        pass
+
+###############################################################################
+###############################################################################
+
+
+# TODO group View and Pose into this single class (and possibly remove them)
+# https://github.com/alicevision/meshroom/blob/develop/meshroom/ui/reconstruction.py#L1100
+# https://github.com/alicevision/meshroom/blob/develop/meshroom/ui/reconstruction.py#L169
+class MeshroomViewpoint:
+    """ Wraps the attributes of an input image (and its camera) in the context of a reconstruction. """
+
+    def __init__(
+        self, view_id: int, pose_id: int,
+        # view
+        path: str, width: int, height: int,
+        # pose transform
+        rotation: List[float], center: List[float]
+    ):
+        assert view_id == pose_id, f"Expected viewId={view_id} to be equal to poseId={pose_id}"
+        assert os.path.isfile(path), f"Invalid image file path: '{path}'"
+
+        self.id = view_id
+        self.image_path = os.path.abspath(path)
+        self.image_width = width
+        self.image_height = height
+
+        # # Store the rotation as a 3x3 numpy matrix and center as a numpy array.
+        # self.rotation: np.ndarray = MeshroomTransform.rotation(rotation, as_xywz_quaternion=False)
+        # self.center: np.ndarray = MeshroomTransform.translation(center)
+
+        assert len(rotation) == 9, rotation
+        assert len(center) == 3, center
+        self.rotation = rotation
+        self.center = center
 
 
 ###############################################################################
@@ -97,6 +127,7 @@ class MeshroomTransform:
     """
 
     # TODO remove `as_column_vector` and `as_xywz_quaternion` and fix the scripts that use them
+    # TODO prefix `translation`, `rotation` and `pose` with `parse_`
 
     @staticmethod
     def translation(T: List[float], as_column_vector: bool = False) -> np.ndarray:
@@ -122,6 +153,13 @@ class MeshroomTransform:
         if as_xywz_quaternion:
             return MeshroomQuaternion.XYZW.from_rotation_matrix(matrix)
         return matrix
+
+    @staticmethod
+    def unparse_rotation(R: np.ndarray) -> List[float]:
+        """ Converts a 3x3 rotation matrix back into Meshroom's list representation of it. """
+        assert R.shape == (3, 3), R
+        R[:, 1:] *= -1  # undo the negation of the middle and last rows
+        return R.flatten().tolist()  # NOTE flattens in row-major order
 
     @staticmethod
     def pose(R: List[float], T: List[float]) -> np.ndarray:
@@ -158,7 +196,7 @@ class MeshroomQuaternion:
 
     class XYZW:
         @staticmethod
-        def to_rotation_matrix(Q):
+        def to_rotation_matrix(Q: np.ndarray) -> np.ndarray:
             """ Creates a (row-major) 3x3 rotation matrix that corresponds to the quaternion. """
             x, y, z, w = Q
             return MeshroomQuaternion.WXYZ.to_rotation_matrix(np.array([w, x, y, z]))
@@ -171,7 +209,7 @@ class MeshroomQuaternion:
 
     class WXYZ:
         @staticmethod
-        def to_rotation_matrix(Q):
+        def to_rotation_matrix(Q: np.ndarray) -> np.ndarray:
             """ See http://www.j3d.org/matrix_faq/matrfaq_latest.html#Q54
 
                 Note: the returned matrix is row-major.
@@ -193,7 +231,7 @@ class MeshroomQuaternion:
             )
 
         @staticmethod
-        def from_rotation_matrix(R):
+        def from_rotation_matrix(R: np.ndarray) -> np.ndarray:
             """ See http://www.j3d.org/matrix_faq/matrfaq_latest.html#Q55
 
                 Note: `R` is assumed to be row-major.

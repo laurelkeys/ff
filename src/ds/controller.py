@@ -152,8 +152,8 @@ def _fly_path2(
             curr_pos = Vec3.from_Vector3r(client.simGetVehiclePose().position)
             time.sleep(WAIT_TIME)
 
-        # TODO Interpolate between no slowdown before the next waypoint and a
-        #      "full stop" if the turning angle is too high:
+        # TODO Interpolate between "no slowdown" before the next waypoint
+        #      and a "full stop" if the turning angle is too high:
         #
         #            No stop              ...       Full stop
         #
