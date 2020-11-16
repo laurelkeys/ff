@@ -1,6 +1,7 @@
 from __future__ import annotations
+from ff import sim
 
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 import ff
 import numpy as np
@@ -12,6 +13,25 @@ except ModuleNotFoundError:
     import airsim
 finally:
     from airsim.types import Vector3r, Quaternionr
+
+
+###############################################################################
+###############################################################################
+
+
+def connect(sim_mode: str) -> airsim.MultirotorClient:
+    """ Returns a (Multirotor or ComputerVision) client connected to AirSim. """
+    assert sim_mode in [ff.SimMode.Multirotor, ff.SimMode.ComputerVision], sim_mode
+
+    client = airsim.MultirotorClient()
+    client.confirmConnection()
+    if sim_mode == ff.SimMode.Multirotor:
+        # NOTE we don't need these in CV mode
+        client.enableApiControl(True)
+        client.armDisarm(True)
+
+    return client
+
 
 ###############################################################################
 ###############################################################################

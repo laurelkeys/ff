@@ -4,6 +4,7 @@ import argparse
 import ff
 
 from wrappers.meshroomy import MeshroomParser, MeshroomTransform
+from wrappers.airsimy import connect
 
 try:
     import airsim
@@ -43,7 +44,9 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.verbose:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
 
-    client.simFlushPersistentMarkers()
+    if args.flush:
+        client.simFlushPersistentMarkers()
+        client.simFlushPersistentMarkers()
 
     # FIXME move this to wrappers/
     def pose_from_meshroom_to_airsim(meshroom_pose):
@@ -52,7 +55,8 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
         assert len(rotation) == 9 and len(center) == 3, meshroom_pose
 
-        xywz = MeshroomTransform.rotation(rotation, as_quaternion=True)  # FIXME
+        # xywz = MeshroomTransform.rotation(rotation, as_quaternion=True)  # FIXME
+        xywz = MeshroomTransform.rotation(rotation, as_xywz_quaternion=True)
 
         return Pose(
             position_val=Vector3r(center[0], center[1], center[2]),
@@ -83,20 +87,13 @@ def main(args: argparse.Namespace) -> None:
         ff.print_airsim_path(airsim.__path__)
 
     preflight(args)  # setup
-    client = connect_to_airsim()
+    client = connect(ff.SimMode.ComputerVision)
     try:
         fly(client, args)  # do stuff
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting with Ctrl+C
     finally:
         ff.log("Done")
-
-
-def connect_to_airsim() -> airsim.MultirotorClient:
-    client = airsim.MultirotorClient()
-    client.confirmConnection()
-    # NOTE don't `enableApiControl` or `armDisarm` since we are in CV mode
-    return client
 
 
 ###############################################################################
@@ -109,6 +106,7 @@ def get_parser() -> argparse.ArgumentParser:
 
     # NOTE this is Meshroom's `StructureFromMotion` node output
     parser.add_argument("sfm", type=str, help="Path to cameras.sfm")
+    parser.add_argument("--flush", action="store_true", help="Flush old plots")
 
     ff.add_arguments_to(parser)
     return parser

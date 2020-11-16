@@ -3,7 +3,7 @@ import argparse
 
 import ff
 
-from wrappers.airsimy import AirSimRecord
+from wrappers.airsimy import AirSimRecord, connect
 
 try:
     import airsim
@@ -41,7 +41,9 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.verbose:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
 
-    client.simFlushPersistentMarkers()
+    if args.flush:
+        client.simFlushPersistentMarkers()
+
     client.simPlotTransforms(
         poses=[Pose(record.position, record.orientation) for record in args.recording.values()],
         scale=10.0,
@@ -60,20 +62,13 @@ def main(args: argparse.Namespace) -> None:
         ff.print_airsim_path(airsim.__path__)
 
     preflight(args)  # setup
-    client = connect_to_airsim()
+    client = connect(ff.SimMode.ComputerVision)
     try:
         fly(client, args)  # do stuff
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting with Ctrl+C
     finally:
         ff.log("Done")
-
-
-def connect_to_airsim() -> airsim.MultirotorClient:
-    client = airsim.MultirotorClient()
-    client.confirmConnection()
-    # NOTE don't `enableApiControl` or `armDisarm` since we are in CV mode
-    return client
 
 
 ###############################################################################
@@ -86,6 +81,7 @@ def get_parser() -> argparse.ArgumentParser:
 
     # NOTE this is AirSim's `Recording` output
     parser.add_argument("rec", type=str, help="Path to airsim_rec.txt")
+    parser.add_argument("--flush", action="store_true", help="Flush old plots")
 
     ff.add_arguments_to(parser)
     return parser

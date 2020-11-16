@@ -4,8 +4,8 @@ import argparse
 
 import ff
 
-from ds import Rect, Controller, Rgba
-from wrappers.airsimy import AirSimSettings
+from ds import Rect, Rgba, Controller
+from wrappers.airsimy import AirSimSettings, connect
 
 try:
     import airsim
@@ -13,7 +13,7 @@ except ModuleNotFoundError:
     ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
     import airsim
 finally:
-    from airsim.types import Vector3r, Pose
+    from airsim.types import Pose, Vector3r
 
 
 ###############################################################################
@@ -40,9 +40,9 @@ def preflight(args: argparse.Namespace) -> None:
                         AirSimSettings.Subwindow(0, camera_name=ff.CameraName.front_center),
                         AirSimSettings.Subwindow(1, camera_name=ff.CameraName.back_center),
                         AirSimSettings.Subwindow(2, camera_name=ff.CameraName.bottom_center),
-                    ]
+                    ],
                 ).as_dict()
-            )
+            ),
         )
         ff.input_or_exit("\nPress [enter] to connect to AirSim ")
 
@@ -108,7 +108,7 @@ def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float 
             Vector3r(corner.x_val, corner.y_val, corner.z_val - altitude_shift)
             for corner in zone.corners(repeat_first=True)
         ],
-        max_dist=2
+        max_dist=2,
     )
 
     client.simPlotPoints(points=path, is_persistent=True, color_rgba=Rgba.White, size=5)
@@ -122,7 +122,7 @@ def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float 
             Vector3r(0, 0, -altitude_shift) + zone.half_width * 4,
             Vector3r(0, 0, -altitude_shift) + zone.half_height * 4,
         ).zigzag(4),
-        max_dist=2
+        max_dist=2,
     )
 
     client.simPlotPoints(points=test_zigzag_path, is_persistent=True, color_rgba=Rgba.White, size=5)
@@ -140,21 +140,13 @@ def main(args: argparse.Namespace) -> None:
         ff.print_airsim_path(airsim.__path__)
 
     preflight(args)  # setup
-    client = connect_to_airsim()
+    client = connect(ff.SimMode.Multirotor)
     try:
         fly(client, args)  # do stuff
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting with Ctrl+C
     finally:
         ff.log("Done")
-
-
-def connect_to_airsim() -> airsim.MultirotorClient:
-    client = airsim.MultirotorClient()
-    client.confirmConnection()
-    client.enableApiControl(True)
-    client.armDisarm(True)
-    return client
 
 
 ###############################################################################

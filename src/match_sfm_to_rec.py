@@ -63,10 +63,8 @@ def main(args: argparse.Namespace) -> None:
         # `orientation` (converted from WXYZ quaternion to a 3x3 rotation matrix)
         pose_id, _rotation, _center = MeshroomParser.Pose.extract_from(pose)
 
-        view = view_dict[pose_id]  # NOTE 'poseId' is equal to the 'viewId',
-        assert view.pose_id == pose_id  # so we can simply use it to index
-
-        image_file = os.path.basename(view.path)  # FIXME make this a general solution
+        # NOTE 'poseId' is equal to 'viewId', so we can use it to index the view dict
+        image_file = os.path.basename(view_dict[pose_id].path)  # FIXME make this a general solution
         record = record_dict[image_file]
 
         new_center: List[float] = list(ff.to_xyz_tuple(record.position))
@@ -77,13 +75,14 @@ def main(args: argparse.Namespace) -> None:
         )
 
         # Update 'transform' values and set 'locked' to 1
-        ff.log_debug(f"old: {pose}")
-        pose["pose"]["transform"]["center"] = new_center
-        pose["pose"]["transform"]["rotation"] = new_rotation
+        pose["pose"]["transform"]["center"] = list(map(str, new_center))
+        pose["pose"]["transform"]["rotation"] = list(map(str, new_rotation))
         pose["pose"]["locked"] = "1"
-        ff.log_debug(f"new: {pose}")
 
-        break
+    new_file_path = "new_cameras.sfm"
+    ff.log(f"Saved output to '{new_file_path}'")
+    with open(new_file_path, "w") as f:
+        print(json.dumps(cameras_sfm, indent=4), file=f)
 
     # TODO see https://github.com/alicevision/meshroom/issues/655
     # TODO see https://github.com/alicevision/meshroom/issues/453

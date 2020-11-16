@@ -6,6 +6,8 @@ from pynput import keyboard
 
 import ff
 
+from wrappers.airsimy import connect
+
 try:
     import airsim
 except ModuleNotFoundError:
@@ -94,20 +96,13 @@ def main(args: argparse.Namespace) -> None:
         ff.print_airsim_path(airsim.__path__)
 
     preflight(args)  # setup
-    client = connect_to_airsim()
+    client = connect(ff.SimMode.ComputerVision)
     try:
         fly(client, args)  # do stuff
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting with Ctrl+C
     finally:
         ff.log("Done")
-
-
-def connect_to_airsim() -> airsim.MultirotorClient:
-    client = airsim.MultirotorClient()
-    client.confirmConnection()
-    # NOTE don't `enableApiControl` or `armDisarm` since we are in CV mode
-    return client
 
 
 ###############################################################################
