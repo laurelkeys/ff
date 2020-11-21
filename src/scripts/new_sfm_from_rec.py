@@ -4,20 +4,11 @@ import json
 import argparse
 
 try:
-    def include(*relative_path):
-        file_dir_path = os.path.dirname(os.path.abspath(__file__))
-        absolute_path = os.path.abspath(os.path.join(file_dir_path, *relative_path))
-        sys.path.append(os.path.dirname(absolute_path))
-
-    include("..", "ff")
+    from include_in_path import include
     include("..", "wrappers")
-
 except:
     pass
-
 finally:
-    import ff
-
     from wrappers.airsimy import AirSimRecord
     from wrappers.meshroomy import MeshroomParser, MeshroomTransform, MeshroomQuaternion
 
@@ -31,15 +22,15 @@ def main(args: argparse.Namespace) -> None:
     assert os.path.isfile(args.sfm), f"Invalid file path: '{args.sfm}'"
     assert os.path.isfile(args.rec), f"Invalid file path: '{args.rec}'"
     if not args.sfm.endswith(".sfm") and args.rec.endswith(".sfm"):
-        ff.log_warning("Swapping argument order based on file extensions\n")
+        print("Swapping argument order based on file extensions\n")
         args.sfm, args.rec = args.rec, args.sfm
     else:
         assert False, f"Expected sfm file as a .sfm: '{args.sfm}'"
     assert args.rec.endswith(".txt"), f"Expected rec file as a .txt: '{args.rec}'"
 
     if args.verbose:
-        ff.log_info(f"cameras.sfm path: '{args.sfm}'")
-        ff.log_info(f"airsim_rec.txt path: '{args.rec}'")
+        print(f"cameras.sfm path: '{args.sfm}'")
+        print(f"airsim_rec.txt path: '{args.rec}'")
         print()
 
     record_dict = AirSimRecord.dict_from(args.rec)
@@ -54,8 +45,8 @@ def main(args: argparse.Namespace) -> None:
     matching_images = set(airsim_images).intersection(set(meshroom_images))
     match_count = len(matching_images)
 
-    ff.log(f"cameras.sfm: {match_count} out of {len(meshroom_images)} images matched")
-    ff.log(f"airsim_rec.txt: {match_count} out of {len(airsim_images)} images matched")
+    print(f"cameras.sfm: {match_count} out of {len(meshroom_images)} images matched")
+    print(f"airsim_rec.txt: {match_count} out of {len(airsim_images)} images matched")
     print()
 
     # Generate a new cameras.sfm file matching poses from airsim.rec, to be
