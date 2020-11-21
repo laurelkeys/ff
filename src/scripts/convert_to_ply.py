@@ -1,6 +1,6 @@
 import os
+import json
 import argparse
-from typing import Optional, Tuple
 
 import numpy as np
 import open3d as o3d
@@ -10,7 +10,7 @@ def no_ext_basename(p):
     return os.path.splitext(os.path.basename(p))[0]
 
 
-def convert_to_ply(input, output, np_pos_from_line):
+def convert_to_ply(input, output, np_points_from_lines):
     assert os.path.isfile(input), f"Invalid input path: '{input}'"
 
     if output is None:
@@ -21,8 +21,7 @@ def convert_to_ply(input, output, np_pos_from_line):
 
     # Parse the camera poses into a `float64` array of shape `(num_points, 3)`.
     with open(input, "r") as f:
-        # NOTE skip the column header "TimeStamp POS_X POS_Y POS_Z Q_W Q_X Q_Y Q_Z ImageFile"
-        np_points = np.array([np_pos_from_line(line) for line in f.readlines()[1:]], dtype=float)
+        np_points = np_points_from_lines(f.readlines())
 
     # NOTE to convert data points between numpy and open3d use:
     #   |
@@ -46,32 +45,37 @@ def convert_to_ply(input, output, np_pos_from_line):
 
 
 def main(args: argparse.Namespace) -> None:
-    point_clouds = []
+    def save_ply(input, output, np_points_from_lines) -> None:
+        pcd, output_path = convert_to_ply(input, output, np_points_from_lines)
+        point_clouds.append(pcd)
+        o3d.io.write_point_cloud(output_path, pcd)
+        print(f"{pcd} Saved to '{output_path}'.")
 
-    if args.rec is not None:
-        def np_pos_from_airsim(line: str) -> np.ndarray:
+    def np_points_from_airsim_rec(lines: str) -> np.ndarray:
+        def np_pos_from(line: str) -> np.ndarray:
             _, pos_x, pos_y, pos_z, *_ = line.rstrip("\n").split("\t")
             return np.fromiter(map(float, [pos_x, pos_y, pos_z]), dtype=float)
 
-        rec_pcd, rec_output_path = convert_to_ply(args.rec, args.ply, np_pos_from_airsim)
+        # NOTE skip the header "TimeStamp POS_X POS_Y POS_Z Q_W Q_X Q_Y Q_Z ImageFile"
+        return np.array([np_pos_from(line) for line in lines[1:]], dtype=float)
 
-        point_clouds.append(rec_pcd)
-        o3d.io.write_point_cloud(rec_output_path, rec_pcd)
-        print(f"{rec_pcd} Saved to '{rec_output_path}'.")
+    def np_points_from_cameras_sfm(lines: str) -> np.ndarray:
+        def np_pos_from(pose: dict) -> np.ndarray:
+            center = pose["pose"]["transform"]["center"]
+            return np.fromiter(map(float, center), dtype=float)
+
+        poses_json = json.loads("".join(lines))["poses"]
+        return np.array([np_pos_from(pose) for pose in poses_json])
+
+    point_clouds = []
+
+    if args.rec is not None:
+        save_ply(args.rec, args.ply or "airsim.ply", np_points_from_airsim_rec)
 
     if args.sfm is not None:
-        def np_pos_from_meshroom(line: str) -> np.ndarray:
-            raise NotImplementedError
+        save_ply(args.sfm, args.ply or "meshroom.ply", np_points_from_cameras_sfm)
 
-        # NOTE if args.rec is not None and args.ply.endswith(".ply")
-        #      then the output PLY file will be overwritten... FIXME
-        sfm_pcd, sfm_output_path = convert_to_ply(args.sfm, args.ply, np_pos_from_meshroom)
-
-        point_clouds.append(sfm_pcd)
-        o3d.io.write_point_cloud(sfm_output_path, sfm_pcd)
-        print(f"{sfm_pcd} Saved to '{sfm_output_path}'.")
-
-    if point_clouds:
+    if point_clouds and args.view:
         o3d.visualization.draw_geometries(point_clouds)
 
 
@@ -89,6 +93,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--rec", type=str, help="Path to the input airsim_rec.txt")
     parser.add_argument("--sfm", type=str, help="Path to the input cameras.sfm")
     parser.add_argument("--ply", type=str, help="Path to the output file")
+    parser.add_argument("--view", action="store_true", help="Visualize the extracted point clouds")
 
     return parser
 
