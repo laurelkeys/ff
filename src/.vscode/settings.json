@@ -8,7 +8,7 @@
     ],
 
     "python.analysis.extraPaths": [
-        "D:/dev/AirSim/PythonClient"
+        "D:/dev/AirSim/PythonClient",
     ],
 
     "python.linting.enabled": true,
