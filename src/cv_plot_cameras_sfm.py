@@ -46,7 +46,6 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
     if args.flush:
         client.simFlushPersistentMarkers()
-        client.simFlushPersistentMarkers()
 
     # FIXME move this to wrappers/
     def pose_from_meshroom_to_airsim(meshroom_pose):
@@ -55,7 +54,6 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
         assert len(rotation) == 9 and len(center) == 3, meshroom_pose
 
-        # xywz = MeshroomTransform.rotation(rotation, as_quaternion=True)  # FIXME
         xywz = MeshroomTransform.rotation(rotation, as_xywz_quaternion=True)
 
         return Pose(

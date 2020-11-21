@@ -1,7 +1,6 @@
 from __future__ import annotations
-from ff import sim
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 import ff
 import numpy as np
