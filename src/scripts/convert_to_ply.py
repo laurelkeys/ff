@@ -39,35 +39,38 @@ def convert_to_ply(input, output, np_points_from_lines):
     return pcd, output
 
 
+def np_points_from_airsim_rec(lines: str) -> np.ndarray:
+    def np_pos_from(line: str) -> np.ndarray:
+        _, pos_x, pos_y, pos_z, *_ = line.rstrip("\n").split("\t")
+        return np.fromiter(map(float, [pos_x, pos_y, pos_z]), dtype=float)
+
+    # NOTE skip the header "TimeStamp POS_X POS_Y POS_Z Q_W Q_X Q_Y Q_Z ImageFile"
+    return np.array([np_pos_from(line) for line in lines[1:]], dtype=float)
+
+
+def np_points_from_cameras_sfm(lines: str) -> np.ndarray:
+    def np_pos_from(pose: dict) -> np.ndarray:
+        center = pose["pose"]["transform"]["center"]
+        return np.fromiter(map(float, center), dtype=float)
+
+    poses_json = json.loads("".join(lines))["poses"]
+    return np.array([np_pos_from(pose) for pose in poses_json])
+
+
 ###############################################################################
 ## main #######################################################################
 ###############################################################################
 
 
 def main(args: argparse.Namespace) -> None:
-    def save_ply(input, output, np_points_from_lines) -> None:
+    point_clouds = []
+
+    def save_ply(input, output, np_points_from_lines):
+        nonlocal point_clouds
         pcd, output_path = convert_to_ply(input, output, np_points_from_lines)
         point_clouds.append(pcd)
         o3d.io.write_point_cloud(output_path, pcd)
         print(f"{pcd} Saved to '{output_path}'.")
-
-    def np_points_from_airsim_rec(lines: str) -> np.ndarray:
-        def np_pos_from(line: str) -> np.ndarray:
-            _, pos_x, pos_y, pos_z, *_ = line.rstrip("\n").split("\t")
-            return np.fromiter(map(float, [pos_x, pos_y, pos_z]), dtype=float)
-
-        # NOTE skip the header "TimeStamp POS_X POS_Y POS_Z Q_W Q_X Q_Y Q_Z ImageFile"
-        return np.array([np_pos_from(line) for line in lines[1:]], dtype=float)
-
-    def np_points_from_cameras_sfm(lines: str) -> np.ndarray:
-        def np_pos_from(pose: dict) -> np.ndarray:
-            center = pose["pose"]["transform"]["center"]
-            return np.fromiter(map(float, center), dtype=float)
-
-        poses_json = json.loads("".join(lines))["poses"]
-        return np.array([np_pos_from(pose) for pose in poses_json])
-
-    point_clouds = []
 
     if args.rec is not None:
         save_ply(args.rec, args.ply or "airsim.ply", np_points_from_airsim_rec)
