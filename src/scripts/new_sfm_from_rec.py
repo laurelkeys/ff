@@ -13,6 +13,8 @@ finally:
     from wrappers.airsimy import AirSimRecord
     from wrappers.meshroomy import MeshroomParser, MeshroomTransform, MeshroomQuaternion
 
+SHOW_CORRESPONDENCES = True  # FIXME
+
 
 ###############################################################################
 ## main #######################################################################
@@ -87,28 +89,28 @@ def main(args: argparse.Namespace) -> None:
         pose["pose"]["transform"]["rotation"] = list(map(str, new_rotation))
         pose["pose"]["locked"] = "1"
 
-    # NOTE this is used by align_with_icp.py
-    Correspondence = namedtuple("Correspondence", ["source_idx", "target_idx"])
-    correspondences = []
+    if SHOW_CORRESPONDENCES:
+        # NOTE this is used by align_with_icp.py
+        Correspondence = namedtuple("Correspondence", ["source_idx", "target_idx"])
+        correspondences = []
 
-    # FIXME this assumes `record_dict.keys()` have the same order as in airsim_rec.txt
-    indexed_airsim_paths = list(enumerate(record_dict.keys()))
-    for meshroom_idx, pose in enumerate(cameras_sfm["poses"]):
-        meshroom_path = view_dict[pose["poseId"]].path
-        [(i, airsim_idx)] = [
-            (i, airsim_idx)
-            for i, (airsim_idx, airsim_path) in enumerate(indexed_airsim_paths)
-            if os.path.basename(airsim_path) == os.path.basename(meshroom_path)
-        ]
-        del indexed_airsim_paths[i]  # remove images that have already been matched
-        correspondences.append(Correspondence(source_idx=meshroom_idx, target_idx=airsim_idx))
+        # FIXME this assumes `record_dict.keys()` have the same order as in airsim_rec.txt
+        indexed_airsim_paths = list(enumerate(record_dict.keys()))
+        for meshroom_idx, pose in enumerate(cameras_sfm["poses"]):
+            meshroom_path = view_dict[pose["poseId"]].path
+            [(i, airsim_idx)] = [
+                (i, airsim_idx)
+                for i, (airsim_idx, airsim_path) in enumerate(indexed_airsim_paths)
+                if os.path.basename(airsim_path) == os.path.basename(meshroom_path)
+            ]
+            del indexed_airsim_paths[i]  # remove images that have already been matched
+            correspondences.append(Correspondence(source_idx=meshroom_idx, target_idx=airsim_idx))
 
-    print(f"{len(correspondences)} (source, target) correspondences:")
-    print("(meshroom, airsim),")
-    for correspondence in correspondences:
-        print(f"({correspondence.source_idx}, {correspondence.target_idx}),")
-
-    exit()
+        print(f"{len(correspondences)} [meshroom (source), airsim (target)] correspondences:")
+        print("[")
+        for correspondence in correspondences:
+            print(f"[{correspondence.source_idx}, {correspondence.target_idx}],")
+        print("]")
 
     # Save the new .sfm file
     new_file_path = "new_cameras.sfm"

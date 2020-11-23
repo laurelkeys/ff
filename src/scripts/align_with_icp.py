@@ -69,9 +69,11 @@ def main(args: argparse.Namespace) -> None:
 
     ransac_corres = (  # correspondence indices between source and target point clouds
         o3d.utility.Vector2iVector(
-            np.array([[i, i] for i in range(len(meshroom_pcd.points))])  # FIXME
+            # np.array([[i, i] for i in range(len(meshroom_pcd.points))])  # FIXME
+            np.array([[0, 24], [1, 34], [2, 98], [3, 104], [4, 66], [5, 59], [6, 61], [7, 70], [8, 105], [9, 37], [10, 36], [11, 107], [12, 63], [13, 89], [14, 102], [15, 31], [16, 68], [17, 51], [18, 79], [19, 106], [20, 73], [21, 80], [22, 103], [23, 46], [24, 33], [25, 64], [26, 44], [27, 77], [28, 38], [29, 39], [30, 47], [31, 78], [32, 82], [33, 65], [34, 62], [35, 99], [36, 48], [37, 88], [38, 108], [39, 35], [40, 53], [41, 40], [42, 45], [43, 100], [44, 30], [45, 96], [46, 97], [47, 54], [48, 27], [49, 110], [50, 95], [51, 67], [52, 55], [53, 93], [54, 83], [55, 32], [56, 28], [57, 56], [58, 101], [59, 69], [60, 92], [61, 74], [62, 76], [63, 43], [64, 75], [65, 85], [66, 41], [67, 84], [68, 109], [69, 52], [70, 50], [71, 29], [72, 42], [73, 49], [74, 94], [75, 72], [76, 57], [77, 91], [78, 25], [79, 60], [80, 71], [81, 86], [82, 90], [83, 26], [84, 81], [85, 58], [86, 87], [87, 23]])
         )
     )
+    print(np.asarray(ransac_corres))
     ransac_n = 6  # fit RANSAC with this number of correspondences (6 by default)
 
     ransac_criteria = registration3d.RANSACConvergenceCriteria(
