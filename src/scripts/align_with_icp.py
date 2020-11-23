@@ -52,7 +52,7 @@ def main(args: argparse.Namespace) -> None:
     # Show the initial (un)alignment.
     #
     print("\n> Initial alignment")  # TODO pass the transformation matrix as an argument
-    init_transformation = np.identity(4)  # Initial transformation estimation                               http://www.open3d.org/docs/release/python_api/open3d.pipelines.registration.evaluate_registration.html
+    init_transformation = np.identity(4)  # initial transformation estimation                               http://www.open3d.org/docs/release/python_api/open3d.pipelines.registration.evaluate_registration.html
 
     init_registration = registration3d.evaluate_registration(
         meshroom_pcd, airsim_pcd,
@@ -67,7 +67,12 @@ def main(args: argparse.Namespace) -> None:
     #                                                                                                       http://www.open3d.org/docs/release/python_api/open3d.pipelines.registration.registration_ransac_based_on_correspondence.html
     print("\n> Applying global RANSAC registration")
 
-    correspondence = None  # FIXME http://www.open3d.org/docs/release/python_api/open3d.pipelines.registration.registration_ransac_based_on_correspondence.html
+    ransac_corres = (  # correspondence indices between source and target point clouds
+        o3d.utility.Vector2iVector(
+            np.array([[i, i] for i in range(len(meshroom_pcd.points))])  # FIXME
+        )
+    )
+    ransac_n = 6  # fit RANSAC with this number of correspondences (6 by default)
 
     ransac_criteria = registration3d.RANSACConvergenceCriteria(
         max_iteration=(args.max_iter_ransac or args.max_iteration),
@@ -76,8 +81,8 @@ def main(args: argparse.Namespace) -> None:
 
     ransac_registration = registration3d.registration_ransac_based_on_correspondence(
         meshroom_pcd, airsim_pcd,
-        correspondence, args.threshold,
-        estimation_method, ransac_criteria
+        ransac_corres, args.threshold,
+        estimation_method, ransac_n, ransac_criteria
     )
     show_registration_result(meshroom_pcd, airsim_pcd, ransac_registration)
 
@@ -91,7 +96,7 @@ def main(args: argparse.Namespace) -> None:
 
     icp_registration = registration3d.registration_icp(
         meshroom_pcd, airsim_pcd,
-        args.threshold, init_registration.transformation,
+        args.threshold, ransac_registration.transformation,
         estimation_method, icp_criteria
     )
     show_registration_result(meshroom_pcd, airsim_pcd, icp_registration)

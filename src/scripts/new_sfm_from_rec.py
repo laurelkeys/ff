@@ -1,7 +1,8 @@
 import os
-import sys
 import json
 import argparse
+
+from collections import namedtuple
 
 try:
     from include_in_path import include
@@ -74,7 +75,7 @@ def main(args: argparse.Namespace) -> None:
         image_file = os.path.basename(view_dict[pose_id].path)  # FIXME this isn't a "general" solution
         record = record_dict[image_file]
 
-        new_center = ff.to_xyz_tuple(record.position)
+        new_center = [record.position.x_val, record.position.y_val, record.position.z_val]
         new_rotation = MeshroomTransform.unparse_rotation(
             MeshroomQuaternion.XYZW.to_rotation_matrix(
                 record.orientation.to_numpy_array()  # returned in XYZW order
@@ -86,6 +87,29 @@ def main(args: argparse.Namespace) -> None:
         pose["pose"]["transform"]["rotation"] = list(map(str, new_rotation))
         pose["pose"]["locked"] = "1"
 
+    # NOTE this is used by align_with_icp.py
+    Correspondence = namedtuple("Correspondence", ["source_idx", "target_idx"])
+    correspondences = []
+
+    # FIXME this assumes `record_dict.keys()` have the same order as in airsim_rec.txt
+    indexed_airsim_paths = list(enumerate(record_dict.keys()))
+    for meshroom_idx, pose in enumerate(cameras_sfm["poses"]):
+        meshroom_path = view_dict[pose["poseId"]].path
+        [(i, airsim_idx)] = [
+            (i, airsim_idx)
+            for i, (airsim_idx, airsim_path) in enumerate(indexed_airsim_paths)
+            if os.path.basename(airsim_path) == os.path.basename(meshroom_path)
+        ]
+        del indexed_airsim_paths[i]  # remove images that have already been matched
+        correspondences.append(Correspondence(source_idx=meshroom_idx, target_idx=airsim_idx))
+
+    print(f"{len(correspondences)} (source, target) correspondences:")
+    print("(meshroom, airsim),")
+    for correspondence in correspondences:
+        print(f"({correspondence.source_idx}, {correspondence.target_idx}),")
+
+    exit()
+
     # Save the new .sfm file
     new_file_path = "new_cameras.sfm"
     if args.output is not None:
@@ -96,7 +120,7 @@ def main(args: argparse.Namespace) -> None:
 
     with open(new_file_path, "w") as f:
         print(json.dumps(cameras_sfm, indent=4), file=f)
-    ff.log(f"Saved output to '{new_file_path}'")
+    print(f"Saved output to '{new_file_path}'")
 
     # TODO see https://github.com/alicevision/meshroom/issues/655
     # TODO see https://github.com/alicevision/meshroom/issues/453
