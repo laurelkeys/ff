@@ -8,6 +8,10 @@ import open3d as o3d
 registration3d = o3d.pipelines.registration
 
 
+# FIXME temporarily testing hardcoded values generated with new_sfm_from_rec.py
+MESHROOM_TO_AIRSIM_CORRESPONDENCES = [[0, 24], [1, 34], [2, 98], [3, 104], [4, 66], [5, 59], [6, 61], [7, 70], [8, 105], [9, 37], [10, 36], [11, 107], [12, 63], [13, 89], [14, 102], [15, 31], [16, 68], [17, 51], [18, 79], [19, 106], [20, 73], [21, 80], [22, 103], [23, 46], [24, 33], [25, 64], [26, 44], [27, 77], [28, 38], [29, 39], [30, 47], [31, 78], [32, 82], [33, 65], [34, 62], [35, 99], [36, 48], [37, 88], [38, 108], [39, 35], [40, 53], [41, 40], [42, 45], [43, 100], [44, 30], [45, 96], [46, 97], [47, 54], [48, 27], [49, 110], [50, 95], [51, 67], [52, 55], [53, 93], [54, 83], [55, 32], [56, 28], [57, 56], [58, 101], [59, 69], [60, 92], [61, 74], [62, 76], [63, 43], [64, 75], [65, 85], [66, 41], [67, 84], [68, 109], [69, 52], [70, 50], [71, 29], [72, 42], [73, 49], [74, 94], [75, 72], [76, 57], [77, 91], [78, 25], [79, 60], [80, 71], [81, 86], [82, 90], [83, 26], [84, 81], [85, 58], [86, 87], [87, 23]]
+
+
 def draw_registration_result(source, target, transformation):
     """ Visualize a target point cloud (in cyan) and a source point cloud
         (in yellow), transformed with an alignment transformation matrix.
@@ -51,7 +55,7 @@ def main(args: argparse.Namespace) -> None:
 
     # Show the initial (un)alignment.
     #
-    print("\n> Initial alignment")  # TODO pass the transformation matrix as an argument
+    print("\n> Initial alignment")  # TODO pass the source to target transformation matrix as an argument
     init_transformation = np.identity(4)  # initial transformation estimation                               http://www.open3d.org/docs/release/python_api/open3d.pipelines.registration.evaluate_registration.html
 
     init_registration = registration3d.evaluate_registration(
@@ -67,24 +71,19 @@ def main(args: argparse.Namespace) -> None:
     #                                                                                                       http://www.open3d.org/docs/release/python_api/open3d.pipelines.registration.registration_ransac_based_on_correspondence.html
     print("\n> Applying global RANSAC registration")
 
-    ransac_corres = (  # correspondence indices between source and target point clouds
-        o3d.utility.Vector2iVector(
-            # np.array([[i, i] for i in range(len(meshroom_pcd.points))])  # FIXME
-            np.array([[0, 24], [1, 34], [2, 98], [3, 104], [4, 66], [5, 59], [6, 61], [7, 70], [8, 105], [9, 37], [10, 36], [11, 107], [12, 63], [13, 89], [14, 102], [15, 31], [16, 68], [17, 51], [18, 79], [19, 106], [20, 73], [21, 80], [22, 103], [23, 46], [24, 33], [25, 64], [26, 44], [27, 77], [28, 38], [29, 39], [30, 47], [31, 78], [32, 82], [33, 65], [34, 62], [35, 99], [36, 48], [37, 88], [38, 108], [39, 35], [40, 53], [41, 40], [42, 45], [43, 100], [44, 30], [45, 96], [46, 97], [47, 54], [48, 27], [49, 110], [50, 95], [51, 67], [52, 55], [53, 93], [54, 83], [55, 32], [56, 28], [57, 56], [58, 101], [59, 69], [60, 92], [61, 74], [62, 76], [63, 43], [64, 75], [65, 85], [66, 41], [67, 84], [68, 109], [69, 52], [70, 50], [71, 29], [72, 42], [73, 49], [74, 94], [75, 72], [76, 57], [77, 91], [78, 25], [79, 60], [80, 71], [81, 86], [82, 90], [83, 26], [84, 81], [85, 58], [86, 87], [87, 23]])
-        )
+    ransac_correspondences = (  # correspondence indices between source and target point clouds
+        o3d.utility.Vector2iVector(np.array(MESHROOM_TO_AIRSIM_CORRESPONDENCES))
     )
-    print(np.asarray(ransac_corres))
-    ransac_n = 6  # fit RANSAC with this number of correspondences (6 by default)
 
     ransac_criteria = registration3d.RANSACConvergenceCriteria(
-        max_iteration=(args.max_iter_ransac or args.max_iteration),
+        max_iteration=(args.ransac_max_iter or args.max_iteration),
         max_validation=1000
     )
 
     ransac_registration = registration3d.registration_ransac_based_on_correspondence(
         meshroom_pcd, airsim_pcd,
-        ransac_corres, args.threshold,
-        estimation_method, ransac_n, ransac_criteria
+        ransac_correspondences, args.threshold,
+        estimation_method, args.n_ransac, ransac_criteria
     )
     show_registration_result(meshroom_pcd, airsim_pcd, ransac_registration)
 
@@ -93,7 +92,7 @@ def main(args: argparse.Namespace) -> None:
     print("\n> Applying point-to-point ICP registration")
 
     icp_criteria = registration3d.ICPConvergenceCriteria(
-        max_iteration=(args.max_iter_icp or args.max_iteration),
+        max_iteration=(args.icp_max_iter or args.max_iteration),
     )
 
     icp_registration = registration3d.registration_icp(
@@ -118,10 +117,11 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("meshroom_ply", type=str, help="Path to the PLY file representing Meshroom's reconstruction")
     parser.add_argument("airsim_ply", type=str, help="Path to the PLY file representing AirSim's ground truth data")
 
-    parser.add_argument("--threshold", type=float, default=7.5, help="Maximum correspondence points-pair distance  (default: %(default)f)")
-    parser.add_argument("--max_iteration", type=int, default=1000, help="Maximum iterations used for RANSAC and ICP.  (default: %(default)d)")
-    parser.add_argument("--max_iter_icp", type=int, help="Set a specific number of maximum iterations for ICP.")
-    parser.add_argument("--max_iter_ransac", type=int, help="Set a specific number of maximum iterations for RANSAC.")
+    parser.add_argument("--n_ransac", type=int, default=6, help="Fit RANSAC with this number of correspondences  (default: %(default)d)")
+    parser.add_argument("--threshold", type=float, default=1.0, help="Maximum correspondence points-pair distance  (default: %(default)f)")
+    parser.add_argument("--max_iteration", type=int, default=1000, help="Maximum iterations used for RANSAC and ICP  (default: %(default)d)")
+    parser.add_argument("--icp_max_iter", type=int, help="Set a specific number of maximum iterations for ICP")
+    parser.add_argument("--ransac_max_iter", type=int, help="Set a specific number of maximum iterations for RANSAC")
 
     return parser
 
