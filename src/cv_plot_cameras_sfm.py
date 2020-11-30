@@ -2,6 +2,7 @@ import os
 import argparse
 
 import ff
+import numpy as np
 
 from wrappers.meshroomy import MeshroomParser, MeshroomTransform
 from wrappers.airsimy import connect
@@ -23,7 +24,7 @@ finally:
 def preflight(args: argparse.Namespace) -> None:
     assert os.path.isfile(args.sfm), f"Invalid file path: '{args.sfm}'"
 
-    # TODO get transforms (i.e. poses / position + orientation from each camera)
+    # TODO get transforms, i.e. poses (position + orientation) from each camera
     views, poses = MeshroomParser.parse_cameras(cameras_file_path=args.sfm)
     args.views_dict, args.poses_dict = MeshroomParser.extract_views_and_poses(views, poses)
 
@@ -61,9 +62,11 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             orientation_val=Quaternionr(xywz[3], xywz[0], xywz[1], xywz[2]),
         )
 
+    poses = [pose_from_meshroom_to_airsim(pose) for pose in args.poses_dict.values()]
+
     # TODO plot them and compare with cv_plot_airsim_rec.py
     client.simPlotTransforms(
-        poses=[pose_from_meshroom_to_airsim(pose) for pose in args.poses_dict.values()],
+        poses,
         scale=7.5,
         thickness=2.5,
         is_persistent=True,
@@ -73,6 +76,32 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     # TODO compare the aligned camera transforms (i.e. how good is the pose estimation?)
     # TODO test Meshroom's `matchFromKnownCameraPoses`?
     # TODO can we match Meshroom's image filenames with the ones stored in airsim_rec.txt?
+
+    if args.transformation:
+        meshroom_to_airsim = np.loadtxt(args.transformation)  # load the 4x4 transformation matrix
+        print(meshroom_to_airsim)
+
+        def align_meshroom_to_airsim(meshroom_pose):
+            # NOTE this transformation is only based on the positions (and not on the orientations)
+            meshroom_pos = np.append(meshroom_pose.position.to_numpy_array(), 1)  # [x, y, z, 1] homogeneous coordinates
+            airsim_pos = np.matmul(meshroom_to_airsim, meshroom_pos)  # meshroom_to_airsim @ meshroom_pos
+            return Pose(
+                position_val=Vector3r(airsim_pos[0], airsim_pos[1], airsim_pos[2]),
+                orientation_val=meshroom_pose.orientation,
+            )
+
+        aligned_poses = [align_meshroom_to_airsim(pose) for pose in poses]
+
+        client.simPlotTransforms(
+            aligned_poses,
+            scale=7.5,
+            thickness=2.5,
+            is_persistent=True,
+        )
+
+        # FIXME temporary testing to compare with cv_plot_airsim_rec.py
+        # client.simFlushPersistentMarkers()
+        # client.simPlotPoints([pose.position for pose in aligned_poses], color_rgba=[1, 0.706, 0, 1.0], is_persistent=True)
 
 
 ###############################################################################
@@ -105,7 +134,7 @@ def get_parser() -> argparse.ArgumentParser:
     # NOTE this is Meshroom's `StructureFromMotion` node output
     parser.add_argument("sfm", type=str, help="Path to cameras.sfm")
     parser.add_argument("--flush", action="store_true", help="Flush old plots")
-
+    parser.add_argument("--transformation", type=str, help="Path to a 4x4 transformation matrix file to be loaded with numpy")
     ff.add_arguments_to(parser)
     return parser
 

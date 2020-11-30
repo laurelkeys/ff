@@ -145,7 +145,6 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", type=str, help="Path to the generated .sfm file")
     parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")
 
-    # ff.add_arguments_to(parser)  # unnecessary (unless we're going to launch AirSim)
     return parser
 
 

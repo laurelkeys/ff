@@ -44,8 +44,10 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush:
         client.simFlushPersistentMarkers()
 
+    poses = [Pose(record.position, record.orientation) for record in args.recording.values()]
+
     client.simPlotTransforms(
-        poses=[Pose(record.position, record.orientation) for record in args.recording.values()],
+        poses,
         scale=10.0,
         thickness=2.5,
         is_persistent=True,

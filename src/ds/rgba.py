@@ -25,6 +25,7 @@ class Rgba(tuple):
         self.b = self[2]
         self.a = self[3]
 
-    def from255(self, r: int, g: int, b: int, alpha: float = 1.0) -> Rgba:
+    @staticmethod
+    def from255(r: int, g: int, b: int, alpha: float = 1.0) -> Rgba:
         """ Construct a new color by converting RGB values from `[0, 255]` to `[0.0, 1.0]`. """
         return Rgba(r / 255, g / 255, b / 255, alpha)
