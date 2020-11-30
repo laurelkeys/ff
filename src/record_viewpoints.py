@@ -131,6 +131,7 @@ def main(args: argparse.Namespace) -> None:
 
 
 def connect_to_airsim() -> airsim.MultirotorClient:
+    # TODO from wrappers.airsimy import connect
     client = airsim.MultirotorClient()
     client.confirmConnection()
     client.enableApiControl(True)

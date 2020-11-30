@@ -143,9 +143,6 @@ class Vec3:
     @staticmethod
     def angle_between(v1, v2):
         """ Returns the angle (in radians) between `v1` and `v2`. """
-        unit_v1 = v1 / v1.length()
-        unit_v2 = v2 / v2.length()
-
         def clipped_acos(x):
             if x < -1.0:
                 return 3.141592653589793  # acos(-1.0)
@@ -153,8 +150,7 @@ class Vec3:
                 return 0.0  # acos(1.0)
             return acos(x)
 
-        return clipped_acos(Vec3.dot(unit_v1, unit_v2))
-        # return clipped_acos(Vec3.dot(v1, v2) / (v1.length() * v2.length())
+        return clipped_acos(Vec3.dot(v1, v2) / (v1.length() * v2.length()))
 
 
 ###############################################################################

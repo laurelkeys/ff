@@ -7,7 +7,7 @@ from os.path import join
 import psutil
 
 from .helper import possible_env_paths
-from .logger import log_info, log_warning, log_debug
+from .logger import log_info, log_debug, log_warning
 from .defaults import Default
 
 ###############################################################################

@@ -1,12 +1,17 @@
 import os
 import argparse
 
-import numpy as np
+try:
+    from include_in_path import include
+    include("..", "ff")
+    include("..", "wrappers")
+except:
+    pass
+finally:
+    import ff
 
-import ff
-
-from wrappers.meshroomy import MeshroomParser, MeshroomTransform
-from wrappers.vendory import Vendor
+    from wrappers.vendory import Vendor
+    from wrappers.meshroomy import MeshroomParser, MeshroomTransform
 
 try:
     import airsim
@@ -14,6 +19,7 @@ except ModuleNotFoundError:
     ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
     import airsim
 
+# FIXME I didn't retest this file after moving it into scripts/
 # NOTE ATE is well-suited for measuring the performance of visual SLAM systems, in contrast,
 #      RPE is well-suited for measuring the drift of visual odometry systems (e.g. the drift per second)
 
