@@ -21,13 +21,21 @@ class SamplingMethod(Enum):
 
 
 def main(args: argparse.Namespace) -> None:
+    if args.verbose:
+        print(f"points_per_triangle = {args.points_per_triangle}")
+        if args.method == SamplingMethod.Poisson.value:
+            print(f"method = {args.method} (init_factor = {args.init_factor})")
+        else:
+            print(f"method = {args.method}")
+        print()
+
     input_path = args.triangle_mesh
     assert os.path.isfile(input_path), f"Invalid input path: '{input_path}'"
     triangle_mesh = o3d.io.read_triangle_mesh(input_path)
 
-    print("> Triangle mesh")
-    print(f"  {len(triangle_mesh.vertices)} vertices")
-    print(f"  {len(triangle_mesh.triangles)} triangles")
+    print("Triangle mesh")
+    print(f"> {len(triangle_mesh.vertices)} vertices")
+    print(f"> {len(triangle_mesh.triangles)} triangles")
     if args.view:
         o3d.visualization.draw_geometries([triangle_mesh], mesh_show_wireframe=True)
 
@@ -37,6 +45,8 @@ def main(args: argparse.Namespace) -> None:
     if args.method == SamplingMethod.Uniform.value:
         point_cloud = triangle_mesh.sample_points_uniformly(number_of_points)
     elif args.method == SamplingMethod.Poisson.value:
+        if args.verbose:
+            print("\nPerforming sample elimination for Poisson Disk Sampling..")
         point_cloud = triangle_mesh.sample_points_poisson_disk(
             number_of_points,
             init_factor=args.init_factor,
@@ -46,8 +56,8 @@ def main(args: argparse.Namespace) -> None:
     else:
         assert False, args.method
 
-    print("> Point cloud")
-    print(f"  {len(point_cloud.points)} points")  # == number_of_points
+    print("\nPoint cloud")
+    print(f"> {len(point_cloud.points)} points")  # == number_of_points
     if args.view:
         o3d.visualization.draw_geometries([triangle_mesh, point_cloud], mesh_show_wireframe=True)
         o3d.visualization.draw_geometries([point_cloud])
@@ -61,7 +71,8 @@ def main(args: argparse.Namespace) -> None:
         assert os.path.isdir(output_path), f"Invalid output path: '{output_path}'"
         output_path = os.path.join(output_path, f"{no_ext_basename(input_path)}_point_cloud.ply")
 
-    o3d.io.write_point_cloud(output_path, point_cloud)
+    o3d.io.write_point_cloud(output_path, point_cloud, write_ascii=True)
+    print(f"\nSaved output to '{output_path}'")
 
 
 ###############################################################################
@@ -96,6 +107,7 @@ def get_parser() -> argparse.ArgumentParser:
              " point cloud that is used for sample elimination when method='poisson'  (default: %(default)d)",
     )
     parser.add_argument("--view", action="store_true", help="Visualize the mesh and point cloud")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")
 
     return parser
 
