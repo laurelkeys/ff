@@ -1,6 +1,0 @@
-[submodule "src/vendor/tartanair_tools"]
-	path = src/vendor/tartanair_tools
-	url = https://github.com/castacks/tartanair_tools.git
-[submodule "src/vendor/TanksAndTemples"]
-	path = src/vendor/TanksAndTemples
-	url = https://github.com/intel-isl/TanksAndTemples.git
