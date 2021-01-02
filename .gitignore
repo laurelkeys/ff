@@ -30,8 +30,5 @@ reconstruction/models/**/*.json
 *.ply
 **/*cameras.json
 
-# temp script files
-reconstruction/models/_*.py
-
 # temp files
 **/~*

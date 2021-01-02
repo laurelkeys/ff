@@ -44,7 +44,7 @@ def to_xyzw_str(quaternionr, n=2, show_hints=True):
 
 class Vec3:
     """ Simple 3D vector class to abstract operations
-        with `airsim.GeoPoint` and `airsim.Vector3r`
+        with `airsim.GeoPoint` and `airsim.Vector3r`.
     """
 
     def __init__(self, x=0, y=0, z=0):

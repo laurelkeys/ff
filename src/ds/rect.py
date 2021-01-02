@@ -111,8 +111,10 @@ class Rect:
         curr_pos, path = start_corner, [start_corner]
         dx, dy = (e2, (e1 / lanes)) if clock_wise else (e1, (e2 / lanes))
         for _ in range(lanes):
-            curr_pos += dx; path.append(curr_pos)
-            curr_pos += dy; path.append(curr_pos)
+            curr_pos += dx
+            path.append(curr_pos)
+            curr_pos += dy
+            path.append(curr_pos)
             dx *= -1  # zig zag
 
         # NOTE if the `lanes` count is odd, the `end_corner` will already have
