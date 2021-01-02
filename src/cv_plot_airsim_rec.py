@@ -3,6 +3,7 @@ import argparse
 
 import ff
 
+from ds.rgba import Rgba
 from wrappers.airsimy import AirSimRecord, connect
 
 try:
@@ -46,12 +47,14 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
     poses = [Pose(record.position, record.orientation) for record in args.recording.values()]
 
-    client.simPlotTransforms(
-        poses,
-        scale=10.0,
-        thickness=2.5,
-        is_persistent=True,
-    )
+    if args.plot_points:
+        client.simPlotPoints(
+            [pose.position for pose in poses], Rgba(0, 0.651, 0.929), size=10, is_persistent=True
+        )
+    else:
+        client.simPlotTransforms(
+            poses, scale=10.0, thickness=2.5, is_persistent=True,
+        )
 
 
 ###############################################################################
@@ -84,6 +87,9 @@ def get_parser() -> argparse.ArgumentParser:
     # NOTE this is AirSim's `Recording` output
     parser.add_argument("rec", type=str, help="Path to airsim_rec.txt")
     parser.add_argument("--flush", action="store_true", help="Flush old plots")
+    parser.add_argument(
+        "--plot_points", action="store_true", help="Show points instead of transforms"
+    )
 
     ff.add_arguments_to(parser)
     return parser

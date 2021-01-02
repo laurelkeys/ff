@@ -111,22 +111,24 @@ def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float 
         max_dist=2,
     )
 
-    client.simPlotPoints(points=path, is_persistent=True, color_rgba=Rgba.White, size=5)
-    client.simPlotLineStrip(points=path, is_persistent=True, color_rgba=Rgba.White, thickness=2.5)
-    Controller.fly_path(client, path) ##client.moveOnPathAsync(path, velocity=2).join()
+    # client.simPlotPoints(points=path, is_persistent=True, color_rgba=Rgba.White, size=5)
+    client.simPlotLineStrip(points=path, is_persistent=True, color_rgba=Rgba.White, thickness=1.5)
+    # Controller.fly_path(client, path) ##client.moveOnPathAsync(path, velocity=2).join()
 
     # XXX testing.. stretching Rect, zigzagging path and flying over it
     test_zigzag_path = Controller.augment_path(
         Rect(
             Vector3r(0, 0, -altitude_shift) + zone.center,
-            Vector3r(0, 0, -altitude_shift) + zone.half_width * 4,
-            Vector3r(0, 0, -altitude_shift) + zone.half_height * 4,
+            zone.half_width * 2,
+            # Vector3r(0, 0, -altitude_shift) + zone.half_width * 4,
+            zone.half_height * 2,
+            # Vector3r(0, 0, -altitude_shift) + zone.half_height * 4,
         ).zigzag(4),
         max_dist=2,
     )
 
     client.simPlotPoints(points=test_zigzag_path, is_persistent=True, color_rgba=Rgba.White, size=5)
-    client.simPlotLineStrip(points=test_zigzag_path, is_persistent=True, color_rgba=Rgba.White, thickness=2.5)
+    client.simPlotLineStrip(points=test_zigzag_path, is_persistent=True, color_rgba=Rgba.Green, thickness=2.5)
     Controller.fly_path(client, test_zigzag_path) ##client.moveOnPathAsync(test_zigzag_path, velocity=2).join()
 
 

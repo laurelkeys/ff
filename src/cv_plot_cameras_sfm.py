@@ -5,6 +5,7 @@ import numpy as np
 
 import ff
 
+from ds.rgba import Rgba
 from wrappers.airsimy import connect
 from wrappers.meshroomy import MeshroomParser, MeshroomTransform
 
@@ -66,12 +67,14 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     poses = [pose_from_meshroom_to_airsim(pose) for pose in args.poses_dict.values()]
 
     # TODO plot them and compare with cv_plot_airsim_rec.py
-    client.simPlotTransforms(
-        poses,
-        scale=7.5,
-        thickness=2.5,
-        is_persistent=True,
-    )
+    if args.plot_points:
+        client.simPlotPoints(
+            [pose.position for pose in poses], Rgba(1, 0.706, 0), size=10, is_persistent=True
+        )
+    else:
+        client.simPlotTransforms(
+            poses, scale=7.5, thickness=2.5, is_persistent=True,
+        )
 
     # TODO compute the transformation matrix that aligns Meshroom's reference system with AirSim's
     # TODO compare the aligned camera transforms (i.e. how good is the pose estimation?)
@@ -94,10 +97,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         aligned_poses = [align_meshroom_to_airsim(pose) for pose in poses]
 
         client.simPlotTransforms(
-            aligned_poses,
-            scale=7.5,
-            thickness=2.5,
-            is_persistent=True,
+            aligned_poses, scale=7.5, thickness=2.5, is_persistent=True,
         )
 
         # FIXME temporary testing to compare with cv_plot_airsim_rec.py
@@ -135,7 +135,9 @@ def get_parser() -> argparse.ArgumentParser:
     # NOTE this is Meshroom's `StructureFromMotion` node output
     parser.add_argument("sfm", type=str, help="Path to cameras.sfm")
     parser.add_argument("--flush", action="store_true", help="Flush old plots")
+    parser.add_argument("--plot_points", action="store_true", help="Show points instead of transforms")
     parser.add_argument("--transformation", type=str, help="Path to a 4x4 transformation matrix file to be loaded with numpy")
+
     ff.add_arguments_to(parser)
     return parser
 
