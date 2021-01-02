@@ -1,0 +1,6 @@
+[submodule "src/vendor/TanksAndTemples"]
+	path = src/vendor/TanksAndTemples
+	url = https://github.com/laurelkeys/TanksAndTemples.git
+[submodule "src/vendor/tartanair_tools"]
+	path = src/vendor/tartanair_tools
+	url = https://github.com/laurelkeys/tartanair_tools.git
