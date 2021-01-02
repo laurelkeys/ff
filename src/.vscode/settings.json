@@ -13,6 +13,7 @@
 
     "python.linting.enabled": true,
     "python.linting.pylintEnabled": true,
+    "python.linting.pylintArgs": ["--enable=W0614"],
     "python.linting.pylintUseMinimalCheckers": true,
 
     "python.formatting.provider": "black",
