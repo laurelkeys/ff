@@ -1,0 +1,5 @@
+# NOTE keep this folder to store TXT representations of "regions of interest",
+# used as starting points and for reproducing drone flights.
+# See `ds/rect.py` and its uses.
+
+**/*.txt

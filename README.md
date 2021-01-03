@@ -4,28 +4,21 @@
 
 ```bash
 .
-├── docs                    # Project proposal and reports
+├── data/                   # Generated data logs (.txt, .ply, .json, ...)
 │
-├── misc                    # General scripts for setup and workflow automation
+├── docs/                   # Project proposal and reports
 │
-├── reconstruction
-│   ├── models              # Reconstructed models/scenes
-│   │   ├── <model name>
-│   │   │   ├── data        # Reconstruction files (.ply, .sfm, .log, etc.)
-│   │   │   ├── images      # Used images files (.jpg)
-│   │   │   └── Meshroom    # Meshroom intermediate files
-│   │   └── ...
-│   └── tanksandtemples     # Tanks and Temples benchmark evaluation scripts
+├── misc/                   # General scripts for setup and workflow automation
 │
-├── simulation
-│   ├── multirotor          # AirSim related code for drone control
-│   │   └── ff              # Drone scripts common code wrapper
-│   └── viewpoints          # Images captured in the simulator
+├── src/
+│   ├── ds/                 # Collection of classes common to different scripts
+│   ├── ff/
+│   ├── ie/                 # API wrappers ("id est", in other words)
+│   └── scripts/
+│       ├── reconstruction/ # Meshroom and Open3D related code
+│       └── simulation/     # AirSim related code for drone control
 │
-├── src                     # 🚧 WIP revamping of the whole code
-│
-└── visualization           # Open3D related code
+└── vendor/
+    ├── TanksAndTemples/    # 3D reconstruction evaluation
+    └── tartanair_tools/    # SLAM evaluation (ATE + RPE)
 ```
-
-## 🚧 WIP
-Currently, everything is being rewritten in `src/`, so there's no work being done on other folders as they will either be copied and updated inside of `src/`, or deleted once it's done and the project is reestructured.

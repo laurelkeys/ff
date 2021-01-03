@@ -1,6 +1,0 @@
-# NOTE keep this folder to store numpy TXT representations of 4x4 transformation matrices
-# from Meshroom to AirSim PLY point clouds (i.e. source to target transforms).
-# See `cv_plot_airsim_rec.py`, `cv_plot_cameras_sfm.py` and `scripts/`.
-
-**/*.txt
-**/*.ply

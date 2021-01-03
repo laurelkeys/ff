@@ -1,18 +1,15 @@
 # vscode
-**/.vscode/
+**/.vscode/*
+!.vscode/settings.json
+
+# temp files
+**/~*
 
 # python
 **/__pycache__/
 **/.pytest_cache/
 **/*.py[cod]
 *$py.class
-
-# symbolic link to airsim
-airsim/__init__.py
-airsim/client.py
-airsim/pfm.py
-airsim/types.py
-airsim/utils.py
 
 # images
 **/images/
@@ -24,11 +21,18 @@ airsim/utils.py
 *.mg
 *.sfm
 **/MeshroomCache/
-reconstruction/models/**/*.json
 
 # point cloud data
 *.ply
 **/*cameras.json
 
-# temp files
-**/~*
+# virtual envs
+airenv/
+
+# pip install black isort pylint psutil wheel matplotlib pandas opencv-python scipy numpy
+# pip install msgpack-rpc-python
+src/scripts/simulation/venv/
+
+# pip install black isort pylint psutil wheel matplotlib pandas opencv-python scipy numpy
+# pip install open3d
+src/scripts/reconstruction/venv3d/

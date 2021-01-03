@@ -1,6 +1,6 @@
-[submodule "src/vendor/TanksAndTemples"]
-	path = src/vendor/TanksAndTemples
+[submodule "vendor/TanksAndTemples"]
+	path = vendor/TanksAndTemples
 	url = https://github.com/laurelkeys/TanksAndTemples.git
-[submodule "src/vendor/tartanair_tools"]
-	path = src/vendor/tartanair_tools
+[submodule "vendor/tartanair_tools"]
+	path = vendor/tartanair_tools
 	url = https://github.com/laurelkeys/tartanair_tools.git
