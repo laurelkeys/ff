@@ -31,11 +31,3 @@
 # pip install black isort pylint
 # pip install setuptools
 airenv/
-
-# pip install black isort pylint psutil wheel matplotlib pandas opencv-python scipy numpy
-# pip install msgpack-rpc-python
-src/scripts/simulation/venv/
-
-# pip install black isort pylint psutil wheel matplotlib pandas opencv-python scipy numpy
-# pip install open3d
-src/scripts/reconstruction/venv3d/

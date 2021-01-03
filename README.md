@@ -10,13 +10,14 @@
 │
 ├── misc/                   # General scripts for setup and workflow automation
 │
+├── scripts/
+│   ├── reconstruction/     # Meshroom and Open3D related code
+│   └── simulation/         # AirSim related code for drone control
+│
 ├── src/
 │   ├── ds/                 # Collection of classes common to different scripts
 │   ├── ff/
-│   ├── ie/                 # API wrappers ("id est", in other words)
-│   └── scripts/
-│       ├── reconstruction/ # Meshroom and Open3D related code
-│       └── simulation/     # AirSim related code for drone control
+│   └── ie/                 # API wrappers ("id est", in other words)
 │
 └── vendor/
     ├── TanksAndTemples/    # 3D reconstruction evaluation
