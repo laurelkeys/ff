@@ -2,18 +2,11 @@ import os
 import json
 import argparse
 
-from pynput import keyboard
-
 import ff
+import airsim
 
-from wrappers.airsimy import connect
-
-try:
-    import airsim
-except ModuleNotFoundError:
-    ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
-    import airsim
-
+from pynput import keyboard
+from ie.airsimy import connect
 
 ###############################################################################
 ## preflight (called before connecting) #######################################

@@ -4,13 +4,7 @@ import msvcrt
 import argparse
 
 import ff
-
-try:
-    import airsim
-except ModuleNotFoundError:
-    ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
-    import airsim
-
+import airsim
 
 ###############################################################################
 ## preflight (called before connecting) #######################################
@@ -19,7 +13,7 @@ except ModuleNotFoundError:
 
 def preflight(args: argparse.Namespace) -> None:
     assert os.path.isfile(args.viewpoints_path), f"Couldn't find file '{args.viewpoints_path}'"
-    with open(args.viewpoints_path, 'r') as viewpoints_file:
+    with open(args.viewpoints_path, "r") as viewpoints_file:
         viewpoints = json.load(viewpoints_file)
     args.viewpoints = zip(viewpoints["positions"], viewpoints["orientations"])
 
@@ -148,7 +142,9 @@ def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="")
 
     parser.add_argument(
-        "viewpoints_path", type=str, help="Path to a viewpoints file .json",
+        "viewpoints_path",
+        type=str,
+        help="Path to a viewpoints file .json",
     )
 
     parser.add_argument(

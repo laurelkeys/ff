@@ -2,21 +2,13 @@ import os
 import time
 import argparse
 
-from pynput import keyboard
-
 import ff
+import airsim
 
 from ds import Rect, EditMode
-from wrappers.airsimy import connect
-
-try:
-    import airsim
-except ModuleNotFoundError:
-    ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
-    import airsim
-finally:
-    from airsim.types import Vector3r
-
+from pynput import keyboard
+from ie.airsimy import connect
+from airsim.types import Vector3r
 
 ###############################################################################
 ## preflight (called before connecting) #######################################
@@ -36,12 +28,13 @@ def preflight(args: argparse.Namespace) -> None:
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
-    # verify we are in "ComputerVision" mode
-    if (sim_mode := ff.curr_sim_mode()) != ff.SimMode.ComputerVision:
-        assert False, f"Please change the SimMode from '{sim_mode}' to 'ComputerVision'"
+    # TODO verify we are in "ComputerVision" mode
+    # if (sim_mode := ff.curr_sim_mode()) != ff.SimMode.ComputerVision:
+    #     assert False, f"Please change the SimMode from '{sim_mode}' to 'ComputerVision'"
 
     if args.roi is not None:
-        if args.verbose: ff.log_info(f"Loading ROI from '{args.roi}'\n")
+        if args.verbose:
+            ff.log_info(f"Loading ROI from '{args.roi}'\n")
         with open(args.roi, "r") as f:
             zone = Rect.from_dump(f.read())
     else:
@@ -82,7 +75,8 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         elif key == save_rect_key:
             filename = save_zone(args.outputdir, zone)
             client.simPrintLogMessage(f"Saved ROI coordinates to '{filename}'")
-            if args.verbose: ff.log_info(f"Saved ROI coordinates to '{filename}'")
+            if args.verbose:
+                ff.log_info(f"Saved ROI coordinates to '{filename}'")
 
         elif edit_zone(key, edit_mode, zone):
             client.simFlushPersistentMarkers()
@@ -104,8 +98,10 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 def save_zone(dir, zone):
     # TODO prefix `filename` by the UE4 environment name
     filename = "_".join(("roi", time.strftime(r"%Y-%m-%d_%H-%M-%S"))) + ".txt"
-    if dir is not None: filename = os.path.join(dir, filename)
-    with open(filename, "w") as f: f.write(Rect.to_dump(zone))
+    if dir is not None:
+        filename = os.path.join(dir, filename)
+    with open(filename, "w") as f:
+        f.write(Rect.to_dump(zone))
     return filename
 
 
@@ -113,22 +109,32 @@ def edit_zone(key, edit_mode, zone) -> bool:
     try:
         if key.char not in ["z", "x", "c", "v"]:
             return False
-    except: return False
+    except:
+        return False
 
     # NOTE AirSim uses NED coordinates
     if edit_mode == EditMode.TRANSLATING:
-        if   key.char == "z": zone.center.y_val += 1  # right
-        elif key.char == "x": zone.center.y_val -= 1  # left
-        elif key.char == "c": zone.center.x_val += 1  # front
-        elif key.char == "v": zone.center.x_val -= 1  # back
+        if key.char == "z":
+            zone.center.y_val += 1  # right
+        elif key.char == "x":
+            zone.center.y_val -= 1  # left
+        elif key.char == "c":
+            zone.center.x_val += 1  # front
+        elif key.char == "v":
+            zone.center.x_val -= 1  # back
 
     elif edit_mode == EditMode.SCALING:
-        if   key.char == "z": zone.half_width  *= 1.1  # inc. horizontally
-        elif key.char == "x": zone.half_width  *= 0.9  # dec. horizontally
-        elif key.char == "c": zone.half_height *= 1.1  # inc. vertically
-        elif key.char == "v": zone.half_height *= 0.9  # dec. vertically
+        if key.char == "z":
+            zone.half_width *= 1.1  # inc. horizontally
+        elif key.char == "x":
+            zone.half_width *= 0.9  # dec. horizontally
+        elif key.char == "c":
+            zone.half_height *= 1.1  # inc. vertically
+        elif key.char == "v":
+            zone.half_height *= 0.9  # dec. vertically
 
-    else: assert False
+    else:
+        assert False
 
     return True  # we edited the zone, so it need to be redrawn
 

@@ -1,22 +1,14 @@
 import os
 import argparse
 
-import numpy as np
-
 import ff
+import numpy as np
+import airsim
 
 from ds.rgba import Rgba
-from wrappers.airsimy import connect
-from wrappers.meshroomy import MeshroomParser, MeshroomTransform
-
-try:
-    import airsim
-except ModuleNotFoundError:
-    ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
-    import airsim
-finally:
-    from airsim.types import Pose, Vector3r, Quaternionr
-
+from ie.airsimy import connect
+from airsim.types import Pose, Vector3r, Quaternionr
+from ie.meshroomy import MeshroomParser, MeshroomTransform
 
 ###############################################################################
 ## preflight (called before connecting) #######################################
@@ -73,7 +65,10 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         )
     else:
         client.simPlotTransforms(
-            poses, scale=7.5, thickness=2.5, is_persistent=True,
+            poses,
+            scale=7.5,
+            thickness=2.5,
+            is_persistent=True,
         )
 
     # TODO compute the transformation matrix that aligns Meshroom's reference system with AirSim's
@@ -87,8 +82,12 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
         def align_meshroom_to_airsim(meshroom_pose):
             # NOTE this transformation is only based on the positions (and not on the orientations)
-            meshroom_pos = np.append(meshroom_pose.position.to_numpy_array(), 1)  # [x, y, z, 1] homogeneous coordinates
-            airsim_pos = np.matmul(meshroom_to_airsim, meshroom_pos)  # meshroom_to_airsim @ meshroom_pos
+            meshroom_pos = np.append(
+                meshroom_pose.position.to_numpy_array(), 1
+            )  # [x, y, z, 1] homogeneous coordinates
+            airsim_pos = np.matmul(
+                meshroom_to_airsim, meshroom_pos
+            )  # meshroom_to_airsim @ meshroom_pos
             return Pose(
                 position_val=Vector3r(airsim_pos[0], airsim_pos[1], airsim_pos[2]),
                 orientation_val=meshroom_pose.orientation,
@@ -97,7 +96,10 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         aligned_poses = [align_meshroom_to_airsim(pose) for pose in poses]
 
         client.simPlotTransforms(
-            aligned_poses, scale=7.5, thickness=2.5, is_persistent=True,
+            aligned_poses,
+            scale=7.5,
+            thickness=2.5,
+            is_persistent=True,
         )
 
         # FIXME temporary testing to compare with cv_plot_airsim_rec.py

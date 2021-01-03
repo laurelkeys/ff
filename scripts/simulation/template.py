@@ -1,16 +1,9 @@
 import argparse
 
 import ff
-from wrappers.airsimy import connect
+import airsim
 
-try:
-    import airsim
-except ModuleNotFoundError:
-    ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
-    import airsim
-finally:
-    pass
-
+from ie.airsimy import connect
 
 ###############################################################################
 ## preflight (called before connecting) #######################################

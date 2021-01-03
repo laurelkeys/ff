@@ -2,18 +2,11 @@ import os
 import argparse
 
 import ff
+import airsim
 
 from ds.rgba import Rgba
-from wrappers.airsimy import AirSimRecord, connect
-
-try:
-    import airsim
-except ModuleNotFoundError:
-    ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
-    import airsim
-finally:
-    from airsim.types import Pose
-
+from ie.airsimy import AirSimRecord, connect
+from airsim.types import Pose
 
 ###############################################################################
 ## preflight (called before connecting) #######################################
@@ -53,7 +46,10 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         )
     else:
         client.simPlotTransforms(
-            poses, scale=10.0, thickness=2.5, is_persistent=True,
+            poses,
+            scale=10.0,
+            thickness=2.5,
+            is_persistent=True,
         )
 
 
@@ -87,9 +83,7 @@ def get_parser() -> argparse.ArgumentParser:
     # NOTE this is AirSim's `Recording` output
     parser.add_argument("rec", type=str, help="Path to airsim_rec.txt")
     parser.add_argument("--flush", action="store_true", help="Flush old plots")
-    parser.add_argument(
-        "--plot_points", action="store_true", help="Show points instead of transforms"
-    )
+    parser.add_argument("--plot_points", action="store_true", help="Show points instead of transforms")
 
     ff.add_arguments_to(parser)
     return parser

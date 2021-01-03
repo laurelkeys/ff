@@ -2,7 +2,8 @@ from setuptools import setup, find_packages
 
 if __name__ == "__main__":
     setup(
-        name="ff",
+        # ds, ff, ie
+        name="facade",
         version="0.21.0",
         author="laurelkeys",
         url="https://github.com/laurelkeys/ff",

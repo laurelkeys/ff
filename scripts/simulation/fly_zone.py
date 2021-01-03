@@ -3,17 +3,11 @@ import time
 import argparse
 
 import ff
+import airsim
 
 from ds import Rect, Rgba, Controller
-from wrappers.airsimy import AirSimSettings, connect
-
-try:
-    import airsim
-except ModuleNotFoundError:
-    ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
-    import airsim
-finally:
-    from airsim.types import Pose, Vector3r
+from ie.airsimy import AirSimSettings, connect
+from airsim.types import Pose, Vector3r
 
 AUGMENT_PATHS = True  # FIXME move to args
 
@@ -77,9 +71,12 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     start_pos = Vector3r(*ff.to_xyz_tuple(closest_corner if args.corner else args.roi.center))
 
     # NOTE AirSim uses NED coordinates, so negative Z values are "up" actually
-    if (z := args.z_offset): start_pos.z_val -= z  # start higher up, to avoid crashing with objects
-    if (y := args.y_offset): start_pos.y_val += y
-    if (x := args.x_offset): start_pos.x_val += x
+    if (z := args.z_offset) :
+        start_pos.z_val -= z  # start higher up, to avoid crashing with objects
+    if (y := args.y_offset) :
+        start_pos.y_val += y
+    if (x := args.x_offset) :
+        start_pos.x_val += x
 
     # Plot a point at the start position and go to it
     client.simPlotPoints([start_pos], color_rgba=Rgba.White, is_persistent=True)
@@ -173,7 +170,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--clock", type=float, default=1.0, help="Change AirSim's clock speed")
     parser.add_argument("--corner", action="store_true", help="Fly to the corner closest to the drone, instead of to the ROI center")
     parser.add_argument("--teleport", action="store_true", help="Teleport the drone, instead of flying it")
-    parser.add_argument("--z_shift", type=float, default=6.5)  # FIXME add help string
+    parser.add_argument("--z_shift", type=float, default=6.5, help="Add an altitude shift to the zigzag path  (default: %(default)f)")
     parser.add_argument("--z_offset", type=float, help="Set a positive value (in meters) to offset the starting position")
     parser.add_argument("--y_offset", type=float, help="Set a value (in meters) to offset the starting position")
     parser.add_argument("--x_offset", type=float, help="Set a value (in meters) to offset the starting position")

@@ -5,16 +5,10 @@ import time
 from typing import List
 
 import ff
+import airsim
 
+from airsim import Pose, Vector3r
 from ff.types import Vec3
-
-try:
-    import airsim
-except ModuleNotFoundError:
-    ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
-    import airsim
-finally:
-    from airsim.types import Pose, Vector3r
 
 
 ###############################################################################
