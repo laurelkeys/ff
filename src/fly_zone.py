@@ -15,6 +15,7 @@ except ModuleNotFoundError:
 finally:
     from airsim.types import Pose, Vector3r
 
+AUGMENT_PATHS = True  # FIXME move to args
 
 ###############################################################################
 ## preflight (called before connecting) #######################################
@@ -36,6 +37,9 @@ def preflight(args: argparse.Namespace) -> None:
                     clock_speed=args.clock,
                     sim_mode=ff.SimMode.Multirotor,
                     view_mode=ff.ViewMode.SpringArmChase,
+                    # camera_defaults=AirSimSettings.Camera(
+                    #     capture_settings=[AirSimSettings.CaptureSettings()]
+                    # ),
                     subwindows=[
                         AirSimSettings.Subwindow(0, camera_name=ff.CameraName.front_center),
                         AirSimSettings.Subwindow(1, camera_name=ff.CameraName.back_center),
@@ -70,9 +74,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
         ff.log_info(f"Closest corner {ff.to_xyz_str(closest_corner)}")
 
-    start_pos = Vector3r(*ff.to_xyz_tuple(
-        closest_corner if args.corner else args.roi.center
-    ))
+    start_pos = Vector3r(*ff.to_xyz_tuple(closest_corner if args.corner else args.roi.center))
 
     # NOTE AirSim uses NED coordinates, so negative Z values are "up" actually
     if (z := args.z_offset): start_pos.z_val -= z  # start higher up, to avoid crashing with objects
@@ -88,48 +90,56 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         #      not to change it (which is called by `Controller.teleport`)... but it doesn't
         new_pose = Pose(start_pos, initial_pose.orientation)
         Controller.teleport(client, to=new_pose, ignore_collison=True)
-
     else:
         ff.log(f"Flying to {ff.to_xyz_str(start_pos)}...")
-        client.moveToPositionAsync(
-            *ff.to_xyz_tuple(start_pos),
-            velocity=5, timeout_sec=12
-        ).join()
+        client.moveToPositionAsync(*ff.to_xyz_tuple(start_pos), velocity=5, timeout_sec=12).join()
 
     # Fly over the region of interest now that we reached the starting position
     ff.log("Flying over zone...")
     time.sleep(2)
-    fly_zone(client, args.roi, altitude_shift=6.5)  # XXX testing `altitude_shift`
+    fly_zone(client, args.roi, altitude_shift=args.z_offset + args.z_shift)
 
 
 def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float = 0.0) -> None:
-    path = Controller.augment_path(
-        [
-            Vector3r(corner.x_val, corner.y_val, corner.z_val - altitude_shift)
-            for corner in zone.corners(repeat_first=True)
-        ],
-        max_dist=2,
-    )
+    path = [
+        Vector3r(corner.x_val, corner.y_val, corner.z_val - altitude_shift)
+        for corner in zone.corners(repeat_first=True)
+    ]
+    if AUGMENT_PATHS:
+        path = Controller.augment_path(path, max_dist=2)
 
-    # client.simPlotPoints(points=path, is_persistent=True, color_rgba=Rgba.White, size=5)
-    client.simPlotLineStrip(points=path, is_persistent=True, color_rgba=Rgba.White, thickness=1.5)
+    client.simPlotPoints(points=path, is_persistent=True, color_rgba=Rgba.White, size=5)
+    client.simPlotLineStrip(points=path, is_persistent=True, color_rgba=Rgba.White)
     # Controller.fly_path(client, path) ##client.moveOnPathAsync(path, velocity=2).join()
 
     # XXX testing.. stretching Rect, zigzagging path and flying over it
-    test_zigzag_path = Controller.augment_path(
-        Rect(
-            Vector3r(0, 0, -altitude_shift) + zone.center,
-            zone.half_width * 2,
-            # Vector3r(0, 0, -altitude_shift) + zone.half_width * 4,
-            zone.half_height * 2,
-            # Vector3r(0, 0, -altitude_shift) + zone.half_height * 4,
-        ).zigzag(4),
-        max_dist=2,
-    )
+    zz_path = Rect(
+        Vector3r(0, 0, -altitude_shift) + zone.center,
+        # Vector3r(0, 0, -altitude_shift) + zone.half_width * 4,
+        # Vector3r(0, 0, -altitude_shift) + zone.half_height * 4,
+        zone.half_width * 2,
+        zone.half_height * 2,
+    ).zigzag(4)
+    if AUGMENT_PATHS:
+        zz_path = Controller.augment_path(zz_path, max_dist=2)
 
-    client.simPlotPoints(points=test_zigzag_path, is_persistent=True, color_rgba=Rgba.White, size=5)
-    client.simPlotLineStrip(points=test_zigzag_path, is_persistent=True, color_rgba=Rgba.Green, thickness=2.5)
-    Controller.fly_path(client, test_zigzag_path) ##client.moveOnPathAsync(test_zigzag_path, velocity=2).join()
+    client.simPlotPoints(points=zz_path, is_persistent=True, color_rgba=Rgba.White, size=5)
+    client.simPlotLineStrip(points=zz_path, is_persistent=True, color_rgba=Rgba.Green)
+    Controller.fly_path(client, zz_path)  ##client.moveOnPathAsync(zz_path, velocity=2).join()
+
+    # client.simFlushPersistentMarkers()
+    # path = [
+    #     Vector3r(corner.x_val, corner.y_val, corner.z_val - altitude_shift)
+    #     for corner in zone.zigzag(4, 1, True)
+    # ]
+    # # client.simPlotLineStrip(points=path, is_persistent=True, color_rgba=Rgba.Yellow)
+    # try:
+    #     client.startRecording()
+    #     Controller.fly_path(client, path)
+    # except:
+    #     pass
+    # finally:
+    #     client.stopRecording()
 
 
 ###############################################################################
@@ -163,6 +173,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--clock", type=float, default=1.0, help="Change AirSim's clock speed")
     parser.add_argument("--corner", action="store_true", help="Fly to the corner closest to the drone, instead of to the ROI center")
     parser.add_argument("--teleport", action="store_true", help="Teleport the drone, instead of flying it")
+    parser.add_argument("--z_shift", type=float, default=6.5)  # FIXME add help string
     parser.add_argument("--z_offset", type=float, help="Set a positive value (in meters) to offset the starting position")
     parser.add_argument("--y_offset", type=float, help="Set a value (in meters) to offset the starting position")
     parser.add_argument("--x_offset", type=float, help="Set a value (in meters) to offset the starting position")
