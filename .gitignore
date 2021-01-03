@@ -27,6 +27,9 @@
 **/*cameras.json
 
 # virtual envs
+
+# pip install black isort pylint
+# pip install setuptools
 airenv/
 
 # pip install black isort pylint psutil wheel matplotlib pandas opencv-python scipy numpy
