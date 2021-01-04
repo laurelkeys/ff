@@ -10,6 +10,7 @@ from ie.airsimy import AirSimSettings, connect
 from airsim.types import Pose, Vector3r
 
 AUGMENT_PATHS = True  # FIXME move to args
+SHOW_PLOTS = False  # FIXME move to args
 
 ###############################################################################
 ## preflight (called before connecting) #######################################
@@ -26,21 +27,21 @@ def preflight(args: argparse.Namespace) -> None:
         # the --launch option was passed
         ff.launch_env(
             *ff.LaunchEnvArgs(args),
-            settings=ff.settings_str_from_dict(
-                AirSimSettings(
-                    clock_speed=args.clock,
-                    sim_mode=ff.SimMode.Multirotor,
-                    view_mode=ff.ViewMode.SpringArmChase,
-                    # camera_defaults=AirSimSettings.Camera(
-                    #     capture_settings=[AirSimSettings.CaptureSettings()]
-                    # ),
-                    subwindows=[
-                        AirSimSettings.Subwindow(0, camera_name=ff.CameraName.front_center),
-                        AirSimSettings.Subwindow(1, camera_name=ff.CameraName.back_center),
-                        AirSimSettings.Subwindow(2, camera_name=ff.CameraName.bottom_center),
-                    ],
-                ).as_dict()
-            ),
+            # settings=ff.settings_str_from_dict(
+            #     AirSimSettings(
+            #         clock_speed=args.clock,
+            #         sim_mode=ff.SimMode.Multirotor,
+            #         view_mode=ff.ViewMode.SpringArmChase,
+            #         # camera_defaults=AirSimSettings.Camera(
+            #         #     capture_settings=[AirSimSettings.CaptureSettings()]
+            #         # ),
+            #         subwindows=[
+            #             AirSimSettings.Subwindow(0, camera_name=ff.CameraName.front_center),
+            #             AirSimSettings.Subwindow(1, camera_name=ff.CameraName.back_center),
+            #             AirSimSettings.Subwindow(2, camera_name=ff.CameraName.bottom_center),
+            #         ],
+            #     ).as_dict()
+            # ),
         )
         ff.input_or_exit("\nPress [enter] to connect to AirSim ")
 
@@ -58,7 +59,8 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
     # Draw the ROI outline (erasing previous plots)
     client.simFlushPersistentMarkers()
-    client.simPlotLineStrip(points=args.roi.corners(repeat_first=True), is_persistent=True)
+    if SHOW_PLOTS:
+        client.simPlotLineStrip(points=args.roi.corners(repeat_first=True), is_persistent=True)
 
     # Get the first position the drone will fly to
     initial_pose = client.simGetVehiclePose()
@@ -71,15 +73,13 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     start_pos = Vector3r(*ff.to_xyz_tuple(closest_corner if args.corner else args.roi.center))
 
     # NOTE AirSim uses NED coordinates, so negative Z values are "up" actually
-    if (z := args.z_offset) :
-        start_pos.z_val -= z  # start higher up, to avoid crashing with objects
-    if (y := args.y_offset) :
-        start_pos.y_val += y
-    if (x := args.x_offset) :
-        start_pos.x_val += x
+    if (z := args.z_offset): start_pos.z_val -= z  # start higher up, to avoid crashing with objects
+    if (y := args.y_offset): start_pos.y_val += y
+    if (x := args.x_offset): start_pos.x_val += x
 
     # Plot a point at the start position and go to it
-    client.simPlotPoints([start_pos], color_rgba=Rgba.White, is_persistent=True)
+    if SHOW_PLOTS:
+        client.simPlotPoints([start_pos], color_rgba=Rgba.White, is_persistent=True)
 
     if args.teleport:
         ff.log(f"Teleporting to {ff.to_xyz_str(start_pos)}...")
@@ -94,7 +94,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     # Fly over the region of interest now that we reached the starting position
     ff.log("Flying over zone...")
     time.sleep(2)
-    fly_zone(client, args.roi, altitude_shift=args.z_offset + args.z_shift)
+    fly_zone(client, args.roi, altitude_shift=args.z_shift)
 
 
 def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float = 0.0) -> None:
@@ -105,8 +105,9 @@ def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float 
     if AUGMENT_PATHS:
         path = Controller.augment_path(path, max_dist=2)
 
-    client.simPlotPoints(points=path, is_persistent=True, color_rgba=Rgba.White, size=5)
-    client.simPlotLineStrip(points=path, is_persistent=True, color_rgba=Rgba.White)
+    if SHOW_PLOTS:
+        client.simPlotPoints(points=path, is_persistent=True, color_rgba=Rgba.White, size=5)
+        client.simPlotLineStrip(points=path, is_persistent=True, color_rgba=Rgba.White)
     # Controller.fly_path(client, path) ##client.moveOnPathAsync(path, velocity=2).join()
 
     # XXX testing.. stretching Rect, zigzagging path and flying over it
@@ -120,8 +121,9 @@ def fly_zone(client: airsim.MultirotorClient, zone: Rect, altitude_shift: float 
     if AUGMENT_PATHS:
         zz_path = Controller.augment_path(zz_path, max_dist=2)
 
-    client.simPlotPoints(points=zz_path, is_persistent=True, color_rgba=Rgba.White, size=5)
-    client.simPlotLineStrip(points=zz_path, is_persistent=True, color_rgba=Rgba.Green)
+    if SHOW_PLOTS:
+        client.simPlotPoints(points=zz_path, is_persistent=True, color_rgba=Rgba.White, size=5)
+        client.simPlotLineStrip(points=zz_path, is_persistent=True, color_rgba=Rgba.Green)
     Controller.fly_path(client, zz_path)  ##client.moveOnPathAsync(zz_path, velocity=2).join()
 
     # client.simFlushPersistentMarkers()
