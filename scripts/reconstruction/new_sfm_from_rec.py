@@ -4,14 +4,8 @@ import argparse
 
 from collections import namedtuple
 
-try:
-    from include_in_path import include
-    include("..", "wrappers")
-except:
-    pass
-finally:
-    from wrappers.airsimy import AirSimRecord
-    from wrappers.meshroomy import MeshroomParser, MeshroomTransform, MeshroomQuaternion
+from ie.airsimy import AirSimRecord
+from ie.meshroomy import MeshroomParser, MeshroomTransform, MeshroomQuaternion
 
 SHOW_CORRESPONDENCES = True  # FIXME
 
@@ -24,11 +18,12 @@ SHOW_CORRESPONDENCES = True  # FIXME
 def main(args: argparse.Namespace) -> None:
     assert os.path.isfile(args.sfm), f"Invalid file path: '{args.sfm}'"
     assert os.path.isfile(args.rec), f"Invalid file path: '{args.rec}'"
-    if not args.sfm.endswith(".sfm") and args.rec.endswith(".sfm"):
-        print("Swapping argument order based on file extensions\n")
-        args.sfm, args.rec = args.rec, args.sfm
-    else:
-        assert False, f"Expected sfm file as a .sfm: '{args.sfm}'"
+    if not args.sfm.endswith(".sfm"):
+        if args.rec.endswith(".sfm"):
+            print("Swapping argument order based on file extensions\n")
+            args.sfm, args.rec = args.rec, args.sfm
+        else:
+            assert False, f"Expected sfm file as a .sfm: '{args.sfm}'"
     assert args.rec.endswith(".txt"), f"Expected rec file as a .txt: '{args.rec}'"
 
     if args.verbose:
@@ -137,7 +132,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Matches Meshroom's reconstructed camera poses (stored in cameras.sfm)"
         " with the AirSim recording log from which the images were taken (airsim_rec.txt),"
-        " by comparing file names, then generates a new_cameras.sfm file."
+        " by comparing image file names, then generates a new_cameras.sfm file."
     )
 
     parser.add_argument("sfm", type=str, help="Path to cameras.sfm")
