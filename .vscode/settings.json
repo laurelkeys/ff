@@ -31,9 +31,13 @@
         "**/__pycache__/": true,
 
         "airenv/": true,
-        "src/*.egg-info/": true,
         "scripts/reconstruction/venv3d/": true,
         "scripts/simulation/venv/": true,
+
+        "scripts/reconstruction/.vscode/": true,
+        "scripts/simulation/.vscode/": true,
+
+        "src/*.egg-info/": true,
 
         "vendor/**/.gitignore": true,
         "vendor/**/README.md": true,

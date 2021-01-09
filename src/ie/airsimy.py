@@ -26,6 +26,13 @@ def connect(sim_mode: str) -> airsim.MultirotorClient:
     return client
 
 
+def reset(client: airsim.MultirotorClient) -> None:
+    """ Resets a client connected to AirSim and re-enables API control. """
+    client.reset()
+    client.enableApiControl(True)
+    client.armDisarm(True)
+
+
 ###############################################################################
 ###############################################################################
 
