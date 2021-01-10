@@ -49,11 +49,11 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
         assert len(rotation) == 9 and len(center) == 3, meshroom_pose
 
-        xywz = MeshroomTransform.rotation(rotation, as_xywz_quaternion=True)
+        xyzw = MeshroomTransform.rotation(rotation, as_xyzw_quaternion=True)
 
         return Pose(
             position_val=Vector3r(center[0], center[1], center[2]),
-            orientation_val=Quaternionr(xywz[3], xywz[0], xywz[1], xywz[2]),
+            orientation_val=Quaternionr(xyzw[3], xyzw[0], xyzw[1], xyzw[2]),
         )
 
     poses = [pose_from_meshroom_to_airsim(pose) for pose in args.poses_dict.values()]

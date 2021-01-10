@@ -39,7 +39,7 @@ class TartanAir:
         result = TartanAirEvaluator().evaluate_one_trajectory(
             gt_traj,
             est_traj,
-            scale,  # NOTE True for monocular track, False for stereo track
+            scale,  # True for monocular track, False for stereo track
             kittitype=False,
         )
         return TartanAir.Result(
@@ -76,13 +76,13 @@ class TartanAir:
 
 
 def make_record_line(timestamp, position, orientation, as_string=True):
-    """`timestamp tx ty tz qx qy qz qw`, where:
-    - `timestamp`: number of seconds since the Unix epoch
-    - `tx ty tz`: position of the camera's optical center
-    - `qx qy qz qw`: orientation of the camera's optical center (as a unit quaternion)
+    """ `timestamp tx ty tz qx qy qz qw`, where:
+        - `timestamp`: number of seconds since the Unix epoch
+        - `tx ty tz`: position of the camera's optical center
+        - `qx qy qz qw`: orientation of the camera's optical center (as a unit quaternion)
 
-    Note: position and orientation values are given with respect to the world origin,
-          as defined by the motion capture system.
+        Note: position and orientation values are given with respect to the world origin,
+        as defined by the motion capture system.
     """
     tx, ty, tz = position
     qx, qy, qz, qw = orientation
@@ -97,10 +97,10 @@ def make_record_line(timestamp, position, orientation, as_string=True):
 ###############################################################################
 
 
-def convert_meshroom_to_log(cameras_fpath):
-    assert os.path.isfile(cameras_fpath), f"File not found: '{cameras_fpath}'"
+def convert_meshroom_to_log(cameras_path):
+    assert os.path.isfile(cameras_path), f"File not found: '{cameras_path}'"
 
-    views, poses = MeshroomParser.parse_cameras(cameras_fpath)
+    views, poses = MeshroomParser.parse_cameras(cameras_path)
     views_dict, poses_dict = MeshroomParser.extract_views_and_poses(views, poses)
 
     record_lines = []
@@ -109,7 +109,7 @@ def convert_meshroom_to_log(cameras_fpath):
 
         pose = poses_dict[view.pose_id]
         position = MeshroomTransform.translation(pose.center)
-        orientation = MeshroomTransform.rotation(pose.rotation, as_quaternion=True)
+        orientation = MeshroomTransform.rotation(pose.rotation, as_xyzw_quaternion=True)
 
         line_str = make_record_line(timestamp, position, orientation)
         record_lines.append((timestamp, line_str))  # store a tuple
@@ -124,28 +124,28 @@ def convert_meshroom_to_log(cameras_fpath):
 ###############################################################################
 
 
-def evaluate(airsim_traj_fpath, meshroom_traj_fpath):
-    assert os.path.isfile(airsim_traj_fpath), f"File not found: '{airsim_traj_fpath}'"
-    assert os.path.isfile(meshroom_traj_fpath), f"File not found: '{meshroom_traj_fpath}'"
+def evaluate(airsim_traj_path, meshroom_traj_path):
+    assert os.path.isfile(airsim_traj_path), f"File not found: '{airsim_traj_path}'"
+    assert os.path.isfile(meshroom_traj_path), f"File not found: '{meshroom_traj_path}'"
 
-    # with open(airsim_traj_fpath) as f:
+    # with open(airsim_traj_path) as f:
     #     airsim_record = [line.rstrip() for line in f]
 
-    # with open(meshroom_traj_fpath) as f:
+    # with open(meshroom_traj_path) as f:
     #     meshroom_record = [line.rstrip() for line in f]
 
     try:
         print(
             Vendor.TartanAir.evaluate(
-                Vendor.TartanAir.traj_from_file(airsim_traj_fpath),
-                Vendor.TartanAir.traj_from_file(meshroom_traj_fpath),
+                Vendor.TartanAir.traj_from_file(airsim_traj_path),
+                Vendor.TartanAir.traj_from_file(meshroom_traj_path),
             )
         )
     except ValueError:
         print(
             Vendor.TartanAir.evaluate(
-                Vendor.TartanAir.traj_from_file(airsim_traj_fpath, True),
-                Vendor.TartanAir.traj_from_file(meshroom_traj_fpath, True),
+                Vendor.TartanAir.traj_from_file(airsim_traj_path, True),
+                Vendor.TartanAir.traj_from_file(meshroom_traj_path, True),
             )
         )
 
@@ -159,23 +159,24 @@ if __name__ == "__main__":
     parser.add_argument(
         "--convert",
         nargs=1,
-        metavar="MESHROOM_CAMERAS_FPATH",
+        metavar="MESHROOM_CAMERAS_PATH",
         help="Convert Meshroom's cameras.json to .log format",
     )
     parser.add_argument(
         "--eval",
         nargs=2,
-        metavar=("GT_TRAJECTORY_FPATH", "EST_TRAJECTORY_FPATH"),
+        metavar=("GT_TRAJECTORY_PATH", "EST_TRAJECTORY_PATH"),
         help="Compare (AirSim) ground-truth to (Meshroom) estimate reconstruction .log files",
     )
     args = parser.parse_args()
 
     if args.convert is not None:
-        convert_meshroom_to_log(args.convert[0])
+        cameras_path, = args.convert
+        convert_meshroom_to_log(cameras_path)
 
     if args.eval is not None:
-        gt_traj_fpath, est_traj_fpath = args.eval
-        evaluate(airsim_traj_fpath=gt_traj_fpath, meshroom_traj_fpath=est_traj_fpath)
+        gt_traj_path, est_traj_path = args.eval
+        evaluate(airsim_traj_path=gt_traj_path, meshroom_traj_path=est_traj_path)
 
 
 ###############################################################################

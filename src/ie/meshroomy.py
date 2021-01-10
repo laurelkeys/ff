@@ -106,7 +106,7 @@ class MeshroomViewpoint:
         self.image_height = height
 
         # # Store the rotation as a 3x3 numpy matrix and center as a numpy array.
-        # self.rotation: np.ndarray = MeshroomTransform.rotation(rotation, as_xywz_quaternion=False)
+        # self.rotation: np.ndarray = MeshroomTransform.rotation(rotation, as_xyzw_quaternion=False)
         # self.center: np.ndarray = MeshroomTransform.translation(center)
 
         assert len(rotation) == 9, rotation
@@ -125,7 +125,7 @@ class MeshroomTransform:
         See https://github.com/alicevision/meshroom/blob/develop/meshroom/ui/reconstruction.py
     """
 
-    # TODO remove `as_column_vector` and `as_xywz_quaternion` and fix the scripts that use them
+    # TODO remove `as_column_vector` and `as_xyzw_quaternion` and fix the scripts that use them
     # TODO prefix `translation`, `rotation` and `pose` with `parse_`
 
     @staticmethod
@@ -140,7 +140,7 @@ class MeshroomTransform:
         return np.array(T)
 
     @staticmethod
-    def rotation(R: List[float], as_xywz_quaternion: bool = True) -> np.ndarray:
+    def rotation(R: List[float], as_xyzw_quaternion: bool = True) -> np.ndarray:
         """ Get the camera rotation as a XYZW quaternion, or simply convert it to a 3x3 matrix.
 
             R[0], -R[1], -R[2],\n
@@ -149,7 +149,7 @@ class MeshroomTransform:
         """
         assert len(R) == 9, R
         matrix = np.array([[R[0], -R[1], -R[2]], [R[3], -R[4], -R[5]], [R[6], -R[7], -R[8]]])
-        if as_xywz_quaternion:
+        if as_xyzw_quaternion:
             return MeshroomQuaternion.XYZW.from_rotation_matrix(matrix)
         return matrix
 
@@ -173,7 +173,7 @@ class MeshroomTransform:
             (
                 np.hstack(
                     (
-                        MeshroomTransform.rotation(R, as_xywz_quaternion=False),
+                        MeshroomTransform.rotation(R, as_xyzw_quaternion=False),
                         MeshroomTransform.translation(T, as_column_vector=True),
                     )
                 ),
