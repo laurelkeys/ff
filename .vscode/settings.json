@@ -5,10 +5,12 @@
     "python.autoComplete.showAdvancedMembers": true,
     "python.autoComplete.extraPaths": [
         "D:/dev/AirSim/PythonClient",
+        "${workspaceFolder}/vendor",
     ],
 
     "python.analysis.extraPaths": [
         "D:/dev/AirSim/PythonClient",
+        "${workspaceFolder}/vendor",
     ],
 
     "python.linting.enabled": false,
