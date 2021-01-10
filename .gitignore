@@ -27,5 +27,8 @@
 *.ply
 **/*cameras.json
 
+# evaluation
+data/**/*.log
+
 # virtual envs
 airenv/

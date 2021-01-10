@@ -3,11 +3,12 @@ from __future__ import annotations
 import os
 import argparse
 
-from typing import NamedTuple
+from typing import NamedTuple, Optional, Tuple
 
 import numpy as np
-import airsim
+import matplotlib.pyplot as plt
 
+from ie.airsimy import AirSimRecord
 from ie.meshroomy import MeshroomParser, MeshroomTransform
 
 try:
@@ -15,8 +16,8 @@ try:
 except:
     pass
 finally:
-    include("..", "..", "vendor", "tartanair_tools")
-    from tartanair_tools.evaluation.tartanair_evaluator import TartanAirEvaluator
+    include("..", "..", "vendor", "tartanair_tools", "evaluation", "tartanair_evaluator")
+    from tartanair_evaluator import TartanAirEvaluator
 
 
 # FIXME I didn't retest this file after moving it into scripts/
@@ -28,9 +29,32 @@ class TartanAir:
     class Result(NamedTuple):
         ate_score: float
         rpe_score: float
-        kitti_score: float
+        kitti_score: Tuple[float, float]
         gt_aligned: np.ndarray
         est_aligned: np.ndarray
+
+        # NOTE https://github.com/castacks/tartanvo/blob/de1d3c3b272c9cfb37380f86832f3143ee25f9b5/Datasets/utils.py#L230
+        def plot(
+            self, vis: bool = True, title: Optional[str] = None, savefigname: Optional[str] = None
+        ) -> None:
+            fig = plt.figure(figsize=(4, 4))
+            cm = plt.cm.get_cmap("Spectral")
+
+            plt.subplot(111)
+            plt.plot(self.gt_aligned[:, 0], self.gt_aligned[:, 1], linestyle="dashed", c="k")
+            plt.plot(self.est_aligned[:, 0], self.est_aligned[:, 1], c="#ff7f0e")
+
+            plt.xlabel("x (m)")
+            plt.ylabel("y (m)")
+            plt.legend(["Ground Truth", "Estimate"])
+            plt.title(title if title is not None else f"ATE {self.ate_score:.4f}")
+
+            if savefigname is not None:
+                plt.savefig(savefigname)
+            if vis:
+                plt.show()
+
+            plt.close(fig)
 
     @staticmethod
     def evaluate_trajectory(
@@ -50,39 +74,19 @@ class TartanAir:
             result["est_aligned"],
         )
 
-    @staticmethod
-    def trajectory_from_file(traj_path: str, skip_header: bool = False) -> np.ndarray:
-        if skip_header:
-            return np.loadtxt(traj_path, skiprows=1)
-        return np.loadtxt(traj_path)
-
-    @staticmethod
-    def evaluate_trajectory_files(
-        gt_traj_path: str,
-        est_traj_path: str,
-        scale: bool = True,
-        gt_skip_header: bool = False,
-        est_skip_header: bool = False,
-    ) -> TartanAir.Result:
-        return TartanAir.evaluate_trajectory(
-            gt_traj=TartanAir.trajectory_from_file(gt_traj_path, gt_skip_header),
-            est_traj=TartanAir.trajectory_from_file(est_traj_path, est_skip_header),
-            scale=scale,
-        )
-
 
 ###############################################################################
 ###############################################################################
 
 
 def make_record_line(timestamp, position, orientation, as_string=True):
-    """ `timestamp tx ty tz qx qy qz qw`, where:
-        - `timestamp`: number of seconds since the Unix epoch
-        - `tx ty tz`: position of the camera's optical center
-        - `qx qy qz qw`: orientation of the camera's optical center (as a unit quaternion)
+    """`timestamp tx ty tz qx qy qz qw`, where:
+    - `timestamp`: number of seconds since the Unix epoch
+    - `tx ty tz`: position of the camera's optical center
+    - `qx qy qz qw`: orientation of the camera's optical center (as a unit quaternion)
 
-        Note: position and orientation values are given with respect to the world origin,
-        as defined by the motion capture system.
+    Note: position and orientation values are given with respect to the world origin,
+    as defined by the motion capture system.
     """
     tx, ty, tz = position
     qx, qy, qz, qw = orientation
@@ -97,15 +101,15 @@ def make_record_line(timestamp, position, orientation, as_string=True):
 ###############################################################################
 
 
-def convert_meshroom_to_log(cameras_path):
-    assert os.path.isfile(cameras_path), f"File not found: '{cameras_path}'"
+def convert_meshroom_to_log(cameras_sfm_path):
+    assert os.path.isfile(cameras_sfm_path), f"File not found: '{cameras_sfm_path}'"
 
-    views, poses = MeshroomParser.parse_cameras(cameras_path)
+    views, poses = MeshroomParser.parse_cameras(cameras_sfm_path)
     views_dict, poses_dict = MeshroomParser.extract_views_and_poses(views, poses)
 
     record_lines = []
     for _view_id, view in views_dict.items():
-        timestamp = os.path.splitext(os.path.basename(view.path))[0].split("_")[1]  # HACK
+        timestamp = os.path.splitext(os.path.basename(view.path))[0].split("_")[-1]  # HACK
 
         pose = poses_dict[view.pose_id]
         position = MeshroomTransform.translation(pose.center)
@@ -124,30 +128,56 @@ def convert_meshroom_to_log(cameras_path):
 ###############################################################################
 
 
+# NOTE this is probably already done in some other old script...
+# but it was probably harder to find it rather than reimplement it
+def convert_airsim_to_log(airsim_rec_path):
+    assert os.path.isfile(airsim_rec_path), f"File not found: '{airsim_rec_path}'"
+
+    record_lines = []
+    for record in AirSimRecord.list_from(airsim_rec_path):
+        # timestamp = record.time_stamp
+        # FIXME what convert_meshroom_to_log gets with HACK is not actually
+        # the timestamp... but since it's only used for matching, this should work:
+        timestamp = os.path.splitext(os.path.basename(record.image_file))[0].split("_")[-1]  # HACK
+
+        position = record.position.to_numpy_array()
+        orientation = record.orientation.to_numpy_array()
+        assert np.isclose(orientation[3], record.orientation.w_val)
+
+        line_str = make_record_line(timestamp, position, orientation)
+        record_lines.append((timestamp, line_str))  # store a tuple
+
+    # sort by timestamp and filter out the first element in the tuple
+    airsim_record = ["timestamp tx ty tz qx qy qz qw"]
+    airsim_record.extend([_[1] for _ in sorted(record_lines)])
+    print("\n".join(airsim_record))
+
+
+###############################################################################
+###############################################################################
+
+
 def evaluate(airsim_traj_path, meshroom_traj_path):
     assert os.path.isfile(airsim_traj_path), f"File not found: '{airsim_traj_path}'"
     assert os.path.isfile(meshroom_traj_path), f"File not found: '{meshroom_traj_path}'"
 
-    # with open(airsim_traj_path) as f:
-    #     airsim_record = [line.rstrip() for line in f]
+    result = TartanAir.evaluate_trajectory(
+        # NOTE skip the header and the timestamp column, keeping tx ty tz qx qy qz qw
+        gt_traj=np.loadtxt(airsim_traj_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7)),
+        est_traj=np.loadtxt(meshroom_traj_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7)),
+    )
 
-    # with open(meshroom_traj_path) as f:
-    #     meshroom_record = [line.rstrip() for line in f]
+    print(
+        "==> ATE: %.4f,\t KITTI-R/t: %.4f, %.4f"
+        % (result.ate_score, result.kitti_score[0], result.kitti_score[1])
+    )
 
-    try:
-        print(
-            Vendor.TartanAir.evaluate(
-                Vendor.TartanAir.traj_from_file(airsim_traj_path),
-                Vendor.TartanAir.traj_from_file(meshroom_traj_path),
-            )
-        )
-    except ValueError:
-        print(
-            Vendor.TartanAir.evaluate(
-                Vendor.TartanAir.traj_from_file(airsim_traj_path, True),
-                Vendor.TartanAir.traj_from_file(meshroom_traj_path, True),
-            )
-        )
+    result.plot()
+    # TODO clean up this file and add these to argparse:
+    # np.savetxt("est_aligned.txt", result.est_aligned)
+    # np.savetxt("gt_aligned.txt", result.gt_aligned)
+
+    print(result)
 
 
 ###############################################################################
@@ -157,10 +187,18 @@ def evaluate(airsim_traj_path, meshroom_traj_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
     parser.add_argument(
-        "--convert",
+        "--convert_meshroom",
+        "-cm",
         nargs=1,
-        metavar="MESHROOM_CAMERAS_PATH",
-        help="Convert Meshroom's cameras.json to .log format",
+        metavar="CAMERAS_SFM_PATH",  # NOTE don't use new_cameras.sfm!
+        help="Convert Meshroom's cameras.sfm to .log format",
+    )
+    parser.add_argument(
+        "--convert_airsim",
+        "-ca",
+        nargs=1,
+        metavar="AIRSIM_REC_PATH",
+        help="Convert AirSim's airsim_rec.txt to .log format",
     )
     parser.add_argument(
         "--eval",
@@ -170,9 +208,13 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if args.convert is not None:
-        cameras_path, = args.convert
-        convert_meshroom_to_log(cameras_path)
+    if args.convert_meshroom is not None:
+        (cameras_sfm_path,) = args.convert_meshroom
+        convert_meshroom_to_log(cameras_sfm_path)
+
+    if args.convert_airsim is not None:
+        (airsim_rec_path,) = args.convert_airsim
+        convert_airsim_to_log(airsim_rec_path)
 
     if args.eval is not None:
         gt_traj_path, est_traj_path = args.eval
