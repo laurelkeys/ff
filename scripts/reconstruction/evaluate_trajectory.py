@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import argparse
 
-from typing import NamedTuple, Optional, Tuple
+from typing import Tuple, Optional, NamedTuple
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,15 +20,15 @@ finally:
     from tartanair_evaluator import TartanAirEvaluator
 
 
-# FIXME I didn't retest this file after moving it into scripts/
-# NOTE ATE is well-suited for measuring the performance of visual SLAM systems, in contrast,
-#      RPE is well-suited for measuring the drift of visual odometry systems (e.g. the drift per second)
+DEBUG_ATE = True
 
 
 class TartanAir:
+    # NOTE ATE is well-suited for measuring the performance of visual SLAM systems, in contrast,
+    #      RPE is well-suited for measuring the drift of visual odometry systems (e.g. the drift per second)
     class Result(NamedTuple):
         ate_score: float
-        rpe_score: float
+        rpe_score: Tuple[float, float]
         kitti_score: Tuple[float, float]
         gt_aligned: np.ndarray
         est_aligned: np.ndarray
@@ -60,12 +60,21 @@ class TartanAir:
     def evaluate_trajectory(
         gt_traj: np.ndarray, est_traj: np.ndarray, scale: bool = True
     ) -> TartanAir.Result:
-        result = TartanAirEvaluator().evaluate_one_trajectory(
+        result = TartanAirEvaluator.evaluate_one_trajectory(
             gt_traj,
             est_traj,
             scale,  # True for monocular track, False for stereo track
             kittitype=False,
         )
+
+        if DEBUG_ATE:
+            np_indent = lambda array, string: str(array).replace("\n", "\n" + " " * len(string))
+            print(f"Scale: {result['scale']}")
+            print(f"ATE scale: {result['ate_scale']}")
+            print(f"    T: {np_indent(result['ate_T'], '    T: ')}")
+            print(f"    rot: {np_indent(result['ate_rot'], '    rot: ')}")
+            print(f"    trans: {np_indent(result['ate_trans'], '    trans: ')}")
+
         return TartanAir.Result(
             result["ate_score"],
             result["rpe_score"],
@@ -80,13 +89,13 @@ class TartanAir:
 
 
 def make_record_line(timestamp, position, orientation, as_string=True):
-    """`timestamp tx ty tz qx qy qz qw`, where:
-    - `timestamp`: number of seconds since the Unix epoch
-    - `tx ty tz`: position of the camera's optical center
-    - `qx qy qz qw`: orientation of the camera's optical center (as a unit quaternion)
+    """ `timestamp tx ty tz qx qy qz qw`, where:
+        - `timestamp`: number of seconds since the Unix epoch
+        - `tx ty tz`: position of the camera's optical center
+        - `qx qy qz qw`: orientation of the camera's optical center (as a unit quaternion)
 
-    Note: position and orientation values are given with respect to the world origin,
-    as defined by the motion capture system.
+        Note: position and orientation values are given with respect to the world origin,
+        as defined by the motion capture system.
     """
     tx, ty, tz = position
     qx, qy, qz, qw = orientation
@@ -135,10 +144,10 @@ def convert_airsim_to_log(airsim_rec_path):
 
     record_lines = []
     for record in AirSimRecord.list_from(airsim_rec_path):
-        # timestamp = record.time_stamp
-        # FIXME what convert_meshroom_to_log gets with HACK is not actually
+        # FIXME what convert_meshroom_to_log gets (see HACK in it) is not actually
         # the timestamp... but since it's only used for matching, this should work:
         timestamp = os.path.splitext(os.path.basename(record.image_file))[0].split("_")[-1]  # HACK
+        # timestamp = record.time_stamp
 
         position = record.position.to_numpy_array()
         orientation = record.orientation.to_numpy_array()
@@ -168,16 +177,21 @@ def evaluate(airsim_traj_path, meshroom_traj_path):
     )
 
     print(
-        "==> ATE: %.4f,\t KITTI-R/t: %.4f, %.4f"
-        % (result.ate_score, result.kitti_score[0], result.kitti_score[1])
+        "\n==> ATE: %.4f,\tRPE-R/t: %.4f, %.4f,\tKITTI-R/t: %.4f, %.4f"
+        % (
+            result.ate_score,
+            result.rpe_score[0],
+            result.rpe_score[1],
+            result.kitti_score[0],
+            result.kitti_score[1],
+        )
     )
 
     result.plot()
     # TODO clean up this file and add these to argparse:
     # np.savetxt("est_aligned.txt", result.est_aligned)
     # np.savetxt("gt_aligned.txt", result.gt_aligned)
-
-    print(result)
+    # print(result)
 
 
 ###############################################################################
