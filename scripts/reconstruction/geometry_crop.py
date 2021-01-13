@@ -1,3 +1,4 @@
+import os
 import argparse
 
 import numpy as np
@@ -5,6 +6,8 @@ import open3d as o3d
 
 
 def crop_geometry(ply_path: str) -> None:
+    assert os.path.isfile(ply_path), f"Invalid file path: '{ply_path}'"
+
     pcd = o3d.io.read_point_cloud(ply_path)
     # np_pcd = np.asarray(pcd.points)
     center = pcd.get_center()
