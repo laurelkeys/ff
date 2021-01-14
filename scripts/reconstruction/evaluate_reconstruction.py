@@ -2,18 +2,15 @@ from __future__ import annotations
 
 import os
 import glob
-import json
 import argparse
 
 from enum import Enum
-from typing import Tuple, Optional, NamedTuple
+from typing import NamedTuple
 
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
 from ie.airsimy import AirSimRecord
-from ie.meshroomy import MeshroomParser, MeshroomTransform
+from ie.meshroomy import MeshroomParser
 
 try:
     from include_in_path import include
@@ -29,16 +26,13 @@ class TanksAndTemples:
 
     # NOTE the .log format used by TanksAndTemples  is not the same as the one used by TartanAir
     class LogCameraPose(NamedTuple):
-        pose_id: int
+        id: int
         image_path: str
         log_matrix: np.ndarray
 
 
 ###############################################################################
 ###############################################################################
-
-
-FORMATP = "png"
 
 
 class Method(Enum):
@@ -49,69 +43,56 @@ class Method(Enum):
 def convert_to_log(
     from_method, image_folder, logfile_out, cameras_sfm_path=None, airsim_rec_path=None
 ):
-    input_images = glob.glob(os.path.join(image_folder, f"*.{FORMATP}"))
+    input_images = glob.glob(os.path.join(image_folder, f"*.png"))
     input_images.sort()
     n_of_images = len(input_images)
 
     T, i_map = [], []
     TF, i_mapF = [], []
 
-    # def inv_A(r, translation):
-    #     w = np.zeros((4, 4))
-    #     w[3, 3] = 1
-    #     w[:3, :3] = r
-    #     w[:3, 3] = translation
-    #     A = np.matrix(w)
-    #     return A.I
-
     camera_poses = []
 
+    def transform(rotation, center):
+        # homogeneous transformation matrix
+        transformation = np.identity(4)
+        transformation[:3, :3] = rotation
+        transformation[:3, 3] = center
+        return transformation
+
     if from_method == Method.Meshroom:
-        views = {}
-        with open(cameras_sfm_path, "r") as sfm_file:
-            sfm_data = json.load(sfm_file)
-
-            for view in sfm_data["views"]:
-                views[view["poseId"]] = view["path"]  # NOTE equal to the 'viewId'
-
-            for camera_pose in sfm_data["poses"]:
-                pose_id = camera_pose["poseId"]
-                pose_transform = camera_pose["pose"]["transform"]
-
-                # 3x3 (column-major) rotation matrix
-                rotation = np.array([float(_) for _ in pose_transform["rotation"]]).reshape((3, 3))
-                rotation[:, 1:] *= -1  # ref.: [2]
-
-                # camera center in world coordinates
-                center = np.array([float(_) for _ in pose_transform["center"]])
-
-                # homogeneous transformation matrix
-                mat = np.identity(4)
-                mat[:3, :3] = rotation
-                mat[:3, 3] = center
-
-                camera_poses.append(TanksAndTemples.LogCameraPose(pose_id, views[pose_id], mat))
+        views, poses = MeshroomParser.parse_cameras(cameras_sfm_path)
+        views_dict, poses_dict = MeshroomParser.extract_views_and_poses(views, poses)
+        for id, pose in poses_dict.items():
+            # FIXME triple-check this (shouldn't we use MeshroomTransform.rotation?)
+            # 3x3 (column-major) rotation matrix
+            rotation = np.array(pose.rotation).reshape((3, 3))
+            rotation[:, 1:] *= -1  # https://colmap.github.io/format.html#images-txt
+            # camera center in world coordinates
+            center = np.array(pose.center)
+            camera_poses.append(
+                TanksAndTemples.LogCameraPose(id, views_dict[id].path, transform(rotation, center))
+            )
 
     elif from_method == Method.AirSim:
-        for entry in pd.read_csv(airsim_rec_path, delim_whitespace=True).itertuples():
-            timestamp = entry.TimeStamp
-            pos = np.array([entry.POS_X, entry.POS_Y, entry.POS_Z])  # (x, y, z)
-            orien = np.array(
-                [entry.Q_W, entry.Q_X, entry.Q_Y, entry.Q_Z]
-            )  # (w, x, y, z) quaternion
-            imagefile = entry.ImageFile  # name of the corresponding image file
-
-            # FIXME triple-check this
-            # rotation = quaternion.as_rotation_matrix(orien)
-            rotation = quat2rotmat(orien)
+        for record in AirSimRecord.list_from(airsim_rec_path):
+            # FIXME triple-check this (note that quat2rotmat expects wxyz, not xyzw)
+            rotation = quat2rotmat(
+                np.array(
+                    [
+                        record.orientation.w_val,
+                        record.orientation.x_val,
+                        record.orientation.y_val,
+                        record.orientation.z_val,
+                    ]
+                )
+            )
             # rotation[:, 1:] *= -1
-            center = pos
-            mat = np.identity(4)
-            mat[:3, :3] = rotation
-            mat[:3, 3] = center
-            camera_poses.append(TanksAndTemples.LogCameraPose(timestamp, imagefile, mat))
-
-    # ...
+            center = record.position.to_numpy_array()
+            camera_poses.append(
+                TanksAndTemples.LogCameraPose(
+                    record.time_stamp, record.image_file, transform(rotation, center)
+                )
+            )
 
     for pose in camera_poses:
         A = np.matrix(pose.log_matrix)
@@ -139,7 +120,7 @@ def convert_meshroom_to_log(cameras_sfm_path, image_folder):
     convert_to_log(
         Method.Meshroom,
         image_folder,
-        logfile_out="test",
+        logfile_out="tanksandtemples.sfm.log",
         cameras_sfm_path=cameras_sfm_path,
         airsim_rec_path=None,
     )
@@ -149,7 +130,7 @@ def convert_airsim_to_log(airsim_rec_path, image_folder):
     convert_to_log(
         Method.AirSim,
         image_folder,
-        logfile_out="test",
+        logfile_out="tanksandtemples.rec.log",
         cameras_sfm_path=None,
         airsim_rec_path=airsim_rec_path,
     )
