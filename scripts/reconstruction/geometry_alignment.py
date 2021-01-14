@@ -21,24 +21,19 @@ def visualize_alignment(source_path: str, target_path: str, transform_path: Opti
 
     if transform_path is not None:
         assert os.path.isfile(transform_path), f"Invalid file path: '{transform_path}'"
-        print("\n> Alignment matrix")
         transform = np.loadtxt(transform_path)
-        print(transform)
-        draw_registration_result(source_pcd, target_pcd, transform)
+    else:
+        # TODO parse directly from .mlp
+        transform = np.array(
+            [
+                [4.97279, 0.277086, 0.472141, -0.318997],
+                [0.240651, -4.98187, 0.389083, 3.7313],
+                [0.491713, -0.364035, -4.96528, 11.8308],
+                [0.0, 0.0, 0.0, 1.0],
+            ]
+        )
 
-    # XXX debugging
     print("\n> Alignment matrix")
-    transform = np.array(
-        [
-            [0.994, -0.031, -0.102, -0.437],
-            [0.038, 0.997, 0.07, 11.211],
-            [0.1, -0.074, 0.992, 9.209],
-            [0, 0, 0, 1],
-        ]
-    )
-    print(transform)
-    transform = np.linalg.inv(transform)
-    draw_registration_result(source_pcd, target_pcd, transform)
     print(transform)
     draw_registration_result(source_pcd, target_pcd, transform)
 
