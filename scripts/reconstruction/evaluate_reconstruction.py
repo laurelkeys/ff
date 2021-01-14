@@ -8,6 +8,7 @@ from enum import Enum
 from typing import NamedTuple
 
 import numpy as np
+import open3d as o3d
 
 from ie.airsimy import AirSimRecord
 from ie.meshroomy import MeshroomParser
@@ -17,8 +18,32 @@ try:
 except:
     pass
 finally:
-    include("..", "..", "vendor", "TanksAndTemples", "python_toolbox", "convert_to_logfile")
+    python_toolbox_path = ["..", "..", "vendor", "TanksAndTemples", "python_toolbox"]
+    include(*python_toolbox_path, "convert_to_logfile")
     from convert_to_logfile import quat2rotmat, write_SfM_log
+
+    # FIXME
+    v1_tanksandtemples_path = ["..", "..", "misc", "v1", "reconstruction", "tanksandtemples"]
+    # include(*python_toolbox_path, "evaluation", "plot")
+    # include(*python_toolbox_path, "evaluation", "evaluation")
+    # include(*python_toolbox_path, "evaluation", "registration")
+    # include(*python_toolbox_path, "evaluation", "trajectory_io")
+    include(*v1_tanksandtemples_path, "plot")
+    include(*v1_tanksandtemples_path, "evaluation")
+    include(*v1_tanksandtemples_path, "registration")
+    include(*v1_tanksandtemples_path, "trajectory_io")
+    from plot import plot_graph
+    from evaluation import EvaluateHisto
+    from registration import registration_unif, registration_vol_ds, trajectory_alignment
+    from trajectory_io import read_trajectory
+
+
+# FIXME turn these into args
+DTAU = 0.01
+SCENE = "Cidadela"
+CONVERT_AIRSIM_OUT = "tanksandtemples.rec.log"
+CONVERT_MESHROOM_OUT = "tanksandtemples.sfm.log"
+EVALUATION_OUT_FOLDER = "tanksandtemples.eval"
 
 
 class TanksAndTemples:
@@ -120,7 +145,7 @@ def convert_meshroom_to_log(cameras_sfm_path, image_folder):
     convert_to_log(
         Method.Meshroom,
         image_folder,
-        logfile_out="tanksandtemples.sfm.log",
+        logfile_out=CONVERT_MESHROOM_OUT,
         cameras_sfm_path=cameras_sfm_path,
         airsim_rec_path=None,
     )
@@ -130,7 +155,7 @@ def convert_airsim_to_log(airsim_rec_path, image_folder):
     convert_to_log(
         Method.AirSim,
         image_folder,
-        logfile_out="tanksandtemples.rec.log",
+        logfile_out=CONVERT_AIRSIM_OUT,
         cameras_sfm_path=None,
         airsim_rec_path=airsim_rec_path,
     )
@@ -140,11 +165,82 @@ def convert_airsim_to_log(airsim_rec_path, image_folder):
 ###############################################################################
 
 
-def evaluate(airsim_traj_path, meshroom_traj_path):
+def evaluate(
+    airsim_traj_path,
+    meshroom_traj_path,
+    airsim_ply_path,
+    meshroom_ply_path,
+    crop_bbox_path,
+    alignment_matrix_path,
+):
     assert os.path.isfile(airsim_traj_path), f"File not found: '{airsim_traj_path}'"
     assert os.path.isfile(meshroom_traj_path), f"File not found: '{meshroom_traj_path}'"
+    assert os.path.isfile(airsim_ply_path), f"File not found: '{airsim_ply_path}'"
+    assert os.path.isfile(meshroom_ply_path), f"File not found: '{meshroom_ply_path}'"
+    assert os.path.isfile(crop_bbox_path), f"File not found: '{crop_bbox_path}'"
+    assert os.path.isfile(alignment_matrix_path), f"File not found: '{alignment_matrix_path}'"
 
-    pass
+    # TODO update TanksAndTemples's python_toolbox/evaluation/run.py and move
+    # the main "evaluation portion" of the code to the TanksAndTemples class.
+    os.makedirs(EVALUATION_OUT_FOLDER, exist_ok=False)
+
+    # Load reconstruction and according ground-truth
+    print(meshroom_ply_path)
+    pcd = o3d.io.read_point_cloud(meshroom_ply_path)
+    print(airsim_ply_path)
+    gt_pcd = o3d.io.read_point_cloud(airsim_ply_path)
+
+    traj = read_trajectory(meshroom_traj_path)  # generated .log file
+    gt_traj = read_trajectory(airsim_traj_path)  # reference .log file
+    gt_trans = np.loadtxt(alignment_matrix_path)  # alignment matrix (<scene>_trans.txt)
+
+    transformation = trajectory_alignment(SCENE, traj, gt_traj, gt_trans)
+
+    # Refine alignment by using the actual ground-truth pointcloud
+    vol = o3d.visualization.read_selection_polygon_volume(crop_bbox_path)
+
+    # Registration refinement in 3 iterations
+    r2 = registration_vol_ds(pcd, gt_pcd, transformation, vol, DTAU, DTAU * 80, 20)
+    r3 = registration_vol_ds(pcd, gt_pcd, r2.transformation, vol, DTAU / 2, DTAU * 20, 20)
+    r = registration_unif(pcd, gt_pcd, r3.transformation, vol, 2 * DTAU, 20)
+
+    # Histograms and P/R/F1
+    precision, recall, fscore, *histograms_data = EvaluateHisto(
+        SCENE,
+        EVALUATION_OUT_FOLDER,
+        pcd,
+        gt_pcd,
+        r.transformation,
+        vol,
+        DTAU / 2,
+        DTAU,
+        plot_stretch=5,
+    )
+
+    # XXX ^^^^ move to a specific function
+
+    print("==============================")
+    print("evaluation result : %s" % SCENE)
+    print("==============================")
+    print("distance tau : %.3f" % DTAU)
+    print("precision : %.4f" % precision)
+    print("recall : %.4f" % recall)
+    print("f-score : %.4f" % fscore)
+    print("==============================")
+
+    # Plotting
+    edges_source, cum_source, edges_target, cum_target = histograms_data
+    plot_graph(
+        SCENE,
+        EVALUATION_OUT_FOLDER,
+        fscore,
+        edges_source,
+        cum_source,
+        edges_target,
+        cum_target,
+        plot_stretch=5,
+        dist_threshold=DTAU,
+    )
 
 
 ###############################################################################
@@ -154,7 +250,9 @@ def evaluate(airsim_traj_path, meshroom_traj_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
 
-    parser.add_argument("image_folder", help="Path to the folder containing the input images")
+    parser.add_argument(
+        "--image_folder", type=str, help="Path to the folder containing the input images"
+    )
 
     parser.add_argument(
         "--convert_meshroom",
@@ -186,15 +284,27 @@ if __name__ == "__main__":
     # NOTE the .log format used by TanksAndTemples (http://redwood-data.org/indoor/fileformat.html)
     # is not the same as the one used by TartanAir (https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats)
 
-    assert os.path.isdir(args.image_folder)
-
     if args.convert_meshroom is not None:
+        assert os.path.isdir(args.image_folder)
         (cameras_sfm_path,) = args.convert_meshroom
         convert_meshroom_to_log(cameras_sfm_path, args.image_folder)
 
     if args.convert_airsim is not None:
+        assert os.path.isdir(args.image_folder)
         (airsim_rec_path,) = args.convert_airsim
         convert_airsim_to_log(airsim_rec_path, args.image_folder)
+
+    if args.eval:
+        gt_traj_path, est_traj_path = args.log
+        gt_ply_path, est_ply_path = args.ply
+        evaluate(
+            airsim_traj_path=gt_traj_path,
+            meshroom_traj_path=est_traj_path,
+            airsim_ply_path=gt_ply_path,
+            meshroom_ply_path=est_ply_path,
+            crop_bbox_path=args.bbox,
+            alignment_matrix_path=args.matrix,
+        )
 
 
 ###############################################################################

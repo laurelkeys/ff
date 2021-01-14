@@ -39,9 +39,14 @@ import numpy as np
 
 import open3d as o3d
 
-from .trajectory_io import convert_trajectory_to_pointcloud
+from trajectory_io import convert_trajectory_to_pointcloud
 
 MAX_POINT_NUMBER = 4e6
+
+try:
+    registration3d = o3d.registration
+except AttributeError:
+    registration3d = o3d.pipelines.registration
 
 
 def trajectory_alignment(scene, traj, gt_traj, gt_trans):
@@ -54,9 +59,12 @@ def trajectory_alignment(scene, traj, gt_traj, gt_trans):
         map(lambda x: [x, x], range(len(gt_traj)))
     )))
 
-    rr = o3d.registration.RANSACConvergenceCriteria()
+    rr = registration3d.RANSACConvergenceCriteria()
     rr.max_iteration  = 100000
-    rr.max_validation = 100000
+    try:
+        rr.max_validation = 100000
+    except AttributeError:
+        rr.confidence = 0.999  # open3d 0.12
 
     randomvar = 0.0
     n_of_cam_pos = len(traj_pcd.points) # one point per camera location
@@ -69,12 +77,12 @@ def trajectory_alignment(scene, traj, gt_traj, gt_trans):
         traj_pcd_rand.points.append(elem)
 
     # Rough registration based on aligned data
-    reg = o3d.registration.registration_ransac_based_on_correspondence(
+    reg = registration3d.registration_ransac_based_on_correspondence(
         source=traj_pcd_rand,
         target=gt_traj_pcd,
         corres=correspondence,
         max_correspondence_distance=0.2,
-        estimation_method=o3d.registration.TransformationEstimationPointToPoint(with_scaling=True),
+        estimation_method=registration3d.TransformationEstimationPointToPoint(with_scaling=True),
         ransac_n=6,
         criteria=rr,
     )
@@ -116,11 +124,11 @@ def registration_unif(
     s = __crop_and_downsample(source, crop_volume, "uniform", init_trans)
     t = __crop_and_downsample(gt_target, crop_volume, "uniform") # trans=np.identity(4)
 
-    reg = o3d.registration.registration_icp(
+    reg = registration3d.registration_icp(
         s, t,
         max_correspondence_distance=threshold, init=np.identity(4),
-        estimation_method=o3d.registration.TransformationEstimationPointToPoint(with_scaling=True),
-        criteria=o3d.registration.ICPConvergenceCriteria(1e-6, max_itr),
+        estimation_method=registration3d.TransformationEstimationPointToPoint(with_scaling=True),
+        criteria=registration3d.ICPConvergenceCriteria(1e-6, max_itr),
     )
     reg.transformation = np.matmul(reg.transformation, init_trans)
     return reg
@@ -139,11 +147,11 @@ def registration_vol_ds(
     s = __crop_and_downsample(source, crop_volume, "voxel", voxel_size, init_trans)
     t = __crop_and_downsample(gt_target, crop_volume, "voxel", voxel_size) # trans=np.identity(4)
 
-    reg = o3d.registration.registration_icp(
+    reg = registration3d.registration_icp(
         s, t,
         max_correspondence_distance=threshold, init=np.identity(4),
-        estimation_method=o3d.registration.TransformationEstimationPointToPoint(with_scaling=True),
-        criteria=o3d.registration.ICPConvergenceCriteria(1e-6, max_itr),
+        estimation_method=registration3d.TransformationEstimationPointToPoint(with_scaling=True),
+        criteria=registration3d.ICPConvergenceCriteria(1e-6, max_itr),
     )
     reg.transformation = np.matmul(reg.transformation, init_trans)
     return reg
