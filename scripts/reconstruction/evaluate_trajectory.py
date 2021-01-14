@@ -200,6 +200,7 @@ def evaluate(airsim_traj_path, meshroom_traj_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
+
     parser.add_argument(
         "--convert_meshroom",
         "-cm",
@@ -214,12 +215,14 @@ if __name__ == "__main__":
         metavar="AIRSIM_REC_PATH",
         help="Convert AirSim's airsim_rec.txt to .log format",
     )
+
     parser.add_argument(
         "--eval",
         nargs=2,
         metavar=("GT_TRAJECTORY_PATH", "EST_TRAJECTORY_PATH"),
-        help="Compare (AirSim) ground-truth to (Meshroom) estimate reconstruction .log files",
+        help="Compare (AirSim) ground-truth to (Meshroom) estimate trajectory .log files",
     )
+
     args = parser.parse_args()
 
     if args.convert_meshroom is not None:

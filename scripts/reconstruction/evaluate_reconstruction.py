@@ -153,7 +153,9 @@ def evaluate(airsim_traj_path, meshroom_traj_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="")
+
     parser.add_argument("image_folder", help="Path to the folder containing the input images")
+
     parser.add_argument(
         "--convert_meshroom",
         "-cm",
@@ -168,10 +170,17 @@ if __name__ == "__main__":
         metavar="AIRSIM_REC_PATH",
         help="Convert AirSim's airsim_rec.txt to TanksAndTemples .log format",
     )
+
+    parser.add_argument(
+        "--eval",
+        action="store_true",
+        help="Compare (AirSim) ground-truth to (Meshroom) estimate reconstruction .log files",
+    )
     parser.add_argument("--log", nargs=2, metavar=("GT_TRAJECTORY_PATH", "EST_TRAJECTORY_PATH"))
     parser.add_argument("--ply", nargs=2, metavar=("GT_PLY_PATH", "EST_PLY_PATH"))
     parser.add_argument("--bbox", type=str, help="Path to the JSON crop file")
     parser.add_argument("--matrix", type=str, help="Path to the TXT alignment matrix file")
+
     args = parser.parse_args()
 
     # NOTE the .log format used by TanksAndTemples (http://redwood-data.org/indoor/fileformat.html)
