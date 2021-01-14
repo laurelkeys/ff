@@ -23,7 +23,7 @@ def visualize_alignment(source_path: str, target_path: str, transform_path: Opti
         assert os.path.isfile(transform_path), f"Invalid file path: '{transform_path}'"
         transform = np.loadtxt(transform_path)
     else:
-        # TODO parse directly from .mlp
+        # FIXME parse directly from .mlp
         transform = np.array(
             [
                 [4.97279, 0.277086, 0.472141, -0.318997],
