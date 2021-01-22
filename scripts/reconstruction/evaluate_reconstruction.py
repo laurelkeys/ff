@@ -253,7 +253,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--image_folder", type=str, help="Path to the folder containing the input images"
     )
-
     parser.add_argument(
         "--convert_meshroom",
         "-cm",
