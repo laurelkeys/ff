@@ -101,10 +101,10 @@ def crop_pcd(pcd, crop_volume, trans=None):
 
 
 def uniform_downsample(pcd, max_points):
-    n_points = len(pcd.points)
-    if n_points > max_points:
-        every_k_points = int(round(n_points / max_points))
+    if len(pcd.points) > max_points:
+        every_k_points = int(round(len(pcd.points) / max_points))
         return pcd.uniform_down_sample(every_k_points)
+    return pcd
 
 
 def voxel_downsample(pcd, voxel_size=0.01):
@@ -305,12 +305,12 @@ class TanksAndTemplesEvaluator:
         scene_name,
         out_dir,
         dTau,
-        gt_ply_path,  # Ground-truth (gt)
+        gt_ply_path,  # Ground-truth, i.e. reference / target
         gt_log_path,
-        est_ply_path,  # Estimate (est) reconstruction
+        est_ply_path,  # Estimate reconstruction, i.e. source
         est_log_path,
-        alignment_txt_path,  # Transformation matrix to align 'est' with 'gt'
-        crop_json_path,  # Area cropping for the 'gt' point cloud
+        align_txt_path,  # Alignment transformation matrix
+        crop_json_path,  # Area cropping for the PLY files
         plot_stretch,
         map_file=None,
     ):
@@ -318,7 +318,7 @@ class TanksAndTemplesEvaluator:
         est_pcd = o3d.io.read_point_cloud(est_ply_path)  # "source"
         gt_pcd = o3d.io.read_point_cloud(gt_ply_path)  # "target"
 
-        transform = np.loadtxt(alignment_txt_path)
+        transform = np.loadtxt(align_txt_path)
         est_traj = Trajectory.read(est_log_path)  # trajectory to register
         gt_traj = Trajectory.read(gt_log_path)
 
@@ -328,7 +328,7 @@ class TanksAndTemplesEvaluator:
         # Big point clouds will be downsampled to 'dTau' to speed up alignment
         vol = o3d.visualization.read_selection_polygon_volume(crop_json_path)
 
-        # Registration refinment in 3 iterations
+        # Registration refinement in 3 iterations
         r2 = voxel_registration(
             est_pcd,
             gt_pcd,
@@ -357,7 +357,7 @@ class TanksAndTemplesEvaluator:
         )
 
         # Generate histograms and compute P/R/F1
-        # [precision, recall, fscore, edges_source, cum_source, edges_target, cum_target]
+        # Returns: [precision, recall, fscore, edges_source, cum_source, edges_target, cum_target]
         return TanksAndTemplesEvaluator.evaluate_histogram(
             est_pcd,
             gt_pcd,
@@ -489,7 +489,7 @@ def run_evaluation(dataset_dir, traj_path, ply_path, out_dir, dTau=None):
         gt_log_path=colmap_ref_logfile,
         est_ply_path=ply_path,
         est_log_path=traj_path,
-        alignment_txt_path=alignment,
+        align_txt_path=alignment,
         crop_json_path=cropfile,
         plot_stretch=plot_stretch,
         map_file=map_file,
