@@ -37,6 +37,7 @@
 
 import os
 import copy
+import argparse
 
 import numpy as np
 import open3d as o3d
@@ -115,12 +116,12 @@ def uniform_registration(
     source, target, init_trans, crop_volume, threshold, max_iter, max_size=None, verbose=True
 ):
     if max_size is not None:
-        max_points = max_size / 4
+        max_points = max_size // 4
     else:
         max_size, max_points = 16e6, 4e6
 
     if verbose:
-        print("[Registration] threshold: %f, max_size: %f" % (threshold, max_size))
+        print("[Registration] threshold: %f, max_size: %d" % (threshold, max_size))
         o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
 
     s = uniform_downsample(crop_pcd(source, crop_volume, init_trans), max_points)
@@ -162,7 +163,9 @@ def voxel_registration(
     return reg
 
 
-def trajectory_alignment(est_traj, gt_traj, gt_to_est_transform, randomvar=0):
+def trajectory_alignment(map_file, est_traj, gt_traj, gt_to_est_transform, randomvar=0):
+    assert len(est_traj.camera_poses) <= 1600 or map_file is None  # TODO use video frames
+
     est_traj_pcd = est_traj.point_cloud()  # trajectory to register
 
     gt_traj_pcd = gt_traj.point_cloud()
@@ -178,7 +181,9 @@ def trajectory_alignment(est_traj, gt_traj, gt_to_est_transform, randomvar=0):
         est_traj_pcd_rand.points.append(elem)
 
     # Rough registration based on aligned SfM data
-    corres = o3d.utility.Vector2iVector(np.asarray([[x, x] for x in range(len(gt_traj_pcd))]))
+    corres = o3d.utility.Vector2iVector(
+        np.asarray([[x, x] for x in range(len(gt_traj.camera_poses))])
+    )
 
     rr = o3d.registration.RANSACConvergenceCriteria()
     rr.max_iteration = 100000
@@ -211,11 +216,17 @@ class TanksAndTemplesEvaluator:
         out_dir_path,
         plot_stretch,
         scene_name,
+        verbose,
     ):
-        print("[EvaluateHisto]")
-        o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
+        if verbose:
+            print("[EvaluateHisto]")
+            o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
+            if_verbose_print = lambda *args, **kwargs: print(*args, **kwargs)
+        else:
+            if_verbose_print = lambda *args, **kwargs: None
+
         scene_file_base = os.path.join(out_dir_path, scene_name)
-        print(scene_file_base + ".precision.ply")
+        if_verbose_print(scene_file_base + ".precision.ply")
 
         s = copy.deepcopy(source)
         s.transform(trans)
@@ -228,11 +239,11 @@ class TanksAndTemplesEvaluator:
         t = t.voxel_down_sample(voxel_size)
         t.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=20))
 
-        print("[compute_point_cloud_to_point_cloud_distance]")
+        if_verbose_print("[compute_point_cloud_to_point_cloud_distance]")
         distance1 = s.compute_point_cloud_distance(t)
         assert len(distance1)
 
-        print("[compute_point_cloud_to_point_cloud_distance]")
+        if_verbose_print("[compute_point_cloud_to_point_cloud_distance]")
         distance2 = t.compute_point_cloud_distance(s)
         assert len(distance2)
 
@@ -262,16 +273,16 @@ class TanksAndTemplesEvaluator:
             pcd.colors = o3d.utility.Vector3dVector(colors)
             o3d.io.write_point_cloud(path, pcd)
 
-        print("[ViewDistances] Add color coding to visualize error")
+        if_verbose_print("[ViewDistances] Add color coding to visualize error")
         # viewDT(source_n_fn)
         write_color_distances(source_n_fn, s, distance1, 3 * threshold)
 
-        print("[ViewDistances] Add color coding to visualize error")
+        if_verbose_print("[ViewDistances] Add color coding to visualize error")
         # viewDT(target_n_fn)
         write_color_distances(target_n_fn, t, distance2, 3 * threshold)
 
         # Get F-score and histogram
-        print("[get_f1_score_histo2]")
+        if_verbose_print("[get_f1_score_histo2]")
 
         precision = sum(d < threshold for d in distance1) / len(distance1)
         recall = sum(d < threshold for d in distance2) / len(distance2)
@@ -313,6 +324,7 @@ class TanksAndTemplesEvaluator:
         crop_json_path,  # Area cropping for the PLY files
         plot_stretch,
         map_file=None,
+        verbose=True,
     ):
         # Load reconstruction and according ground-truth
         est_pcd = o3d.io.read_point_cloud(est_ply_path)  # "source"
@@ -337,6 +349,7 @@ class TanksAndTemplesEvaluator:
             threshold=dTau * 80,
             max_iter=20,
             voxel_size=dTau,
+            verbose=verbose,
         )
         r3 = voxel_registration(
             est_pcd,
@@ -346,6 +359,7 @@ class TanksAndTemplesEvaluator:
             threshold=dTau * 20,
             max_iter=20,
             voxel_size=dTau / 2,
+            verbose=verbose,
         )
         r = uniform_registration(
             est_pcd,
@@ -354,6 +368,7 @@ class TanksAndTemplesEvaluator:
             crop_volume=vol,
             threshold=2 * dTau,
             max_iter=20,
+            verbose=verbose,
         )
 
         # Generate histograms and compute P/R/F1
@@ -368,6 +383,7 @@ class TanksAndTemplesEvaluator:
             out_dir_path=out_dir,
             plot_stretch=plot_stretch,
             scene_name=scene_name,
+            verbose=verbose,
         )
 
     @staticmethod
@@ -493,6 +509,7 @@ def run_evaluation(dataset_dir, traj_path, ply_path, out_dir, dTau=None):
         crop_json_path=cropfile,
         plot_stretch=plot_stretch,
         map_file=map_file,
+        verbose=os.getenv("VERBOSE", None) is not None,
     )
 
     print("==============================")
@@ -514,4 +531,46 @@ def run_evaluation(dataset_dir, traj_path, ply_path, out_dir, dTau=None):
         cum_target,
         plot_stretch,
         out_dir,
+    )
+
+
+# ----------------------------------------------------------------------------
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dataset-dir",
+        type=str,
+        required=True,
+        help="path to a dataset/scene directory containing X.json, X.ply, ...",
+    )
+    parser.add_argument(
+        "--traj-path",
+        type=str,
+        required=True,
+        help="path to trajectory file (see `convert_to_logfile.py` to create this file)",
+    )
+    parser.add_argument(
+        "--ply-path",
+        type=str,
+        required=True,
+        help="path to reconstruction ply file",
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=str,
+        default="",
+        help="output directory (default: an evaluation directory is created in the directory of the ply file)",
+    )
+    args = parser.parse_args()
+
+    if args.out_dir.strip() == "":
+        args.out_dir = os.path.join(os.path.dirname(args.ply_path), "evaluation")
+
+    run_evaluation(
+        dataset_dir=args.dataset_dir,
+        traj_path=args.traj_path,
+        ply_path=args.ply_path,
+        out_dir=args.out_dir,
     )
