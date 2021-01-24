@@ -164,7 +164,21 @@ def voxel_registration(
 
 
 def trajectory_alignment(map_file, est_traj, gt_traj, gt_to_est_transform, randomvar=0):
-    assert len(est_traj.camera_poses) <= 1600 or map_file is None  # TODO use video frames
+    # if len(est_traj.camera_poses) > 1600 and map_file is not None:
+    #     with open(map_file, "r") as f:
+    #         n_sampled_frames = int(f.readline())
+    #         n_total_frames = int(f.readline())
+    #         mapping = np.zeros(shape=(n_sampled_frames, 2))
+    #
+    #         metastr = f.readline()
+    #         for iter in range(n_sampled_frames):
+    #             mapping[iter, :] = list(map(int, metastr.split()))
+    #             metastr = f.readline()
+    #
+    #     # Generate sparse trajectory
+    #     est_traj.camera_poses = [est_traj.camera_poses[int(m[1] - 1)] for m in mapping]
+
+    assert len(est_traj.camera_poses) <= 1600 or map_file is None  # NOTE code above was not tested
 
     est_traj_pcd = est_traj.point_cloud()  # trajectory to register
 
