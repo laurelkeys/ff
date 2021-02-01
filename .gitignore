@@ -30,6 +30,7 @@
 # evaluation
 data/**/*.log
 data/**/*.json
+data/**/*.pdf
 
 # virtual envs
 airenv/
