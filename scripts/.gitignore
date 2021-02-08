@@ -1,0 +1,9 @@
+# virtual envs
+
+# pip install black isort pylint psutil wheel numpy opencv-python matplotlib pandas
+# pip install msgpack-rpc-python
+simulation/venv/
+
+# pip install black isort pylint psutil wheel numpy opencv-python matplotlib pandas
+# pip install open3d
+reconstruction/venv3d/

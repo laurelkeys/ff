@@ -5,16 +5,14 @@ import json
 from glob import glob
 from os.path import join
 
-from .sim import SimMode
-from .defaults import Default
-
 ###############################################################################
 ###############################################################################
 
 
-def add_airsim_to_path(airsim_path):
-    assert os.path.exists(join(airsim_path, "client.py")), airsim_path
-    sys.path.insert(0, os.path.dirname(airsim_path))
+# NOTE delete after removing all uses
+# def add_airsim_to_path(airsim_path):
+#     assert os.path.exists(join(airsim_path, "client.py")), airsim_path
+#     sys.path.insert(0, os.path.dirname(airsim_path))
 
 
 ###############################################################################

@@ -4,13 +4,7 @@ from typing import List, Union
 
 import ff
 
-try:
-    import airsim
-except ModuleNotFoundError:
-    ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
-    import airsim
-finally:
-    from airsim.types import Vector3r
+from airsim.types import Vector3r
 
 
 class Rect:

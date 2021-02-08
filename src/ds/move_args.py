@@ -1,17 +1,7 @@
-import ff
-
-try:
-    import airsim
-except ModuleNotFoundError:
-    ff.add_airsim_to_path(airsim_path=ff.Default.AIRSIM_PYCLIENT_PATH)
-    import airsim
-finally:
-    from airsim.types import YawMode, DrivetrainType
+from airsim.types import YawMode, DrivetrainType
 
 
 # FIXME work in progress..
-
-
 class MoveArgs:
     def __init__(
         self,
