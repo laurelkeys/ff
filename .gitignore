@@ -32,5 +32,9 @@ data/**/*.log
 data/**/*.json
 data/**/*.pdf
 
+# old files
+**/v1/**/sfm*.json
+**/v1/**/*cloud_and_poses.json
+
 # virtual envs
 airenv/

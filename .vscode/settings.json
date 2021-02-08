@@ -51,7 +51,7 @@
 
         "vendor/TanksAndTemples/FAQ.md": true,
         "vendor/TanksAndTemples/LICENSE": true,
-        "vendor/TanksAndTemples/test_data/": true,
+        "vendor/TanksAndTemples/test_data/": false, // true,
         "vendor/TanksAndTemples/python_toolbox/*.sh": true,
         "vendor/TanksAndTemples/python_toolbox/*_t2_*.py": true,
         "vendor/TanksAndTemples/python_toolbox/evaluation/images/": true,
