@@ -1,5 +1,4 @@
 import os
-import include
 import argparse
 
 try:
@@ -7,7 +6,7 @@ try:
 except:
     pass
 finally:
-    include("..", "..", "misc", "tanksandtemples_evaluator")
+    include("..", "..", "vendor", "TanksAndTemples", "tanksandtemples_evaluator")
     from tanksandtemples_evaluator import TanksAndTemplesEvaluator
 
 SCENE_NAME = "Cidadela_2021-01-09-18-27-07"

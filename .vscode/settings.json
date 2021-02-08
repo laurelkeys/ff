@@ -1,16 +1,18 @@
 {
-    "python.pythonPath": "airenv\\Scripts\\python.exe",
+    "python.pythonPath": "${workspaceFolder}/airenv/Scripts/python.exe",
 
     "python.autoComplete.addBrackets": false,
     "python.autoComplete.showAdvancedMembers": true,
     "python.autoComplete.extraPaths": [
         "D:/dev/AirSim/PythonClient",
-        "${workspaceFolder}/vendor",
+        "${workspaceFolder}/vendor/TanksAndTemples",
+        "${workspaceFolder}/vendor/tartanair_tools/evaluation",
     ],
 
     "python.analysis.extraPaths": [
         "D:/dev/AirSim/PythonClient",
-        "${workspaceFolder}/vendor",
+        "${workspaceFolder}/vendor/TanksAndTemples",
+        "${workspaceFolder}/vendor/tartanair_tools/evaluation",
     ],
 
     "python.linting.enabled": false,
