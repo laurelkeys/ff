@@ -33,8 +33,9 @@ data/**/*.json
 data/**/*.pdf
 
 # old files
-**/v1/**/sfm*.json
-**/v1/**/*cloud_and_poses.json
+**/v1/reconstruction/models/**/sfm*.json
+**/v1/reconstruction/models/**/cloud_and_poses.json
+**/v1/reconstruction/models/**/outputViewsAndPoses.json
 
 # virtual envs
 airenv/
