@@ -17,7 +17,7 @@ MAX_DR = 35 # maximum distance to surface (evaluate_trajectory)
 
 
 class Uavmvs:
-    """Apps used in makeTraj.sh"""
+    """ Apps used in makeTraj.sh. """
 
     convert_mesh            = "convert-mesh"            # [OPTS] IN_MESH          OUT_MESH
     generate_texture        = "generate_texture"        # [OPTS] IN_MESH          OUT_PREFIX
@@ -214,6 +214,19 @@ def interpolate_trajectory(
     _add_opt(args, sequence, "sequence")
 
     _run_app(Uavmvs.interpolate_trajectory, args)
+
+
+def _visualizer(
+    mesh=None, volume=None, trajectory=None,
+):
+    """ Visualizer for meshes, volumes and trajectories. """
+    args = []
+
+    _add_opt(args, mesh, "mesh")
+    _add_opt(args, volume, "volume")
+    _add_opt(args, trajectory, "trajectory")
+
+    _run_app("visualizer", args)
 
 
 def _path_to(*relative_path):

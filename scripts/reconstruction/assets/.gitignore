@@ -1,0 +1,10 @@
+*.csv
+*.traj
+
+*.mtl
+*.obj
+*.png
+
+*.py
+*.sh
+*.txt
