@@ -1,4 +1,3 @@
-import os
 import argparse
 
 from typing import NamedTuple
@@ -44,16 +43,29 @@ class TrajectoryCamera(NamedTuple):
 ###############################################################################
 
 
-def axis_line_set(origin, size=1.0):
-    points = [
-        np.asarray(origin, dtype=np.float32) + size * np.asarray(_, dtype=np.float32)
-        for _ in [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]]
-    ]
+def coordinate_axes_line_set(axes_origins, size=1.0):
+    points, lines, colors = [], [], []
+
+    # NOTE Open3D can't really handle rendering more than 50 meshes, so we merge
+    #      multiple coordinate axes into a single LineSet for it to run smoothly.
+
+    for origin in axes_origins:
+        o = len(points)
+        lines.extend([[o, o + 1], [o, o + 2], [o, o + 3]])  # x y z
+        colors.extend([[1, 0, 0], [0, 1, 0], [0, 0, 1]])  # r g b
+        points.extend(
+            [
+                np.asarray(origin, dtype=np.float32) + size * np.asarray(_, dtype=np.float32)
+                for _ in [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]]  # o x y z
+            ]
+        )
+
     line_set = o3d.geometry.LineSet(
         points=o3d.utility.Vector3dVector(points),
-        lines=o3d.utility.Vector2iVector([[0, 1], [0, 2], [0, 3]]),
+        lines=o3d.utility.Vector2iVector(lines),
     )
-    line_set.colors = o3d.utility.Vector3dVector([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    line_set.colors = o3d.utility.Vector3dVector(colors)
+
     return line_set  # TODO rotate this based on the camera's rotation
 
 
@@ -62,6 +74,9 @@ def axis_line_set(origin, size=1.0):
 
 
 def main(args: argparse.Namespace) -> None:
+    if args.verbose:
+        o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
+
     with open(args.trajectory, "r") as f:
         trajectory = []
         if args.csv:
@@ -86,11 +101,7 @@ def main(args: argparse.Namespace) -> None:
 
             assert len(trajectory) == n_of_cameras
 
-    geometry_list = [
-        axis_line_set(size=0.5, origin=camera.position)
-        # o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=camera.position)
-        for camera in trajectory
-    ]
+    geometry_list = [coordinate_axes_line_set([camera.position for camera in trajectory], size=1)]
 
     if args.mesh:
         mesh = o3d.io.read_triangle_mesh(args.mesh)
@@ -109,7 +120,6 @@ def main(args: argparse.Namespace) -> None:
             # print(np.asarray(cloud.points))
             print()
 
-    # FIXME Open3D can't really handle rendering more than 100 coordinate axis
     o3d.visualization.draw_geometries(geometry_list)
 
 
