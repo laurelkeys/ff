@@ -1,6 +1,7 @@
+import os
 import argparse
 
-from typing import NamedTuple
+from typing import Optional, NamedTuple
 
 import numpy as np
 import open3d as o3d
@@ -33,26 +34,34 @@ def _eat_rotation(f):
 
 
 class TrajectoryCamera(NamedTuple):
-    """ Represents a camera pose entry in a .traj file. """
+    """ Represents a camera pose entry in a .traj (or .csv) file. """
 
     position: np.ndarray
     rotation: np.ndarray  # NOTE (3, 3) rotation matrix or (4,) xyzw quaternion
+    interpolated: bool = False  # NOTE spline interpolated position if True
+    focal_length: Optional[float] = None
 
 
 ###############################################################################
 ###############################################################################
 
 
-def coordinate_axes_line_set(axes_origins, size=1.0):
-    points, lines, colors = [], [], []
+RGB = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+CMY = [[0, 1, 1], [1, 0, 1], [1, 1, 0]]
+
+BLACK = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+WHITE = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]
+
+
+def coordinate_axes_line_set(axes_origins, size=1.0, colors=None):
+    points, lines = [], []
 
     # NOTE Open3D can't really handle rendering more than 50 meshes, so we merge
     #      multiple coordinate axes into a single LineSet for it to run smoothly.
 
     for origin in axes_origins:
         o = len(points)
-        lines.extend([[o, o + 1], [o, o + 2], [o, o + 3]])  # x y z
-        colors.extend([[1, 0, 0], [0, 1, 0], [0, 0, 1]])  # r g b
+        lines.extend([[o, o + 1], [o, o + 2], [o, o + 3]])  # o-x o-y o-z
         points.extend(
             [
                 np.asarray(origin, dtype=np.float32) + size * np.asarray(_, dtype=np.float32)
@@ -60,11 +69,14 @@ def coordinate_axes_line_set(axes_origins, size=1.0):
             ]
         )
 
+    if colors is None:
+        colors = [RGB for _ in range(len(axes_origins))]
+
     line_set = o3d.geometry.LineSet(
         points=o3d.utility.Vector3dVector(points),
         lines=o3d.utility.Vector2iVector(lines),
     )
-    line_set.colors = o3d.utility.Vector3dVector(colors)
+    line_set.colors = o3d.utility.Vector3dVector(np.asarray(colors).reshape((-1, 3)))
 
     return line_set  # TODO rotate this based on the camera's rotation
 
@@ -77,31 +89,45 @@ def main(args: argparse.Namespace) -> None:
     if args.verbose:
         o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
 
+    _, ext = os.path.splitext(args.trajectory)
+    assert os.path.isfile(args.trajectory) and ext in [".traj", ".csv"]
+
     with open(args.trajectory, "r") as f:
         trajectory = []
-        if args.csv:
-            f.readline()  # skip the "x,y,z,qw,qx,qy,qz,key" header
-            for line in f.readlines():
-                x, y, z, qw, qx, qy, qz, _key = line.split(",")
-                # NOTE ignore key (0 = spline interpolated position, 1 = camera position)
-                trajectory.append(
-                    TrajectoryCamera(
-                        position=np.array([x, y, z]),
-                        rotation=np.array([qx, qy, qz, qw]),
-                    )
-                )
-        else:
+        if ext == ".traj":
             n_of_cameras = int(f.readline())
             for _ in range(n_of_cameras):
                 position = _eat_position(f)
                 rotation = _eat_rotation(f)
-                _focal_length = float(f.readline())
-                # NOTE skip the camera's focal length
-                trajectory.append(TrajectoryCamera(position, rotation))
-
+                trajectory.append(
+                    TrajectoryCamera(position, rotation, focal_length=float(f.readline()))
+                )
             assert len(trajectory) == n_of_cameras
+        else:
+            f.readline()  # skip header
+            for line in f.readlines():
+                x, y, z, qw, qx, qy, qz, key = line.split(",")
+                trajectory.append(
+                    TrajectoryCamera(
+                        position=np.array([x, y, z]),
+                        rotation=np.array([qx, qy, qz, qw]),
+                        interpolated=(int(key) == 0),
+                    )
+                )
 
-    geometry_list = [coordinate_axes_line_set([camera.position for camera in trajectory], size=1)]
+    camera_positions = [camera.position for camera in trajectory]
+
+    if args.export is not None:
+        pcd = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(camera_positions))
+        o3d.io.write_point_cloud(filename=args.export, pointcloud=pcd, print_progress=args.verbose)
+
+    geometry_list = [
+        coordinate_axes_line_set(
+            size=0.5,
+            axes_origins=camera_positions,
+            colors=[RGB if not camera.interpolated else BLACK for camera in trajectory],
+        )
+    ]
 
     if args.mesh:
         mesh = o3d.io.read_triangle_mesh(args.mesh)
@@ -133,19 +159,14 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("trajectory", type=str, help="Path to the input .TRAJ (or .CSV) file")
-    parser.add_argument(
-        "--csv", action="store_true", help="Read the interpolated trajectory instead"
-    )
-    # TODO add an option to convert and export the .csv / .traj files as .ply
+    parser.add_argument("--export", type=str, help="Path to export the trajectory as .PLY to")
 
     parser.add_argument("--mesh", type=str, help="Path to a .PLY mesh file")
     parser.add_argument("--cloud", type=str, help="Path to a .PLY point cloud file")
 
     parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")
 
-    args = parser.parse_args()
-
-    main(args)
+    main(args=parser.parse_args())
 
 
 ###############################################################################
