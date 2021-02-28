@@ -176,7 +176,38 @@ def _interpolate_trajectory(
     run_app("interpolate-trajectory", args)  # trajectory_tools/interpolate.cpp
 
 
-def _plan_trajectory(  # plan_trajectory/plan_trajectory.cu
+def _generate_guidance_volume(
+    proxy_mesh, proxy_cloud, airspace_mesh, out_volume,  # XXX this generates super large files (GB)
+    resolution=None,
+    max_distance=None, min_altitude=None, max_altitude=None,
+):
+    """ Generate guidance volume. """
+    args = [proxy_mesh, proxy_cloud, airspace_mesh, out_volume]
+
+    add_opt(args, resolution, "resolution")      # 1.0
+    add_opt(args, max_distance, "max-distance")  # 80.0
+    add_opt(args, min_altitude, "min-altitude")  # 0.0
+    add_opt(args, max_altitude, "max-altitude")  # 100.0
+
+    run_app("generate_guidance_volume", args)  # generate_guidance_volume/generate_guidance_volume.cu
+
+
+def _generate_initial_trajectory(
+    guidance_volume, out_trajectory,
+    seed=None, focal_length=None,
+    num_views=None,
+):
+    """ Samples the guidance volume to create an initial trajectory. """
+    args = [guidance_volume, out_trajectory]
+
+    add_opt(args, seed, "seed")                  # 0
+    add_opt(args, focal_length, "focal-length")  # 0.86
+    add_opt(args, num_views, "num-views")        # 500
+
+    run_app("generate_initial_trajectory", args)  # generate_initial_trajectory/generate_initial_trajectory.cpp
+
+
+def _plan_trajectory(
     proxy_mesh, proxy_cloud, out_trajectory,
     min_distance=None, max_distance=None, min_altitude=None, max_altitude=None, max_velocity=None, focal_length=None,
     num_views=None,
@@ -184,18 +215,18 @@ def _plan_trajectory(  # plan_trajectory/plan_trajectory.cu
     """ Plans a trajectory maximizing reconstructability. """
     args = [proxy_mesh, proxy_cloud, out_trajectory]
 
-    add_opt(args, min_distance, "min-distance")
-    add_opt(args, max_distance, "max-distance")
-    add_opt(args, min_altitude, "min-altitude")
-    add_opt(args, max_altitude, "max-altitude")
-    add_opt(args, max_velocity, "max-velocity")
-    add_opt(args, focal_length, "focal-length")
-    add_opt(args, num_views, "num-views")
+    add_opt(args, min_distance, "min-distance")  # 0.0
+    add_opt(args, max_distance, "max-distance")  # 80.0
+    add_opt(args, min_altitude, "min-altitude")  # 0.0
+    add_opt(args, max_altitude, "max-altitude")  # 100.0
+    add_opt(args, max_velocity, "max-velocity")  # 5.0
+    add_opt(args, focal_length, "focal-length")  # 0.86
+    add_opt(args, num_views, "num-views")        # 500
 
-    run_app("plan_trajectory", args)
+    run_app("plan_trajectory", args)  # plan_trajectory/plan_trajectory.cu
 
 
-def _visualizer(  # visualizer/visualizer.cpp
+def _visualizer(
     mesh=None, volume=None, trajectory=None,
 ):
     """ Visualizer for meshes, volumes and trajectories. """
@@ -205,7 +236,7 @@ def _visualizer(  # visualizer/visualizer.cpp
     add_opt(args, volume, "volume")
     add_opt(args, trajectory, "trajectory")
 
-    run_app("visualizer", args)
+    run_app("visualizer", args)  # visualizer/visualizer.cpp
 
 
 class Uavmvs:

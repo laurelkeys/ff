@@ -1,5 +1,7 @@
 *.csv
 *.traj
+*.utj
+*.vol
 
 *.mtl
 *.obj
