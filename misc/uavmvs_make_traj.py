@@ -23,8 +23,8 @@ def add_opt(args, arg, name, is_bool=False):
 
 
 def run_app(app, *args):
-    run_str = f"{app} " + " ".join(map(str, *args))
-    print("\n$", run_str)  # XXX os.system(run_str)
+    run_str = f"{app} {' '.join(map(str, *args))}"
+    print(f"\n./{run_str}")  # XXX os.system(run_str)
 
 
 def _convert_mesh(
@@ -57,12 +57,12 @@ def _generate_texture(
     """ Generate noise textures for the mesh with simplex noise. """
     args = [in_mesh, out_prefix]
 
-    add_opt(args, octaves, "octaves")
-    add_opt(args, persistence, "persistence")
-    add_opt(args, noise_scale, "noise-scale")
-    add_opt(args, factor, "factor")
-    add_opt(args, grid_scale, "grid-scale")
-    add_opt(args, resolution, "resolution")
+    add_opt(args, octaves, "octaves")          # 6
+    add_opt(args, persistence, "persistence")  # 0.65
+    add_opt(args, noise_scale, "noise-scale")  # 1.0
+    add_opt(args, factor, "factor")            # 1.0
+    add_opt(args, grid_scale, "grid-scale")    # 1.0
+    add_opt(args, resolution, "resolution")    # 100.0
 
     run_app("generate_texture", args)  # generate_texture/generate_texture.cpp
 
@@ -74,7 +74,7 @@ def _generate_proxy_cloud(
     """ Create point cloud by uniformly sampling the mesh surface. """
     args = [in_mesh, out_cloud]
 
-    add_opt(args, samples, "samples")
+    add_opt(args, samples, "samples")  # 100
 
     run_app("generate_proxy_cloud", args)  # generate_proxy_cloud/generate_proxy_cloud.cpp
 
@@ -88,10 +88,10 @@ def _generate_proxy_mesh(
     WARNING: Assumes that the z axis corresponds to height """
     args = [cloud, out_mesh]
 
-    add_opt(args, resolution, "resolution")
+    add_opt(args, resolution, "resolution")      # -1.0
     add_opt(args, height_map, "height-map")
     add_opt(args, sample_cloud, "sample-cloud")
-    add_opt(args, min_distance, "min-distance")
+    add_opt(args, min_distance, "min-distance")  # 0.0
 
     run_app("generate_proxy_mesh", args)  # generate_proxy_mesh/generate_proxy_mesh.cpp
 
@@ -104,15 +104,15 @@ def _generate_trajectory(
     """ Generate trajectories. """
     args = [proxy_mesh, out_trajectory]
 
-    add_opt(args, forward_overlap, "forward-overlap")
-    add_opt(args, side_overlap, "side-overlap")
-    add_opt(args, altitude, "altitude")
-    add_opt(args, elevation, "elevation")
-    add_opt(args, rotation, "rotation")
+    add_opt(args, forward_overlap, "forward-overlap")  # 80.0
+    add_opt(args, side_overlap, "side-overlap")        # 60.0
+    add_opt(args, altitude, "altitude")                # 60.0
+    add_opt(args, elevation, "elevation")              # 0.0
+    add_opt(args, rotation, "rotation")                # 0
 
-    add_opt(args, angles, "angles")
-    add_opt(args, focal_length, "focal-length")
-    add_opt(args, aspect_ratio, "aspect-ratio")
+    add_opt(args, angles, "angles")                    # 0
+    add_opt(args, focal_length, "focal-length")        # 0.86
+    add_opt(args, aspect_ratio, "aspect-ratio")        # 0.66
     add_opt(args, airspace_mesh, "airspace-mesh")
 
     run_app("generate-trajectory", args)  # trajectory_tools/generate.cpp
@@ -126,12 +126,12 @@ def _optimize_trajectory(
     """ Optimize position and orientation of trajectory views. """
     args = [in_trajectory, proxy_mesh, proxy_cloud, airspace, out_trajectory]
 
-    add_opt(args, seed, "seed")
-    add_opt(args, min_distance, "min-distance")
-    add_opt(args, max_distance, "max-distance")
-    add_opt(args, focal_length, "focal-length")
-    add_opt(args, independence, "independence")
-    add_opt(args, max_iters, "max-iters")
+    add_opt(args, seed, "seed")                  # 0
+    add_opt(args, min_distance, "min-distance")  # 2.5
+    add_opt(args, max_distance, "max-distance")  # 50.0
+    add_opt(args, focal_length, "focal-length")  # 0.86
+    add_opt(args, independence, "independence")  # 1.0
+    add_opt(args, max_iters, "max-iters")        # 100
 
     run_app("optimize_trajectory", args)  # optimize_trajectory/optimize_trajectory.cu
 
@@ -155,7 +155,7 @@ def _evaluate_trajectory(
 
     add_opt(args, reconstructability, "reconstructability")
     add_opt(args, observations, "observations")
-    add_opt(args, max_distance, "max-distance")
+    add_opt(args, max_distance, "max-distance")  # 80.0
 
     run_app("evaluate_trajectory", args)  # evaluate_trajectory/evaluate_trajectory.cu
 
@@ -168,7 +168,7 @@ def _interpolate_trajectory(
     args = [in_trajectory, out_csv]
 
     add_opt(args, transform, "transform")
-    add_opt(args, resolution, "resolution")
+    add_opt(args, resolution, "resolution")  # 1.0
     add_opt(args, invert, "invert", is_bool=True)
     add_opt(args, trajectory, "trajectory")
     add_opt(args, sequence, "sequence")
