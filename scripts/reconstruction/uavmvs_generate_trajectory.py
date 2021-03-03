@@ -87,6 +87,9 @@ def main(args: argparse.Namespace) -> None:
             max_distance    = MAX_D,
             max_iters       = 10000,
         )
+        if args.verbose:
+            # i oindices.size() avg_wrecon volume
+            print(f"# > {fn_out('optimized', ext='.out')}")
         Uavmvs.shorten_trajectory(
             in_trajectory   = fn_out("optimized"),
             out_trajectory  = fn_out("shortened"),
