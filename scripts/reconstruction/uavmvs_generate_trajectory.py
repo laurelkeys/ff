@@ -14,7 +14,7 @@ except:
 finally:
     include("..", "..", "misc", "uavmvs_make_traj")
     import uavmvs_make_traj as uavmvs
-    from uavmvs_make_traj import Uavmvs, ALT, ELEV, F, S, MAX_D, MIN_D, MAX_DR
+    from uavmvs_make_traj import Uavmvs
 
 
 ###############################################################################
@@ -42,8 +42,7 @@ def setup_args(args: argparse.Namespace) -> None:
         args.scene_name = os.path.basename(root)
 
     if args.output_dir is None:
-        args.output_dir = ASSETS_DIR
-    args.output_dir = path_to(args.output_dir, args.scene_name)
+        args.output_dir = path_to(ASSETS_DIR, args.scene_name)
 
     if args.make_dir:
         os.makedirs(args.output_dir, exist_ok=True)
@@ -52,6 +51,37 @@ def setup_args(args: argparse.Namespace) -> None:
         print(f"# scene name: '{args.scene_name}'")
         print(f"# input file: '{args.scene}'")
         print(f"# output dir: '{args.output_dir}'")
+
+
+###############################################################################
+###############################################################################
+
+
+# point samples per unit square
+PROXY_CLOUD_SAMPLES = 25
+
+# minimum distance from original samples
+PROXY_MESH_MIN_D = 0.95
+AIRSPACE_MIN_D = 3.5
+
+# minimum/maximum distance to surface
+OPTIMIZE_MIN_D = 2.5
+OPTIMIZE_MAX_D = 50.0
+
+# XXX camera focal length and sensor aspect ratio
+FOCAL_LENGTH = 0.86
+ASPECT_RATIO = 0.66
+
+PLANAR_F = 80  # forward overlap in percent
+PLANAR_S = 80  # side overlap in percent
+PLANAR_ALT = 45  # XXX flying altitude
+PLANAR_ELEV = 0  # elevation for overlap planning
+
+SPATIAL_RES = 4  # XXX guidance volume resolution
+SPATIAL_MIN_D = 60  # maximum distance to surface
+SPATIAL_MIN_ALT = 40  # XXX minimum altitude
+SPATIAL_MAX_ALT = 80  # XXX maximum altitude
+SPATIAL_VIEWS = 200  # XXX number of views
 
 
 ###############################################################################
@@ -83,9 +113,9 @@ def main(args: argparse.Namespace) -> None:
             proxy_cloud     = PROXY_CLOUD,
             airspace        = AIRSPACE,
             out_trajectory  = fn_out("optimized"),
-            min_distance    = MIN_D,
-            max_distance    = MAX_D,
-            max_iters       = 10000,
+            min_distance    = OPTIMIZE_MIN_D,
+            max_distance    = OPTIMIZE_MAX_D,
+            max_iters       = 3000,
         )
         if args.verbose:
             # i oindices.size() avg_wrecon volume
@@ -102,26 +132,27 @@ def main(args: argparse.Namespace) -> None:
     if args.verbose:
         print("\n#\n# geometric scene proxy\n#")
 
-    # Uavmvs.convert_mesh(
-    #     in_mesh         = INPUT_MESH,
-    #     out_mesh        = path_to(OUTPUT_DIR, "{SCENE}-converted.ply"),
-    # )
-    # INPUT_MESH = path_to(OUTPUT_DIR, "convert_mesh.ply")
+    CONVERTED_MESH = path_to(OUTPUT_DIR, f"{SCENE}-converted.ply")
+    Uavmvs.convert_mesh(
+        in_mesh         = INPUT_MESH,
+        out_mesh        = CONVERTED_MESH,
+    )
+    INPUT_MESH = CONVERTED_MESH
 
     Uavmvs.generate_proxy_cloud(
         in_mesh         = INPUT_MESH,
         out_cloud       = PROXY_CLOUD,
-        samples         = 25,
+        samples         = PROXY_CLOUD_SAMPLES,
     )
     Uavmvs.generate_proxy_mesh(
         cloud           = PROXY_CLOUD,
         out_mesh        = PROXY_MESH,
-        min_distance    = 0.91,
+        min_distance    = PROXY_MESH_MIN_D,
     )
     Uavmvs.generate_proxy_mesh(
         cloud           = PROXY_CLOUD,
         out_mesh        = AIRSPACE,
-        min_distance    = 3.6,
+        min_distance    = AIRSPACE_MIN_D,
     )
 
     if args.planar:
@@ -131,11 +162,14 @@ def main(args: argparse.Namespace) -> None:
         Uavmvs.generate_trajectory(
             proxy_mesh      = PROXY_MESH,
             out_trajectory  = planar("initial"),
-            altitude        = ALT,
-            elevation       = ELEV,
+            altitude        = PLANAR_ALT,  # XXX
+            elevation       = PLANAR_ELEV,
             angles          = [0],
-            forward_overlap = F,
-            side_overlap    = S,
+            forward_overlap = PLANAR_F,
+            side_overlap    = PLANAR_S,
+            focal_length    = FOCAL_LENGTH,
+            aspect_ratio    = ASPECT_RATIO,
+            # airspace_mesh   = AIRSPACE,  # XXX
         )
 
         refine(planar("initial"), planar)
@@ -149,15 +183,16 @@ def main(args: argparse.Namespace) -> None:
             proxy_cloud     = PROXY_CLOUD,
             airspace_mesh   = AIRSPACE,
             out_volume      = spatial("guidance", ext=".vol"),  # XXX large file ~ GBs
-            resolution      = 1,
-            max_distance    = 35,
-            min_altitude    = 10,
-            max_altitude    = 50,
+            resolution      = SPATIAL_RES,  # XXX
+            max_distance    = SPATIAL_MIN_D,
+            min_altitude    = SPATIAL_MIN_ALT,  # XXX
+            max_altitude    = SPATIAL_MAX_ALT,  # XXX
         )
         uavmvs._generate_initial_trajectory(
             guidance_volume = spatial("guidance", ext=".vol"),
             out_trajectory  = spatial("initial"),
-            num_views       = 200,
+            num_views       = SPATIAL_VIEWS,  # XXX
+            focal_length    = FOCAL_LENGTH,
         )
 
         refine(spatial("initial"), spatial)
