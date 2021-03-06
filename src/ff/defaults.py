@@ -16,7 +16,7 @@ class Default:
         "airsim_root": "D:\\dev\\AirSim",
         "env_root": ENV_ROOT_ALIASES["dev"],
         "devenv_exe": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\Common7\\IDE\\devenv.exe",
-        "ue4editor_exe": "D:\\Program Files\\Epic Games\\UE_4.25\\Engine\\Binaries\\Win64\\UE4Editor.exe",
+        "ue4editor_exe": "D:\\bin\\UE_4.25\\Engine\\Binaries\\Win64\\UE4Editor.exe",
     }
 
     AIRSIM_PYCLIENT_PATH = os.path.join(ARGS["airsim_root"], "PythonClient", "airsim")

@@ -13,11 +13,11 @@ from ie.meshroomy import MeshroomParser, MeshroomTransform
 
 try:
     from include_in_path import include, FF_PROJECT_ROOT
-except:
-    pass
-finally:
+
     include(FF_PROJECT_ROOT, "vendor", "tartanair_tools", "evaluation", "tartanair_evaluator")
     from tartanair_evaluator import TartanAirEvaluator
+except:
+    raise
 
 
 DEBUG_ATE = True
@@ -89,13 +89,13 @@ class TartanAir:
 
 
 def make_record_line(timestamp, position, orientation, as_string=True):
-    """ `timestamp tx ty tz qx qy qz qw`, where:
-        - `timestamp`: number of seconds since the Unix epoch
-        - `tx ty tz`: position of the camera's optical center
-        - `qx qy qz qw`: orientation of the camera's optical center (as a unit quaternion)
+    """`timestamp tx ty tz qx qy qz qw`, where:
+    - `timestamp`: number of seconds since the Unix epoch
+    - `tx ty tz`: position of the camera's optical center
+    - `qx qy qz qw`: orientation of the camera's optical center (as a unit quaternion)
 
-        Note: position and orientation values are given with respect to the world origin,
-        as defined by the motion capture system.
+    Note: position and orientation values are given with respect to the world origin,
+    as defined by the motion capture system.
     """
     tx, ty, tz = position
     qx, qy, qz, qw = orientation

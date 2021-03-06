@@ -7,12 +7,18 @@
         "D:/dev/AirSim/PythonClient",
         "${workspaceFolder}/vendor/TanksAndTemples",
         "${workspaceFolder}/vendor/tartanair_tools/evaluation",
+        // Note: fixes PyLance for uses of include_in_path.py:
+        "${workspaceFolder}/scripts/reconstruction",
+        "${workspaceFolder}/misc/tools",
     ],
 
     "python.analysis.extraPaths": [
         "D:/dev/AirSim/PythonClient",
         "${workspaceFolder}/vendor/TanksAndTemples",
         "${workspaceFolder}/vendor/tartanair_tools/evaluation",
+        // Note: fixes PyLance for uses of include_in_path.py:
+        "${workspaceFolder}/scripts/reconstruction",
+        "${workspaceFolder}/misc/tools",
     ],
 
     "python.linting.enabled": false,

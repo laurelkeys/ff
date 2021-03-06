@@ -3,7 +3,6 @@
 import sys
 from os.path import join, abspath, dirname
 
-
 FF_PROJECT_ROOT = abspath(join(abspath(__file__), "..", "..", ".."))
 
 

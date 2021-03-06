@@ -14,6 +14,7 @@
 
 <!--  -->
 # To-do list
+- [ ] Use longer (more descriptive) names for the files under `scripts/`
 - [ ] Use `settings.py` as an alternative for command line arguments
 - [ ] Automatically change `SimMode` for `cv_*.py` files (and also restore it)
 - [ ] Only choose the first environment (when there's more than one possibility) if a flag `--choose` is passed, it might be better for this to be the default behavior instead

@@ -3,11 +3,11 @@ import argparse
 
 try:
     from include_in_path import include, FF_PROJECT_ROOT
-except:
-    pass
-finally:
+
     include(FF_PROJECT_ROOT, "vendor", "TanksAndTemples", "tanksandtemples_evaluator")
     from tanksandtemples_evaluator import TanksAndTemplesEvaluator
+except:
+    raise
 
 SCENE_NAME = "Cidadela_2021-01-09-18-27-07"
 
