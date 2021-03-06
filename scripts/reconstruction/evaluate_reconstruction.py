@@ -14,16 +14,16 @@ from ie.airsimy import AirSimRecord
 from ie.meshroomy import MeshroomParser
 
 try:
-    from include_in_path import include
+    from include_in_path import include, FF_PROJECT_ROOT
 except:
     pass
 finally:
-    python_toolbox_path = ["..", "..", "vendor", "TanksAndTemples", "python_toolbox"]
+    python_toolbox_path = [FF_PROJECT_ROOT, "vendor", "TanksAndTemples", "python_toolbox"]
     include(*python_toolbox_path, "convert_to_logfile")
     from convert_to_logfile import quat2rotmat, write_SfM_log
 
     # FIXME
-    v1_tanksandtemples_path = ["..", "..", "misc", "v1", "reconstruction", "tanksandtemples"]
+    v1_tanksandtemples_path = [FF_PROJECT_ROOT, "misc", "v1", "reconstruction", "tanksandtemples"]
     # include(*python_toolbox_path, "evaluation", "plot")
     # include(*python_toolbox_path, "evaluation", "evaluation")
     # include(*python_toolbox_path, "evaluation", "registration")

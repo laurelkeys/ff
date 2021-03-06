@@ -1,3 +1,5 @@
+# XXX (work-in-progress) adding support for Meshroom files.
+
 #!/usr/bin/env python
 #
 # ----------------------------------------------------------------------------

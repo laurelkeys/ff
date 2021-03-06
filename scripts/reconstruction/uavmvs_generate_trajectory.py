@@ -8,11 +8,11 @@ import numpy as np
 import open3d as o3d
 
 try:
-    from include_in_path import include
+    from include_in_path import include, FF_PROJECT_ROOT
 except:
     pass
 finally:
-    include("..", "..", "misc", "uavmvs_make_traj")
+    include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_make_traj")
     import uavmvs_make_traj as uavmvs
     from uavmvs_make_traj import Uavmvs
 

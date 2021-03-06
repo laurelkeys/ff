@@ -12,11 +12,11 @@ from ie.airsimy import AirSimRecord
 from ie.meshroomy import MeshroomParser, MeshroomTransform
 
 try:
-    from include_in_path import include
+    from include_in_path import include, FF_PROJECT_ROOT
 except:
     pass
 finally:
-    include("..", "..", "vendor", "tartanair_tools", "evaluation", "tartanair_evaluator")
+    include(FF_PROJECT_ROOT, "vendor", "tartanair_tools", "evaluation", "tartanair_evaluator")
     from tartanair_evaluator import TartanAirEvaluator
 
 

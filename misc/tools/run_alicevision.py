@@ -1,8 +1,7 @@
-import sys, os
-import shutil
+# NOTE this file was taken from http://filmicworlds.com/blog/command-line-photogrammetry-with-alicevision/
 
-
-# ref.: http://filmicworlds.com/blog/command-line-photogrammetry-with-alicevision/
+import os
+import sys
 
 
 def SilentMkdir(theDir):
@@ -104,7 +103,7 @@ def Run_04_StructureFromMotion(baseDir,binDir):
 	cmdLine = cmdLine + " --minAngleForLandmark 2.0 --minNumberOfObservationsForTriangulation 2 --maxAngleInitialPair 40.0 --maxNumberOfMatches 0 --localizerEstimator acransac --describerTypes sift --lockScenePreviouslyReconstructed False --localBAGraphDistance 1"
 	cmdLine = cmdLine + " --initialPairA "" --initialPairB "" --interFileExtension .ply --useLocalBA True"
 	cmdLine = cmdLine + " --minInputTrackLength 2 --useOnlyMatchesFromInputFolder False --verboseLevel info --minAngleForTriangulation 3.0 --maxReprojectionError 4.0 --minAngleInitialPair 5.0"
-	
+
 	cmdLine = cmdLine + " --input \"" + srcSfm + "\""
 	cmdLine = cmdLine + " --featuresFolders \"" + srcFeatures + "\""
 	cmdLine = cmdLine + " --matchesFolders \"" + srcMatches + "\""
@@ -164,7 +163,7 @@ def Run_07_DepthMap(baseDir,binDir,numImages,groupSize):
 	cmdLine = binName
 	cmdLine = cmdLine + " --sgmGammaC 5.5 --sgmWSH 4 --refineGammaP 8.0 --refineSigma 15 --refineNSamplesHalf 150 --sgmMaxTCams 10 --refineWSH 3 --downscale 2 --refineMaxTCams 6 --verboseLevel info --refineGammaC 15.5 --sgmGammaP 8.0"
 	cmdLine = cmdLine + " --refineNiters 100 --refineNDepthsToRefine 31 --refineUseTcOrRcPixSize False"
-	
+
 	cmdLine = cmdLine + " --ini \"" + srcIni + "\""
 	cmdLine = cmdLine + " --output \"" + dstDir + "\""
 
@@ -228,7 +227,7 @@ def Run_09_Meshing(baseDir,binDir):
 	cmdLine = cmdLine + " --depthMapFilterFolder \"" + srcDepthFilterDir + "\""
 	cmdLine = cmdLine + " --depthMapFolder \"" + srcDepthMapDir + "\""
 	cmdLine = cmdLine + " --output \"" + dstDir + "/mesh.obj\""
-	
+
 	print(cmdLine)
 	os.system(cmdLine)
 	return 0
@@ -319,7 +318,7 @@ def main():
 		Run_08_DepthMapFilter(baseDir,binDir)
 		Run_09_Meshing(baseDir,binDir)
 		Run_10_MeshFiltering(baseDir,binDir)
-	
+
 		Run_11_Texturing(baseDir,binDir)
 	elif runStep == "run00":
 		Run_00_CameraInit(baseDir,binDir,srcImageDir)
@@ -346,7 +345,7 @@ def main():
 		Run_09_Meshing(baseDir,binDir)
 	elif runStep == "run10":
 		Run_10_MeshFiltering(baseDir,binDir)
-	
+
 	elif runStep == "run11":
 		Run_11_Texturing(baseDir,binDir)
 
@@ -355,7 +354,7 @@ def main():
 
 
 
-	
+
 
 	#print("running")
 	#Run_00_CameraInit(baseDir,binDir,srcImageDir)
@@ -371,7 +370,7 @@ def main():
 	#Run_08_DepthMapFilter(baseDir,binDir)
 	#Run_09_Meshing(baseDir,binDir)
 	#Run_10_MeshFiltering(baseDir,binDir)
-	
+
 	#Run_11_Texturing(baseDir,binDir)
 	return 0
 

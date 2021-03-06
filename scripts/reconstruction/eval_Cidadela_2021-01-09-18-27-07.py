@@ -2,18 +2,18 @@ import os
 import argparse
 
 try:
-    from include_in_path import include
+    from include_in_path import include, FF_PROJECT_ROOT
 except:
     pass
 finally:
-    include("..", "..", "vendor", "TanksAndTemples", "tanksandtemples_evaluator")
+    include(FF_PROJECT_ROOT, "vendor", "TanksAndTemples", "tanksandtemples_evaluator")
     from tanksandtemples_evaluator import TanksAndTemplesEvaluator
 
 SCENE_NAME = "Cidadela_2021-01-09-18-27-07"
 
 # TODO use absolute paths
 ASSETS_FOLDER = "assets"
-EVAL_FOLDER = os.path.join("..", "..", "data", "recordings", SCENE_NAME)
+EVAL_FOLDER = os.path.join(FF_PROJECT_ROOT, "data", "recordings", SCENE_NAME)
 
 
 if __name__ == "__main__":
