@@ -14,6 +14,9 @@ try:
 
     include(FF_PROJECT_ROOT, "misc", "tools", "io_ply")
     from io_ply import read_ply
+
+    include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
+    from uavmvs_parse_traj import parse_uavmvs, TrajectoryCamera
 except:
     raise
 
@@ -25,34 +28,43 @@ except:
 def preflight(args: argparse.Namespace) -> None:
     assert os.path.isfile(args.ply_path), f"Invalid file path: '{args.ply_path}'"
 
-    ply_data = read_ply(args.ply_path)  # pandas dataframe
+    # Parse the point cloud into a pandas dataframe and extract its points.
+    ply_df = read_ply(args.ply_path)
     if args.verbose:
-        ff.log(ply_data)
+        ff.log(ply_df)
 
-    args.points = ply_data["points"][["x", "y", "z"]].to_numpy()
-    args.n_of_points, _ = args.points.shape
+    args.points = ply_df["points"][["x", "y", "z"]].to_numpy()
+    n_of_points, _ = args.points.shape
+    print(f"The point cloud has {n_of_points} points.")
 
-    print(f"The point cloud has {args.n_of_points} points.")
-
-    k = 0 if args.k is None else args.k
-
+    # NOTE avoid plotting all points for large clouds, since Unreal can't handle it.
+    k = 0 if args.every_k is None else args.every_k
     while not k:
-        k = input_or_exit("Do you want to print one every how many points? ")
         try:
-            k = int(k)
+            k = int(input_or_exit("Do you want to plot one every how many points? "))
         except:
-            print("Please input a valid integer. ", end="")
             k = 0
+            print("Please input a valid integer. ", end="")
             continue
+
         answer = input_or_exit(
-            f"This will print a total of {args.n_of_points // k} points"
+            f"This will plot a total of {n_of_points // k} points"
             f" (i.e. one every {k}).\nDo you want to continue? [Y/n] "
         )
-        if answer.lower().strip() in ["n", "no"]:
-            k = 0
-        print()
+        k = 0 if answer.lower().strip() in ["n", "no"] else k
+    args.every_k = k
 
-    args.every_k_points = k
+    # Check if a uavmvs trajectory was passed in and parse it into points.
+    if args.trajectory_path is not None:
+        _, ext = os.path.splitext(args.trajectory_path)
+        assert os.path.isfile(args.trajectory_path), f"Invalid file path: '{args.trajectory_path}'"
+        assert ext in parse_uavmvs.keys(), f"Invalid trajectory extension: '{args.trajectory_path}'"
+
+        args.trajectory = parse_uavmvs[ext](args.trajectory_path)
+        if args.verbose:
+            ff.log(f"{len(args.trajectory)} cameras in trajectory")
+    else:
+        args.trajectory = None
 
     if args.env_name is not None:
         # the --launch option was passed
@@ -78,14 +90,13 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         vector[2] *= -1.0
         return Vector3r(*map(float, vector))
 
-    points = [point for point in args.points[:: args.every_k_points]]
+    points = [from_numpy(point) for point in args.points[:: args.every_k]]
+    client.simPlotPoints(points, Rgba.Red, size=2.5, is_persistent=True)
 
-    client.simPlotPoints(
-        [from_numpy(point) for point in points],
-        Rgba.Red,
-        size=2.5,
-        is_persistent=True,
-    )
+    if args.trajectory is not None:
+        camera_positions = [from_numpy(camera.position) for camera in args.trajectory]
+        client.simPlotPoints(camera_positions, Rgba.Blue, size=5.0, is_persistent=True)
+        client.simPlotLineStrip(camera_positions, Rgba.Black, duration=10)
 
 
 ###############################################################################
@@ -113,12 +124,14 @@ def main(args: argparse.Namespace) -> None:
 
 
 def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="")
+    parser = argparse.ArgumentParser(description="Plot a .PLY point cloud in AirSim.")
 
     parser.add_argument("ply_path", type=str, help="Path to a .PLY file")
-    parser.add_argument("--k", type=int, help="Print one every k points")
+
+    parser.add_argument("--every_k", "-k", type=int, help="Plot one every k points")
     parser.add_argument("--flush", action="store_true", help="Flush old plots")
-    # parser.add_argument("--mesh", action="store_true", help="Use a mesh instead of a point cloud")
+
+    parser.add_argument("--trajectory_path", type=str, help="Path to a .TRAJ, .CSV or .UTJ file")
 
     ff.add_arguments_to(parser)
     return parser

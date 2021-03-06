@@ -8,15 +8,10 @@ import numpy as np
 import open3d as o3d
 
 try:
-    from include_in_path import FF_PROJECT_ROOT, include
+    from include_in_path import include, FF_PROJECT_ROOT
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import (
-        parse_uavmvs_csv,
-        parse_uavmvs_utj,
-        parse_uavmvs_traj,
-        TrajectoryCamera,
-    )
+    from uavmvs_parse_traj import parse_uavmvs, TrajectoryCamera
 except:
     raise
 
@@ -111,12 +106,6 @@ def draw_trajectory(args: argparse.Namespace, trajectory: List[TrajectoryCamera]
 def main(args: argparse.Namespace) -> None:
     # if args.verbose:
     #     o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
-
-    parse_uavmvs = {
-        ".traj": parse_uavmvs_traj,
-        ".csv": parse_uavmvs_csv,
-        ".utj": parse_uavmvs_utj,
-    }
 
     if len(args.trajectories) == 1 and os.path.isdir(args.trajectories[0]):
         args.trajectories, trajectories_dir = [], args.trajectories[0]

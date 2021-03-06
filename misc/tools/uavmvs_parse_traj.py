@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, NamedTuple
+from typing import Dict, List, Callable, Optional, NamedTuple
 
 import numpy as np
 
@@ -83,7 +83,7 @@ class TrajectoryCamera(NamedTuple):
 ###############################################################################
 
 
-def parse_uavmvs_traj(filepath):
+def parse_uavmvs_traj(filepath: str) -> List[TrajectoryCamera]:
     trajectory = []
     with open(filepath, "r") as f:
         n_of_cameras = int(f.readline())
@@ -110,7 +110,7 @@ def parse_uavmvs_traj(filepath):
     return trajectory
 
 
-def parse_uavmvs_csv(filepath):
+def parse_uavmvs_csv(filepath: str) -> List[TrajectoryCamera]:
     trajectory = []
     with open(filepath, "r") as f:
         assert f.readline().rstrip().lower() == CSV_HEADER
@@ -129,7 +129,7 @@ def parse_uavmvs_csv(filepath):
     return trajectory
 
 
-def parse_uavmvs_utj(filepath):
+def parse_uavmvs_utj(filepath: str) -> List[TrajectoryCamera]:
     trajectory = []
     with open(filepath, "r") as f:
         for line in f.readlines():
@@ -147,6 +147,13 @@ def parse_uavmvs_utj(filepath):
                 )
             )
     return trajectory
+
+
+parse_uavmvs: Dict[str, Callable[[str], List[TrajectoryCamera]]] = {
+    ".traj": parse_uavmvs_traj,
+    ".csv": parse_uavmvs_csv,
+    ".utj": parse_uavmvs_utj,
+}
 
 
 ###############################################################################

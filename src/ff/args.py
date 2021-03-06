@@ -15,6 +15,11 @@ def add_arguments_to(parser: argparse.ArgumentParser) -> argparse.ArgumentParser
     )
 
     parser.add_argument(
+        "--nolaunch",
+        help="Easy way of suppressing the effect of --launch with little modification (no-op)",
+    )
+
+    parser.add_argument(
         "--launch",
         dest="env_name",
         metavar="ENV_NAME",
