@@ -1,12 +1,6 @@
 import os
 import argparse
 
-from enum import Enum
-from typing import Optional, NamedTuple
-
-import numpy as np
-import open3d as o3d
-
 try:
     from include_in_path import include, FF_PROJECT_ROOT
 

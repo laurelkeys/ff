@@ -14,6 +14,7 @@
 
 <!--  -->
 # To-do list
+- [ ] Create a `scripts/common/` folder and (at least to begin with) symlink it to `reconstruction/` and `simulation`
 - [ ] Use longer (more descriptive) names for the files under `scripts/`
 - [ ] Use `settings.py` as an alternative for command line arguments
 - [ ] Automatically change `SimMode` for `cv_*.py` files (and also restore it)
