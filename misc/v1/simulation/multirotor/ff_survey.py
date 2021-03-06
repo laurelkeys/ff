@@ -226,7 +226,7 @@ def launch_env(args: argparse.Namespace) -> None:
 
     if len(args.env_name) == 0:
         env_folders = possible_env_folders(
-            args.env_root, exts=["*.sln"] if args.edit else ["*.exe", "*.uproject"]
+            args.env_root, exts=["*.sln"] if args.edit_sln else ["*.exe", "*.uproject"]
         )
         assert env_folders, f"\nno environment folder was found in '{args.env_root}'\n"
         args.env_name = env_folders[0]
@@ -238,7 +238,7 @@ def launch_env(args: argparse.Namespace) -> None:
 
     env_dir = os.path.join(args.env_root, args.env_name)
 
-    if args.edit:
+    if args.edit_sln:
         run_env(
             env_path=os.path.join(env_dir, args.env_name + ".sln"),
             env_proc="devenv.exe",  # Visual Studio

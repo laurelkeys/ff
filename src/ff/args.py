@@ -49,7 +49,7 @@ def add_arguments_to(parser: argparse.ArgumentParser) -> argparse.ArgumentParser
     )
 
     parser.add_argument(
-        "--edit",
+        "--edit_sln",
         action="store_true",
         help="Launch the specified environment's .sln in Visual Studio (instead of running its .uproject file)",
     )

@@ -22,7 +22,7 @@ class LaunchEnvArgs:
 
         if not args.env_name:
             self.env_path = self._try_to_make_env_path(env_root)
-        elif args.edit:
+        elif args.edit_sln:
             env_name, env_name_ext = os.path.splitext(args.env_name)
             assert env_name_ext in [None, ".sln"], args.env_name
             self.env_path = self._make_env_path(env_root, f"{env_name}.sln")

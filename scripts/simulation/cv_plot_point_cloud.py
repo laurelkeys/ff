@@ -16,7 +16,7 @@ try:
     from io_ply import read_ply
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import parse_uavmvs, TrajectoryCamera
+    from uavmvs_parse_traj import parse_uavmvs
 except:
     raise
 
@@ -62,7 +62,7 @@ def preflight(args: argparse.Namespace) -> None:
 
         args.trajectory = parse_uavmvs[ext](args.trajectory_path)
         if args.verbose:
-            ff.log(f"{len(args.trajectory)} cameras in trajectory")
+            ff.log(f"The trajectory has {len(args.trajectory)} camera poses")
     else:
         args.trajectory = None
 
@@ -75,6 +75,11 @@ def preflight(args: argparse.Namespace) -> None:
 ###############################################################################
 ## fly (called after connecting) ##############################################
 ###############################################################################
+
+
+CAMERA_POSE_SIZE = 12.0
+TRAJECTORY_THICKNESS = 8.0
+POINT_CLOUD_POINT_SIZE = 4.0
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
@@ -91,12 +96,12 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         return Vector3r(*map(float, vector))
 
     points = [from_numpy(point) for point in args.points[:: args.every_k]]
-    client.simPlotPoints(points, Rgba.Red, size=2.5, is_persistent=True)
+    client.simPlotPoints(points, Rgba.Blue, POINT_CLOUD_POINT_SIZE, is_persistent=True)
 
     if args.trajectory is not None:
         camera_positions = [from_numpy(camera.position) for camera in args.trajectory]
-        client.simPlotPoints(camera_positions, Rgba.Blue, size=5.0, is_persistent=True)
-        client.simPlotLineStrip(camera_positions, Rgba.Black, duration=10)
+        client.simPlotPoints(camera_positions, Rgba.White, CAMERA_POSE_SIZE, is_persistent=True)
+        client.simPlotLineStrip(camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, duration=10)
 
 
 ###############################################################################
