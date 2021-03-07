@@ -39,44 +39,114 @@ class TrajectoryCamera(NamedTuple):
 
     # NOTE `rotation` is:
     # - (3, 3) rotation matrix, if kind == TRAJ
-    # - (4,) XYZW quaternion, if kind == CSV
+    # - (4,) WXYZ quaternion, if kind == CSV
     # - (3,) pitch,roll,yaw, if kind == UTJ
 
-    def _rotation_into(self, other_kind):
+    # ref.: uavmvs/apps/trajectory_tools/interpolate.cpp
+    def _rotation_into(self, other_kind: TrajectoryCameraKind):
         if self.kind == other_kind:
             return self.rotation
-        # def matrix_to_quat(): raise NotImplementedError
-        # def matrix_to_euler(): raise NotImplementedError
-        # def quat_to_matrix(): raise NotImplementedError
-        # def quat_to_euler(): raise NotImplementedError
-        # def euler_to_matrix(): raise NotImplementedError
-        # def euler_to_quat(): raise NotImplementedError
-        # return {
-        #     (TRAJ, CSV): matrix_to_quat,
-        #     (TRAJ, UTJ): matrix_to_euler,
-        #     (CSV, TRAJ): quat_to_matrix,
-        #     (CSV, UTJ): quat_to_euler,
-        #     (UTJ, TRAJ): euler_to_matrix,
-        #     (UTJ, CSV): euler_to_quat,
-        # }[(self.kind, other_kind)]()
-        raise NotImplementedError
+
+        def rot_to_quat():
+            assert self.rotation.shape == (3, 3)
+            R = self.rotation
+            v0 = 1.0 + R[0, 0] + R[1, 1] + R[2, 2]
+            v1 = 1.0 + R[0, 0] - R[1, 1] - R[2, 2]
+            v2 = 1.0 - R[0, 0] + R[1, 1] - R[2, 2]
+            v3 = 1.0 - R[0, 0] - R[1, 1] + R[2, 2]
+            if v1 >= v0 and v1 >= v2 and v1 >= v3:
+                tmp = 2 * np.sqrt(v0)
+                return np.array(
+                    [
+                        tmp / 4,
+                        R[2, 1] - R[1, 2] / tmp,
+                        R[0, 2] - R[2, 0] / tmp,
+                        R[1, 0] - R[0, 1] / tmp,
+                    ]
+                )
+            elif v1 >= v0 and v1 >= v2 and v1 >= v3:
+                tmp = 2 * np.sqrt(v1)
+                return np.array(
+                    [
+                        R[2, 1] - R[1, 2] / tmp,
+                        tmp / 4,
+                        R[0, 1] + R[1, 0] / tmp,
+                        R[0, 2] + R[2, 0] / tmp,
+                    ]
+                )
+            elif v2 >= v0 and v2 >= v1 and v2 >= v3:
+                tmp = 2 * np.sqrt(v2)
+                return np.array(
+                    [
+                        R[0, 2] - R[2, 0] / tmp,
+                        R[0, 1] + R[1, 0] / tmp,
+                        tmp / 4,
+                        R[1, 2] + R[2, 1] / tmp,
+                    ]
+                )
+            else:
+                assert v3 >= v0 and v3 >= v1 and v3 >= v2
+                tmp = 2 * np.sqrt(v3)
+                return np.array(
+                    [
+                        R[1, 0] - R[0, 1] / tmp,
+                        R[0, 2] + R[2, 0] / tmp,
+                        R[1, 2] + R[2, 1] / tmp,
+                        tmp / 4,
+                    ]
+                )
+
+        def rot_to_euler():
+            assert self.rotation.shape == (3, 3)
+            raise NotImplementedError
+
+        def quat_to_rot():
+            assert self.rotation.shape == (4,)
+            raise NotImplementedError
+
+        def quat_to_euler():
+            assert self.rotation.shape == (4,)
+            raise NotImplementedError
+
+        def euler_to_rot():
+            assert self.rotation.shape == (3,)
+            raise NotImplementedError
+
+        def euler_to_quat():
+            assert self.rotation.shape == (3,)
+            raise NotImplementedError
+
+        return {
+            (TRAJ, CSV): rot_to_quat,
+            (TRAJ, UTJ): rot_to_euler,
+            (CSV, TRAJ): quat_to_rot,
+            (CSV, UTJ): quat_to_euler,
+            (UTJ, TRAJ): euler_to_rot,
+            (UTJ, CSV): euler_to_quat,
+        }[(self.kind, other_kind)]()
 
     def into(self, other_kind):
-        if self.kind in [TRAJ, CSV] and other_kind in [TRAJ, CSV]:
+        if self.kind == other_kind:
             return self
-        elif self.kind != UTJ:
+        elif other_kind == UTJ:
             return TrajectoryCamera(
                 position=self.position * FROM_UTJ,
                 rotation=self._rotation_into(other_kind),
                 kind=other_kind,
             )
-        elif other_kind != UTJ:
+        elif self.kind == UTJ:
             return TrajectoryCamera(
                 position=self.position * INTO_UTJ,
                 rotation=self._rotation_into(other_kind),
                 kind=other_kind,
             )
-        return self
+        else:
+            assert self.kind in [TRAJ, CSV] and other_kind in [TRAJ, CSV]
+            return TrajectoryCamera(
+                position=self.position,
+                rotation=self._rotation_into(other_kind),
+                kind=other_kind,
+            )
 
 
 ###############################################################################
@@ -117,7 +187,7 @@ def parse_uavmvs_csv(filepath: str) -> List[TrajectoryCamera]:
         for line in f.readlines():
             x, y, z, qw, qx, qy, qz, key = line.split(",")
             position = np.array([float(_) for _ in [x, y, z]])
-            rotation = np.array([float(_) for _ in [qx, qy, qz, qw]])
+            rotation = np.array([float(_) for _ in [qw, qx, qy, qz]])
             trajectory.append(
                 TrajectoryCamera(
                     position,

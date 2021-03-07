@@ -69,7 +69,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         client.simPrintLogMessage("ROI coordinates: ", message_param=str(zone))
 
         if key == swap_mode_key:
-            edit_mode = EditMode.next(edit_mode)
+            edit_mode = EditMode.next(edit_mode, skip_rotation=True)
             client.simPrintLogMessage("Current edit mode: ", message_param=edit_mode.name)
 
         elif key == save_rect_key:

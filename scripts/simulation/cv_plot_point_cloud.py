@@ -1,22 +1,26 @@
+from enum import Enum
 import os
 import argparse
-from airsim.types import Vector3r
+
+from typing import List
+from airsim.types import Pose, Quaternionr
 
 import ff
 import airsim
 
-from ds.rgba import Rgba
+from ds import Rgba, EditMode
+from airsim import Vector3r
 from ff.helper import input_or_exit
 from ie.airsimy import connect
 
 try:
-    from include_in_path import include, FF_PROJECT_ROOT
+    from include_in_path import FF_PROJECT_ROOT, include
 
     include(FF_PROJECT_ROOT, "misc", "tools", "io_ply")
     from io_ply import read_ply
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import parse_uavmvs
+    from uavmvs_parse_traj import parse_uavmvs, TrajectoryCameraKind
 except:
     raise
 
@@ -78,8 +82,62 @@ def preflight(args: argparse.Namespace) -> None:
 
 
 CAMERA_POSE_SIZE = 12.0
-TRAJECTORY_THICKNESS = 8.0
+TRAJECTORY_THICKNESS = 6.0
 POINT_CLOUD_POINT_SIZE = 4.0
+
+
+class ArrowKey(Enum):
+    Up = 72
+    Down = 80
+    Left = 75
+    Right = 77
+
+
+def enter_edit_mode(client: airsim.MultirotorClient, points: List[Vector3r]) -> None:
+    mode = EditMode.TRANSLATING
+    step = 1.0
+    total = {
+        EditMode.TRANSLATING: Vector3r(0, 0, 0),
+        # EditMode.ROTATING: Vector3r(0, 0, 0),
+        # EditMode.SCALING: Vector3r(1, 1, 1),
+    }
+    try:
+        while True:
+            key = ord(airsim.wait_key())
+            if key == 224:  # arrow keys
+                arrow_key = ArrowKey(ord(airsim.wait_key()))
+                client.simFlushPersistentMarkers()
+                if mode == EditMode.TRANSLATING:
+                    delta = {
+                        ArrowKey.Up: Vector3r(step, 0, 0),
+                        ArrowKey.Down: Vector3r(-step, 0, 0),
+                        ArrowKey.Left: Vector3r(0, -step, 0),
+                        ArrowKey.Right: Vector3r(0, step, 0),
+                    }[arrow_key]
+                    points = [point + delta for point in points]
+                    total[EditMode.TRANSLATING] += delta
+                # elif mode == EditMode.ROTATING:
+                #     pass
+                # elif mode == EditMode.SCALING:
+                #     pass
+                else:
+                    assert False
+                client.simPlotPoints(points, Rgba.Blue, POINT_CLOUD_POINT_SIZE, is_persistent=True)
+            elif key == 27:  # esc
+                ff.log(total[EditMode.TRANSLATING])
+                return
+            else:
+                if key == ord(b"\t"):
+                    # mode = EditMode.next(mode)
+                    pass
+                elif key == ord(b"["):
+                    step /= 2.0
+                elif key == ord(b"]"):
+                    step *= 2.0
+                ff.log(f"{mode=} {step=}")
+
+    except KeyboardInterrupt:
+        return
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
@@ -92,16 +150,30 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         client.simFlushPersistentMarkers()
 
     def from_numpy(vector):
+        assert vector.shape == (3,)
+        vector[1] *= -1.0
         vector[2] *= -1.0
-        return Vector3r(*map(float, vector))
+        # return Vector3r(*map(float, vector))
+        return Vector3r(*map(float, vector)) + Vector3r(-55, 11, 1)  # XXX building offset
 
     points = [from_numpy(point) for point in args.points[:: args.every_k]]
     client.simPlotPoints(points, Rgba.Blue, POINT_CLOUD_POINT_SIZE, is_persistent=True)
 
     if args.trajectory is not None:
-        camera_positions = [from_numpy(camera.position) for camera in args.trajectory]
-        client.simPlotPoints(camera_positions, Rgba.White, CAMERA_POSE_SIZE, is_persistent=True)
-        client.simPlotLineStrip(camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, duration=10)
+        camera_poses = [
+            Pose(
+                from_numpy(camera.position),
+                Quaternionr(*map(float, camera.into(TrajectoryCameraKind.Csv).rotation)),
+            )
+            for camera in args.trajectory
+        ]
+        camera_positions = [pose.position for pose in camera_poses]
+        client.simPlotLineStrip(camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, duration=99)
+        # client.simPlotPoints(camera_positions, Rgba.White, CAMERA_POSE_SIZE, is_persistent=True)
+        client.simPlotTransforms(camera_poses, 10 * CAMERA_POSE_SIZE, is_persistent=True)
+
+    if args.edit:
+        enter_edit_mode(client, points)
 
 
 ###############################################################################
@@ -135,6 +207,7 @@ def get_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("--every_k", "-k", type=int, help="Plot one every k points")
     parser.add_argument("--flush", action="store_true", help="Flush old plots")
+    parser.add_argument("--edit", action="store_true", help="Enter edit mode")
 
     parser.add_argument("--trajectory_path", type=str, help="Path to a .TRAJ, .CSV or .UTJ file")
 
