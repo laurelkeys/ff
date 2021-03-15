@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, Callable, Optional, NamedTuple
+from typing import Tuple, cast, Dict, List, Callable, Optional, NamedTuple
 
 import numpy as np
 
@@ -47,9 +47,8 @@ class TrajectoryCamera(NamedTuple):
         if self.kind == other_kind:
             return self.rotation
 
-        def rot_to_quat():
-            assert self.rotation.shape == (3, 3)
-            R = self.rotation
+        def rot_to_quat(R):
+            assert R.shape == (3, 3)
             v0 = 1.0 + R[0, 0] + R[1, 1] + R[2, 2]
             v1 = 1.0 + R[0, 0] - R[1, 1] - R[2, 2]
             v2 = 1.0 - R[0, 0] + R[1, 1] - R[2, 2]
@@ -96,34 +95,44 @@ class TrajectoryCamera(NamedTuple):
                     ]
                 )
 
-        def rot_to_euler():
-            assert self.rotation.shape == (3, 3)
+        def rot_to_euler(R):
+            assert R.shape == (3, 3)
+            return quat_to_euler(rot_to_quat(R))
+
+        def quat_to_rot(q):
+            assert q.shape == (4,)
             raise NotImplementedError
 
-        def quat_to_rot():
-            assert self.rotation.shape == (4,)
+        def quat_to_euler(q):
+            assert q.shape == (4,)
+            phi = np.arctan2(2 * (q[0] * q[1] + q[2] * q[3]), 1 - 2 * (q[1] ** 2 + q[2] ** 2))
+            theta = np.arcsin(np.clip(2 * (q[0] * q[2] - q[3] * q[1]), -1.0, 1.0))
+            psi = np.arctan2(2 * (q[0] * q[3] + q[1] * q[2]), 1 - 2 * (q[2] ** 2 + q[3] ** 2))
+            return np.array([phi, theta, psi])  # roll, pitch, yaw  (in radians)
+
+        def euler_to_rot(e):
+            assert e.shape == (3,)
             raise NotImplementedError
 
-        def quat_to_euler():
-            assert self.rotation.shape == (4,)
+        def euler_to_quat(e):
+            assert e.shape == (3,)
             raise NotImplementedError
 
-        def euler_to_rot():
-            assert self.rotation.shape == (3,)
-            raise NotImplementedError
-
-        def euler_to_quat():
-            assert self.rotation.shape == (3,)
-            raise NotImplementedError
-
-        return {
-            (TRAJ, CSV): rot_to_quat,
-            (TRAJ, UTJ): rot_to_euler,
-            (CSV, TRAJ): quat_to_rot,
-            (CSV, UTJ): quat_to_euler,
-            (UTJ, TRAJ): euler_to_rot,
-            (UTJ, CSV): euler_to_quat,
-        }[(self.kind, other_kind)]()
+        return cast(
+            Dict[
+                Tuple[TrajectoryCameraKind, TrajectoryCameraKind],
+                Callable[[np.ndarray], np.ndarray],
+            ],
+            {
+                (TRAJ, CSV): rot_to_quat,
+                (TRAJ, UTJ): rot_to_euler,
+                (CSV, UTJ): quat_to_euler,
+                # TODO
+                (CSV, TRAJ): quat_to_rot,
+                (UTJ, TRAJ): euler_to_rot,
+                (UTJ, CSV): euler_to_quat,
+            },
+        )[(self.kind, other_kind)](self.rotation)
 
     def into(self, other_kind):
         if self.kind == other_kind:

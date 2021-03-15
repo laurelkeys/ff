@@ -3,6 +3,7 @@ import os
 import argparse
 
 from typing import List
+
 from airsim.types import Pose, Quaternionr
 
 import ff
@@ -116,26 +117,20 @@ def enter_edit_mode(client: airsim.MultirotorClient, points: List[Vector3r]) -> 
                     }[arrow_key]
                     points = [point + delta for point in points]
                     total[EditMode.TRANSLATING] += delta
-                # elif mode == EditMode.ROTATING:
-                #     pass
-                # elif mode == EditMode.SCALING:
-                #     pass
                 else:
-                    assert False
+                    assert False  # TODO handle other edit modes for rotating and scaling
                 client.simPlotPoints(points, Rgba.Blue, POINT_CLOUD_POINT_SIZE, is_persistent=True)
             elif key == 27:  # esc
                 ff.log(total[EditMode.TRANSLATING])
                 return
             else:
-                if key == ord(b"\t"):
-                    # mode = EditMode.next(mode)
-                    pass
-                elif key == ord(b"["):
+                if key == ord(b"["):
                     step /= 2.0
                 elif key == ord(b"]"):
                     step *= 2.0
+                # elif key == ord(b"\t"):
+                #     mode = EditMode.next(mode)
                 ff.log(f"{mode=} {step=}")
-
     except KeyboardInterrupt:
         return
 
@@ -149,17 +144,23 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush:
         client.simFlushPersistentMarkers()
 
+    offset = Vector3r() if args.offset is None else Vector3r(*args.offset)
+    ff.log(offset)
+
     def from_numpy(vector):
         assert vector.shape == (3,)
         vector[1] *= -1.0
         vector[2] *= -1.0
-        # return Vector3r(*map(float, vector))
-        return Vector3r(*map(float, vector)) + Vector3r(-55, 11, 1)  # XXX building offset
+        if args.offset is None:
+            return Vector3r(*map(float, vector))
+        else:
+            return Vector3r(*map(float, vector)) + Vector3r(*args.offset)
 
     points = [from_numpy(point) for point in args.points[:: args.every_k]]
     client.simPlotPoints(points, Rgba.Blue, POINT_CLOUD_POINT_SIZE, is_persistent=True)
 
     if args.trajectory is not None:
+        # assert all([camera.kind == TrajectoryCameraKind.Traj for camera in args.trajectory])
         camera_poses = [
             Pose(
                 from_numpy(camera.position),
@@ -169,7 +170,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         ]
         camera_positions = [pose.position for pose in camera_poses]
         client.simPlotLineStrip(camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, duration=99)
-        # client.simPlotPoints(camera_positions, Rgba.White, CAMERA_POSE_SIZE, is_persistent=True)
+        client.simPlotPoints(camera_positions, Rgba.White, CAMERA_POSE_SIZE, is_persistent=True)
         client.simPlotTransforms(camera_poses, 10 * CAMERA_POSE_SIZE, is_persistent=True)
 
     if args.edit:
@@ -208,6 +209,14 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--every_k", "-k", type=int, help="Plot one every k points")
     parser.add_argument("--flush", action="store_true", help="Flush old plots")
     parser.add_argument("--edit", action="store_true", help="Enter edit mode")
+
+    parser.add_argument(
+        "--offset",
+        type=float,
+        nargs=3,
+        metavar=("X", "Y", "Z"),
+        help="Offset added to all points  (e.g. --offset -55 11 1)",
+    )
 
     parser.add_argument("--trajectory_path", type=str, help="Path to a .TRAJ, .CSV or .UTJ file")
 
