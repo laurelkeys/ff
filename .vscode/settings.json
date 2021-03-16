@@ -1,6 +1,4 @@
 {
-    "python.pythonPath": "${workspaceFolder}/airenv/Scripts/python.exe",
-
     "python.autoComplete.addBrackets": false,
     "python.autoComplete.showAdvancedMembers": true,
     "python.autoComplete.extraPaths": [

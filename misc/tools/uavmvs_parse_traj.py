@@ -2,7 +2,6 @@ from enum import Enum
 from typing import Dict, List, Tuple, Callable, Optional, NamedTuple, cast
 
 import numpy as np
-import airsim
 
 ###############################################################################
 ###############################################################################
@@ -241,8 +240,10 @@ parse_uavmvs: Dict[str, Callable[[str], List[TrajectoryCamera]]] = {
 
 
 def convert_uavmvs_to_airsim_position(camera_position, position_transform=None):
+    import airsim
     x, y, z = map(float, camera_position)
     position = airsim.Vector3r(x, -y, -z)
+    del airsim
     if position_transform is not None:
         return position_transform(position)
     return position
@@ -251,13 +252,16 @@ def convert_uavmvs_to_airsim_position(camera_position, position_transform=None):
 def convert_uavmvs_to_airsim_pose(
     camera: TrajectoryCamera, position_transform=None, orientation_transform=None
 ):
+    import airsim
     assert camera.kind == TrajectoryCameraKind.Traj
     position = convert_uavmvs_to_airsim_position(camera.position, position_transform)
     qw, qx, qy, qz = map(float, camera._rotation_into(TrajectoryCameraKind.Csv))
     orientation = airsim.Quaternionr(qx, qy, qz, qw)
     if orientation_transform is not None:
-        airsim.Pose(position, orientation_transform(orientation))
-    return airsim.Pose(position, orientation)
+        pose = airsim.Pose(position, orientation_transform(orientation))
+    pose = airsim.Pose(position, orientation)
+    del airsim
+    return pose
 
 
 ###############################################################################

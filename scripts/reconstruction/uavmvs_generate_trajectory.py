@@ -78,12 +78,39 @@ SPATIAL_MAX_ALT = 80  # XXX maximum altitude
 SPATIAL_VIEWS = 200  # XXX number of views
 
 
+def print_params() -> None:
+    print()
+    print(f"# PROXY_CLOUD_SAMPLES = {PROXY_CLOUD_SAMPLES}")
+    print("#")
+    print(f"# PROXY_MESH_MIN_D = {PROXY_MESH_MIN_D}")
+    print(f"# AIRSPACE_MIN_D = {AIRSPACE_MIN_D}")
+    print("#")
+    print(f"# OPTIMIZE_MIN_D = {OPTIMIZE_MIN_D}")
+    print(f"# OPTIMIZE_MAX_D = {OPTIMIZE_MAX_D}")
+    print("#")
+    print(f"# FOCAL_LENGTH = {FOCAL_LENGTH}")
+    print(f"# ASPECT_RATIO = {ASPECT_RATIO}")
+    print("#")
+    print(f"# PLANAR_F = {PLANAR_F}")
+    print(f"# PLANAR_S = {PLANAR_S}")
+    print(f"# PLANAR_ALT = {PLANAR_ALT}")
+    print(f"# PLANAR_ELEV = {PLANAR_ELEV}")
+    print("#")
+    print(f"# SPATIAL_RES = {SPATIAL_RES}")
+    print(f"# SPATIAL_MIN_D = {SPATIAL_MIN_D}")
+    print(f"# SPATIAL_MIN_ALT = {SPATIAL_MIN_ALT}")
+    print(f"# SPATIAL_MAX_ALT = {SPATIAL_MAX_ALT}")
+    print(f"# SPATIAL_VIEWS = {SPATIAL_VIEWS}")
+
+
 ###############################################################################
 ###############################################################################
 
 
 def main(args: argparse.Namespace) -> None:
     setup_args(args)
+    if args.verbose:
+        print_params()
 
     SCENE = args.scene_name
     INPUT_MESH = args.scene
