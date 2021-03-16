@@ -1,10 +1,8 @@
-from enum import Enum
 import os
 import argparse
 
+from enum import Enum
 from typing import List
-
-from airsim.types import Pose, Quaternionr
 
 import ff
 import airsim
@@ -21,7 +19,11 @@ try:
     from io_ply import read_ply
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import parse_uavmvs, TrajectoryCameraKind
+    from uavmvs_parse_traj import (
+        parse_uavmvs,
+        convert_uavmvs_to_airsim_pose,
+        convert_uavmvs_to_airsim_position,
+    )
 except:
     raise
 
@@ -144,29 +146,17 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush:
         client.simFlushPersistentMarkers()
 
-    offset = Vector3r() if args.offset is None else Vector3r(*args.offset)
-    ff.log(offset)
+    transform = None if args.offset is None else lambda position: position + Vector3r(*args.offset)
 
-    def from_numpy(vector):
-        assert vector.shape == (3,)
-        vector[1] *= -1.0
-        vector[2] *= -1.0
-        if args.offset is None:
-            return Vector3r(*map(float, vector))
-        else:
-            return Vector3r(*map(float, vector)) + Vector3r(*args.offset)
-
-    points = [from_numpy(point) for point in args.points[:: args.every_k]]
+    points = [
+        convert_uavmvs_to_airsim_position(point, transform)
+        for point in args.points[:: args.every_k]
+    ]
     client.simPlotPoints(points, Rgba.Blue, POINT_CLOUD_POINT_SIZE, is_persistent=True)
 
     if args.trajectory is not None:
-        # assert all([camera.kind == TrajectoryCameraKind.Traj for camera in args.trajectory])
         camera_poses = [
-            Pose(
-                from_numpy(camera.position),
-                Quaternionr(*map(float, camera.into(TrajectoryCameraKind.Csv).rotation)),
-            )
-            for camera in args.trajectory
+            convert_uavmvs_to_airsim_pose(camera, transform) for camera in args.trajectory
         ]
         camera_positions = [pose.position for pose in camera_poses]
         client.simPlotLineStrip(camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, duration=99)

@@ -1,7 +1,8 @@
 from enum import Enum
-from typing import Tuple, cast, Dict, List, Callable, Optional, NamedTuple
+from typing import Dict, List, Tuple, Callable, Optional, NamedTuple, cast
 
 import numpy as np
+import airsim
 
 ###############################################################################
 ###############################################################################
@@ -233,6 +234,30 @@ parse_uavmvs: Dict[str, Callable[[str], List[TrajectoryCamera]]] = {
     ".csv": parse_uavmvs_csv,
     ".utj": parse_uavmvs_utj,
 }
+
+
+###############################################################################
+###############################################################################
+
+
+def convert_uavmvs_to_airsim_position(camera_position, position_transform=None):
+    x, y, z = map(float, camera_position)
+    position = airsim.Vector3r(x, -y, -z)
+    if position_transform is not None:
+        return position_transform(position)
+    return position
+
+
+def convert_uavmvs_to_airsim_pose(
+    camera: TrajectoryCamera, position_transform=None, orientation_transform=None
+):
+    assert camera.kind == TrajectoryCameraKind.Traj
+    position = convert_uavmvs_to_airsim_position(camera.position, position_transform)
+    qw, qx, qy, qz = map(float, camera._rotation_into(TrajectoryCameraKind.Csv))
+    orientation = airsim.Quaternionr(qx, qy, qz, qw)
+    if orientation_transform is not None:
+        airsim.Pose(position, orientation_transform(orientation))
+    return airsim.Pose(position, orientation)
 
 
 ###############################################################################

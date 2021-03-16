@@ -3,18 +3,17 @@ import time
 import argparse
 
 import ff
-import numpy as np
 import airsim
 
-from airsim import Pose, Vector3r, Quaternionr
+from airsim import Vector3r
 from ff.types import to_xyz_str
-from ie.airsimy import connect, AirSimImage
+from ie.airsimy import AirSimImage, connect
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import TrajectoryCameraKind, parse_uavmvs
+    from uavmvs_parse_traj import parse_uavmvs, convert_uavmvs_to_airsim_pose
 except:
     raise
 
@@ -48,58 +47,31 @@ def preflight(args: argparse.Namespace) -> None:
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     initial_pose = client.simGetVehiclePose()
-
     if args.verbose:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
 
     if args.flush:
         client.simFlushPersistentMarkers()
 
-    def from_numpy(vector):
-        assert vector.shape == (3,)
-        vector[1] *= -1.0
-        vector[2] *= -1.0
-        if args.offset is None:
-            return Vector3r(*map(float, vector))
-        else:
-            return Vector3r(*map(float, vector)) + Vector3r(*args.offset)
+    transform = None if args.offset is None else lambda position: position + Vector3r(*args.offset)
 
-    assert all([camera.kind == TrajectoryCameraKind.Traj for camera in args.trajectory])
-    camera_poses = [
-        Pose(
-            from_numpy(camera.position) + Vector3r(0, 0, -1),
-            (Quaternionr(*map(float, camera.into(TrajectoryCameraKind.Csv).rotation))),
-        )
-        for camera in args.trajectory
-    ]
+    camera_poses = [convert_uavmvs_to_airsim_pose(camera, transform) for camera in args.trajectory]
+    n_of_poses = len(camera_poses)
+    pad = len(str(n_of_poses))
 
     for i, pose in enumerate(camera_poses):
-        p = pose.position
-        if not args.capture_dir:
-            ff.log(f"Going to {to_xyz_str(p)}")
-        # client.moveToPositionAsync(p.x_val, p.y_val, p.z_val, velocity=2).join()
         client.simSetVehiclePose(pose, ignore_collison=True)
-        time.sleep(1)
-        if args.capture_dir:
-            png = AirSimImage.get_mono(client, ff.CameraName.bottom_center)
-            # (response,) = client.simGetImages(
-            #     [
-            #         airsim.ImageRequest(
-            #             ff.CameraName.bottom_center, airsim.ImageType.Scene, False, False
-            #         )
-            #     ]
-            # )
-            # png = np.flipud(
-            #     np.fromstring(response.image_data_uint8, dtype=np.uint8).reshape(
-            #         response.height, response.width, 3
-            #     )
-            # )
-            name = os.path.join(
-                args.capture_dir, f"pose_{i}.png"  # TODO use argparse to add prefix / suffix
-            )
-            airsim.write_png(name, png)
-            ff.log(f"Saving image to '{name}' at {to_xyz_str(p)}")
-        time.sleep(0.5)
+
+        pose_str = f"{i:{pad}} / {n_of_poses}"
+        position_str = to_xyz_str(pose.position, show_hints=False)
+        if not args.capture_dir:
+            ff.log(f"Going to pose ({pose_str}): {position_str}")
+        else:
+            name = os.path.join(args.capture_dir, f"{args.prefix}pose{args.suffix}_{i:0{pad}}.png")
+            airsim.write_png(name, AirSimImage.get_mono(client, ff.CameraName.bottom_center))
+            ff.log(f"Saved image ({pose_str}) to '{name}' at {position_str}")
+
+        time.sleep(args.sleep)
 
 
 ###############################################################################
@@ -134,7 +106,11 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("trajectory_path", type=str, help="Path to a .TRAJ, .CSV or .UTJ file")
 
     parser.add_argument("--capture_dir", type=str, help="Folder where image captures will be saved")
+    parser.add_argument("--sleep", type=float, help="Delay between each capture", default=0.1)
     parser.add_argument("--flush", action="store_true", help="Flush old plots")
+
+    parser.add_argument("--prefix", type=str, help="Prefix added to output image names", default="")
+    parser.add_argument("--suffix", type=str, help="Suffix added to output image names", default="")
 
     parser.add_argument(
         "--offset",
