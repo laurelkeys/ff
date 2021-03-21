@@ -102,7 +102,7 @@ def enter_edit_mode(client: airsim.MultirotorClient, points: List[Vector3r]) -> 
     total = {
         EditMode.TRANSLATING: Vector3r(0, 0, 0),
         # EditMode.ROTATING: Vector3r(0, 0, 0),
-        # EditMode.SCALING: Vector3r(1, 1, 1),
+        EditMode.SCALING: Vector3r(1, 1, 1),
     }
     try:
         while True:
@@ -119,19 +119,29 @@ def enter_edit_mode(client: airsim.MultirotorClient, points: List[Vector3r]) -> 
                     }[arrow_key]
                     points = [point + delta for point in points]
                     total[EditMode.TRANSLATING] += delta
+                elif mode == EditMode.SCALING:
+                    factor = {
+                        ArrowKey.Up: 1 + step * 0.1,
+                        ArrowKey.Down: 1 - step * 0.1,
+                        ArrowKey.Left: 1 - step * 0.1,
+                        ArrowKey.Right: 1 + step * 0.1,
+                    }[arrow_key]
+                    points = [point * factor for point in points]
+                    total[EditMode.SCALING] *= factor
                 else:
                     assert False  # TODO handle other edit modes for rotating and scaling
                 client.simPlotPoints(points, Rgba.Blue, POINT_CLOUD_POINT_SIZE, is_persistent=True)
             elif key == 27:  # esc
-                ff.log(total[EditMode.TRANSLATING])
+                ff.log("TRANSLATING:", total[EditMode.TRANSLATING])
+                ff.log("SCALING:", total[EditMode.SCALING])
                 return
             else:
                 if key == ord(b"["):
                     step /= 2.0
                 elif key == ord(b"]"):
                     step *= 2.0
-                # elif key == ord(b"\t"):
-                #     mode = EditMode.next(mode)
+                elif key == ord(b"\t"):
+                    mode = EditMode.next(mode)
                 ff.log(f"{mode=} {step=}")
     except KeyboardInterrupt:
         return
@@ -146,7 +156,15 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush:
         client.simFlushPersistentMarkers()
 
-    transform = None if args.offset is None else lambda position: position + Vector3r(*args.offset)
+    # XXX transform = None if args.offset is None else lambda position: position + Vector3r(*args.offset)
+    transform = None
+    if args.offset is not None or args.scale is not None:
+        if args.offset is None:
+            transform = lambda position: position * args.scale
+        elif args.scale is None:
+            transform = lambda position: position + Vector3r(*args.offset)
+        else:
+            transform = lambda position: position * args.scale + Vector3r(*args.offset)
 
     points = [
         convert_uavmvs_to_airsim_position(point, transform)
@@ -207,6 +225,7 @@ def get_parser() -> argparse.ArgumentParser:
         metavar=("X", "Y", "Z"),
         help="Offset added to all points  (e.g. --offset -55 11 1)",
     )
+    parser.add_argument("--scale", type=float, help="Scale added to all points  (e.g. --scale 0.2)")
 
     parser.add_argument("--trajectory_path", type=str, help="Path to a .TRAJ, .CSV or .UTJ file")
 
