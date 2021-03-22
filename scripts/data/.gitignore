@@ -11,3 +11,5 @@
 *.sh
 *.txt
 *.out
+
+!data_config.py

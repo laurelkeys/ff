@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Union
+from typing import Dict, List, Union, cast
 
 import ff
 import numpy as np
@@ -16,14 +16,16 @@ def connect(sim_mode: str) -> airsim.MultirotorClient:
     """ Returns a (Multirotor or ComputerVision) client connected to AirSim. """
     assert sim_mode in [ff.SimMode.Multirotor, ff.SimMode.ComputerVision], sim_mode
 
-    client = airsim.MultirotorClient()
-    client.confirmConnection()
     if sim_mode == ff.SimMode.Multirotor:
-        # NOTE we don't need these in CV mode
+        client = airsim.MultirotorClient()
+        client.confirmConnection()
         client.enableApiControl(True)
         client.armDisarm(True)
+    else:
+        client = airsim.VehicleClient()
+        client.confirmConnection()
 
-    return client
+    return cast(airsim.MultirotorClient, client)
 
 
 def reset(client: airsim.MultirotorClient) -> None:
@@ -93,6 +95,22 @@ class AirSimImage:
                 response_right.image_data_uint8, response_right.height, response_right.width
             ),
         )
+
+    @staticmethod
+    def get_mono_and_pose(client, camera_name=ff.CameraName.front_center, vehicle_name=None):
+        client.simPause(True)
+        image = AirSimImage.get_mono(client, camera_name, vehicle_name)
+        pose = client.simGetVehiclePose() if vehicle_name is None else client.simGetVehiclePose(vehicle_name)
+        client.simPause(False)
+        return image, pose
+
+    @staticmethod
+    def get_stereo_and_pose(client, vehicle_name=None):
+        client.simPause(True)
+        image = AirSimImage.get_stereo(client, vehicle_name)
+        pose = client.simGetVehiclePose() if vehicle_name is None else client.simGetVehiclePose(vehicle_name)
+        client.simPause(False)
+        return image, pose
 
 
 ###############################################################################

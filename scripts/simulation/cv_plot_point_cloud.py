@@ -8,7 +8,7 @@ import ff
 import airsim
 
 from ds import Rgba, EditMode
-from airsim import Vector3r
+from airsim import Pose, Vector3r, Quaternionr
 from ff.helper import input_or_exit
 from ie.airsimy import connect
 
@@ -24,6 +24,9 @@ try:
         convert_uavmvs_to_airsim_pose,
         convert_uavmvs_to_airsim_position,
     )
+
+    include(FF_PROJECT_ROOT, "scripts", "data", "data_config")
+    import data_config as dcfg
 except:
     raise
 
@@ -156,28 +159,34 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush:
         client.simFlushPersistentMarkers()
 
-    # XXX transform = None if args.offset is None else lambda position: position + Vector3r(*args.offset)
-    transform = None
-    if args.offset is not None or args.scale is not None:
-        if args.offset is None:
-            transform = lambda position: position * args.scale
-        elif args.scale is None:
-            transform = lambda position: position + Vector3r(*args.offset)
-        else:
-            transform = lambda position: position * args.scale + Vector3r(*args.offset)
+    def transform(position):
+        if args.scale is not None:
+            position *= args.scale
+        if args.offset is not None:
+            position += Vector3r(*args.offset)
+        return position
 
-    points = [
-        convert_uavmvs_to_airsim_position(point, transform)
-        for point in args.points[:: args.every_k]
-    ]
+    points = [convert_uavmvs_to_airsim_position(_, transform) for _ in args.points[:: args.every_k]]
     client.simPlotPoints(points, Rgba.Blue, POINT_CLOUD_POINT_SIZE, is_persistent=True)
 
     if args.trajectory is not None:
-        camera_poses = [
-            convert_uavmvs_to_airsim_pose(camera, transform) for camera in args.trajectory
-        ]
+        camera_poses = [convert_uavmvs_to_airsim_pose(_, transform) for _ in args.trajectory]
         camera_positions = [pose.position for pose in camera_poses]
-        client.simPlotLineStrip(camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, duration=99)
+
+        # XXX
+        camera_poses = [
+            Pose(pose.position, (dcfg.Ned.Cidadela_Statue - pose.position).to_Quaternionr())
+            for pose in camera_poses
+        ]
+        client.simPlotLineList(
+            [_ for pose in camera_poses for _ in (pose.position, dcfg.Ned.Cidadela_Statue)],
+            Rgba.Black,
+            TRAJECTORY_THICKNESS,
+            duration=10,
+        )
+        # XXX
+
+        client.simPlotLineStrip(camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, duration=60)
         client.simPlotPoints(camera_positions, Rgba.White, CAMERA_POSE_SIZE, is_persistent=True)
         client.simPlotTransforms(camera_poses, 10 * CAMERA_POSE_SIZE, is_persistent=True)
 
