@@ -53,7 +53,12 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush:
         client.simFlushPersistentMarkers()
 
-    transform = None if args.offset is None else lambda position: position + Vector3r(*args.offset)
+    def transform(position):
+        if args.scale is not None:
+            position *= args.scale
+        if args.offset is not None:
+            position += Vector3r(*args.offset)
+        return position
 
     camera_poses = [convert_uavmvs_to_airsim_pose(camera, transform) for camera in args.trajectory]
     n_of_poses = len(camera_poses)
@@ -119,6 +124,7 @@ def get_parser() -> argparse.ArgumentParser:
         metavar=("X", "Y", "Z"),
         help="Offset added to all points  (e.g. --offset -55 11 1)",
     )
+    parser.add_argument("--scale", type=float, help="Scale added to all points  (e.g. --scale 0.2)")
 
     ff.add_arguments_to(parser)
     return parser

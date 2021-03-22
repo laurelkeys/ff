@@ -10,7 +10,7 @@ import airsim
 from ds import Rgba, EditMode
 from airsim import Pose, Vector3r, Quaternionr
 from ff.helper import input_or_exit
-from ie.airsimy import connect
+from ie.airsimy import connect, quaternion_look_at
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
@@ -26,7 +26,7 @@ try:
     )
 
     include(FF_PROJECT_ROOT, "scripts", "data", "data_config")
-    import data_config as dcfg
+    import data_config as cfg
 except:
     raise
 
@@ -175,19 +175,24 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
         # XXX
         camera_poses = [
-            Pose(pose.position, (dcfg.Ned.Cidadela_Statue - pose.position).to_Quaternionr())
+            # FIXME point to Cidadela_Statue
+            Pose(pose.position, Quaternionr(0, 0, 0, w_val=1))
+            # Pose(pose.position, quaternion_look_at(pose.position, cfg.Ned.Cidadela_Statue))
+            # Pose(pose.position, (cfg.Ned.Cidadela_Statue - pose.position).to_Quaternionr().sgn())
             for pose in camera_poses
         ]
+        for pose in camera_poses:
+            print(ff.to_xyzw_str(pose.orientation))
         client.simPlotLineList(
-            [_ for pose in camera_poses for _ in (pose.position, dcfg.Ned.Cidadela_Statue)],
-            Rgba.Black,
+            [_ for pose in camera_poses for _ in (pose.position, cfg.Ned.Cidadela_Statue)],
+            Rgba.Magenta,
             TRAJECTORY_THICKNESS,
-            duration=10,
+            duration=60,
         )
         # XXX
 
-        client.simPlotLineStrip(camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, duration=60)
-        client.simPlotPoints(camera_positions, Rgba.White, CAMERA_POSE_SIZE, is_persistent=True)
+        # client.simPlotLineStrip(camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, duration=10)
+        # client.simPlotPoints(camera_positions, Rgba.White, CAMERA_POSE_SIZE, is_persistent=True)
         client.simPlotTransforms(camera_poses, 10 * CAMERA_POSE_SIZE, is_persistent=True)
 
     if args.edit:

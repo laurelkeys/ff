@@ -117,6 +117,39 @@ class AirSimImage:
 ###############################################################################
 
 
+# NOTE see AirLib/include/common/VectorMath.hpp
+FRONT = Vector3r( 1,  0,  0)  # North
+BACK  = Vector3r(-1,  0,  0)  # South
+DOWN  = Vector3r( 0,  0,  1)
+UP    = Vector3r( 0,  0, -1)
+RIGHT = Vector3r( 0,  1,  0)  # East
+LEFT  = Vector3r( 0, -1,  0)  # West
+
+
+def quaternion_from_rotation_axis_angle(axis: Vector3r, angle: float) -> Quaternionr:
+    angle /= 2
+    axis /= axis.get_length()  # normalize
+    axis *= np.sin(angle / 2)
+    return Quaternionr(axis.x_val, axis.y_val, axis.z_val, w_val=np.cos(angle / 2))
+
+
+def quaternion_look_at(source_point: Vector3r, target_point: Vector3r) -> Quaternionr:
+    to_vector = target_point - source_point
+    to_vector /= to_vector.get_length()  # normalize
+
+    dot = FRONT.dot(to_vector)
+    assert 0.999 < dot < 1.001, dot
+    axis = FRONT.cross(to_vector)
+    length = axis.get_length()
+    axis = UP if length == 0 else axis / length  # normalize
+
+    return quaternion_from_rotation_axis_angle(axis, angle=np.arccos(dot))
+
+
+###############################################################################
+###############################################################################
+
+
 class AirSimRecord:
     def __init__(
         self,
