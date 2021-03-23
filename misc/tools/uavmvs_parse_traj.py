@@ -53,7 +53,7 @@ class TrajectoryCamera(NamedTuple):
             v1 = 1.0 + R[0, 0] - R[1, 1] - R[2, 2]
             v2 = 1.0 - R[0, 0] + R[1, 1] - R[2, 2]
             v3 = 1.0 - R[0, 0] - R[1, 1] + R[2, 2]
-            if v1 >= v0 and v1 >= v2 and v1 >= v3:
+            if v0 >= v1 and v0 >= v2 and v0 >= v3:
                 tmp = 2 * np.sqrt(v0)
                 return np.array(
                     [

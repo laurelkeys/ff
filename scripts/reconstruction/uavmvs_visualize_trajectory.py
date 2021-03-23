@@ -52,6 +52,7 @@ def coordinate_axes_line_set(axes_origins, size=1.0, colors=None):
     line_set.colors = o3d.utility.Vector3dVector(np.asarray(colors).reshape((-1, 3)))
 
     return line_set  # TODO rotate this based on the camera's rotation
+                     # http://www.open3d.org/docs/latest/tutorial/Basic/transformation.html
 
 
 ###############################################################################

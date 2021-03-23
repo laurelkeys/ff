@@ -138,7 +138,6 @@ def quaternion_look_at(source_point: Vector3r, target_point: Vector3r) -> Quater
     to_vector /= to_vector.get_length()  # normalize
 
     dot = FRONT.dot(to_vector)
-    assert 0.999 < dot < 1.001, dot
     axis = FRONT.cross(to_vector)
     length = axis.get_length()
     axis = UP if length == 0 else axis / length  # normalize

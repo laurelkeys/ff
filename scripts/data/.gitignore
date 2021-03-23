@@ -11,5 +11,6 @@
 *.sh
 *.txt
 *.out
+*.log
 
 !data_config.py
