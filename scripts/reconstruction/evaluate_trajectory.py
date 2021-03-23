@@ -89,13 +89,13 @@ class TartanAir:
 
 
 def make_record_line(timestamp, position, orientation, as_string=True):
-    """`timestamp tx ty tz qx qy qz qw`, where:
-    - `timestamp`: number of seconds since the Unix epoch
-    - `tx ty tz`: position of the camera's optical center
-    - `qx qy qz qw`: orientation of the camera's optical center (as a unit quaternion)
+    """ `timestamp tx ty tz qx qy qz qw`, where:
+        - `timestamp`: number of seconds since the Unix epoch
+        - `tx ty tz`: position of the camera's optical center
+        - `qx qy qz qw`: orientation of the camera's optical center (as a unit quaternion)
 
-    Note: position and orientation values are given with respect to the world origin,
-    as defined by the motion capture system.
+        Note: position and orientation values are given with respect to the world origin,
+        as defined by the motion capture system.
     """
     tx, ty, tz = position
     qx, qy, qz, qw = orientation
@@ -166,14 +166,14 @@ def convert_airsim_to_log(airsim_rec_path):
 ###############################################################################
 
 
-def evaluate(airsim_traj_path, meshroom_traj_path):
-    assert os.path.isfile(airsim_traj_path), f"File not found: '{airsim_traj_path}'"
-    assert os.path.isfile(meshroom_traj_path), f"File not found: '{meshroom_traj_path}'"
+def evaluate(gt_traj_path, est_traj_path, save_gt_aligned=False, save_est_aligned=False):
+    assert os.path.isfile(gt_traj_path), f"File not found: '{gt_traj_path}'"
+    assert os.path.isfile(est_traj_path), f"File not found: '{est_traj_path}'"
 
     result = TartanAir.evaluate_trajectory(
         # NOTE skip the header and the timestamp column, keeping tx ty tz qx qy qz qw
-        gt_traj=np.loadtxt(airsim_traj_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7)),
-        est_traj=np.loadtxt(meshroom_traj_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7)),
+        gt_traj=np.loadtxt(gt_traj_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7)),
+        est_traj=np.loadtxt(est_traj_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7)),
     )
 
     print(
@@ -188,10 +188,12 @@ def evaluate(airsim_traj_path, meshroom_traj_path):
     )
 
     result.plot()
-    # TODO clean up this file and add these to argparse:
-    # np.savetxt("est_aligned.txt", result.est_aligned)
-    # np.savetxt("gt_aligned.txt", result.gt_aligned)
-    # print(result)
+    print(result)
+
+    if save_est_aligned:
+        np.savetxt("est_aligned.txt", result.est_aligned)
+    if save_gt_aligned:
+        np.savetxt("gt_aligned.txt", result.gt_aligned)
 
 
 ###############################################################################
@@ -199,18 +201,21 @@ def evaluate(airsim_traj_path, meshroom_traj_path):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="")
+    parser = argparse.ArgumentParser(
+        description="Compare an AirSim (ground-truth) to a Meshroom (estimate) trajectory"
+        " by computing the absolute trajectory error (ATE) and relative pose error (RPE)."
+    )
 
     parser.add_argument(
         "--convert_meshroom",
-        "-cm",
+        "-m",
         nargs=1,
         metavar="CAMERAS_SFM_PATH",  # NOTE don't use new_cameras.sfm!
         help="Convert Meshroom's cameras.sfm to .log format",
     )
     parser.add_argument(
         "--convert_airsim",
-        "-ca",
+        "-a",
         nargs=1,
         metavar="AIRSIM_REC_PATH",
         help="Convert AirSim's airsim_rec.txt to .log format",
@@ -223,6 +228,9 @@ if __name__ == "__main__":
         help="Compare (AirSim) ground-truth to (Meshroom) estimate trajectory .log files",
     )
 
+    parser.add_argument("--save_est_aligned", "-sest", action="store_true")
+    parser.add_argument("--save_gt_aligned", "-sgt", action="store_true")
+
     args = parser.parse_args()
 
     if args.convert_meshroom is not None:
@@ -234,8 +242,13 @@ if __name__ == "__main__":
         convert_airsim_to_log(airsim_rec_path)
 
     if args.eval is not None:
-        gt_traj_path, est_traj_path = args.eval
-        evaluate(airsim_traj_path=gt_traj_path, meshroom_traj_path=est_traj_path)
+        airsim_traj_path, meshroom_traj_path = args.eval
+        evaluate(
+            gt_traj_path=airsim_traj_path,
+            est_traj_path=meshroom_traj_path,
+            save_est_aligned=args.save_est_aligned,
+            save_gt_aligned=args.save_gt_aligned,
+        )
 
 
 ###############################################################################
