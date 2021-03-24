@@ -20,42 +20,36 @@ except:
 ###############################################################################
 
 
-def main(args):
+def main(airsim_log_path, uavmvs_out_path):
+    assert os.path.isfile(airsim_log_path), f"File not found: '{airsim_log_path}'"
+    assert os.path.splitext(uavmvs_out_path)[1] == ".log"
+
+    airsim_traj = np.loadtxt(airsim_log_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7))
+    print(f"airsim_traj.shape = {airsim_traj}")
+
     # NOTE this is pretty much an inlining of `convert_meshroom_to_log`
     # and `convert_airsim_to_log`, but addapted to uavmvs' file format:
-    assert os.path.isfile(args.uavmvs_out_path), f"File not found: '{args.uavmvs_out_path}'"
-    assert os.path.splitext(args.uavmvs_out_path)[1] in [".traj", ".csv"]
+    assert os.path.isfile(uavmvs_out_path), f"File not found: '{uavmvs_out_path}'"
+    assert os.path.splitext(uavmvs_out_path)[1] in [".traj", ".csv"]
 
-    uavmvs_log_path = f"{args.uavmvs_out_path}.TUM.log"
-    assert not os.path.exists(uavmvs_log_path)  # temporary file
+    uavmvs_traj = np.zeros_like(airsim_traj)
+    for i, camera in enumerate(uavmvs.parse_uavmvs_traj(uavmvs_out_path)):
+        position = camera.position
 
-    with open(uavmvs_log_path, "w") as uavmvs_log_file:
-        trajectory_cameras = uavmvs.parse_uavmvs_traj(args.uavmvs_out_path)
+        # NOTE .traj stores a 3x3 rotation matrix, while .csv uses WXYZ quaternions
+        camera = camera.into(uavmvs.TrajectoryCameraKind.Csv)
+        assert np.allclose(camera.position, position)  # sanity check
+        assert camera.rotation.shape == (4,)  # sanity check
+        w, x, y, z = camera.rotation
 
-        record_lines = []
-        for i, camera in enumerate(trajectory_cameras):
-            timestamp = f"{i:016}"
-            position = camera.position
+        # NOTE we skip the timestamp anyway (when calling evaluate)
+        line_tuple = make_record_line(i, position, orientation=(x, y, z, w), as_string=False)
+        uavmvs_traj[i] = np.array(line_tuple[1:], dtype=uavmvs_traj.dtype)
 
-            # NOTE .traj stores a 3x3 rotation matrix, while .csv uses WXYZ quaternions
-            camera = camera.into(uavmvs.TrajectoryCameraKind.Csv)
-            assert np.allclose(camera.position, position)  # sanity check
-            assert camera.rotation.shape == (4,)  # sanity check
-            w, x, y, z = camera.rotation
+    print(f"uavmvs_traj.shape = {uavmvs_traj}")
 
-            line_str = make_record_line(timestamp, position, orientation=(x, y, z, w))
-            record_lines.append(line_str)
-
-        print("timestamp tx ty tz qx qy qz qw", file=uavmvs_log_file)
-        print("\n".join(record_lines), file=uavmvs_log_file)
-
-    if args.convert_airsim is not None:
-        (airsim_rec_path,) = args.convert_airsim
-        convert_airsim_to_log(airsim_rec_path)
-
-    if args.eval is not None:
-        airsim_traj_path, uavmvs_traj_path = args.eval
-        evaluate(gt_traj_path=airsim_traj_path, est_traj_path=uavmvs_traj_path)
+    raise NotImplementedError
+    # TODO evaluate(gt_traj_path=airsim_traj_path, est_traj_path=uavmvs_traj_path)
 
 
 ###############################################################################
@@ -71,12 +65,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "uavmvs_out_path",
         type=str,
-        help="Path to uavmvs's .traj / .csv (or .log) estimate trajectory",
+        help="Path to uavmvs's .traj / .csv estimate trajectory",
     )
     parser.add_argument(
-        "airsim_rec_path",
+        "airsim_log_path",
         type=str,
-        help="Path to AirSim's airsim_rec.txt (or .log) ground-truth trajectory",
+        # NOTE use evaluate_trajectory.py to convert airsim_rec.txt to .log
+        help="Path to AirSim's .log ground-truth trajectory",
     )
 
     # NOTE unlike evaluate_trajectory.py, we can't simply conver a uavmvs trajectory
@@ -84,7 +79,8 @@ if __name__ == "__main__":
     # it doesn't have any timestamps, so we need to associate the planned positions
     # to the ones that were actually recorded in AirSim and copy their timestamps.
 
-    main(args=parser.parse_args())
+    args = parser.parse_args()
+    main(args.airsim_log_path, args.uavmvs_out_path)
 
 
 ###############################################################################

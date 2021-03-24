@@ -14,6 +14,7 @@
 
 <!--  -->
 # To-do list
+- [ ] Unify the `transform` function used for scaling/translating uavmvs trajectories into a single file (see cv_trace_uavmvs_trajectory.py and trace_uavmvs_trajectory.py, for example)
 - [ ] Create a `scripts/common/` folder and (at least to begin with) symlink it to `reconstruction/` and `simulation`
 - [ ] Use longer (more descriptive) names for the files under `scripts/`
 - [ ] Use `settings.py` as an alternative for command line arguments
