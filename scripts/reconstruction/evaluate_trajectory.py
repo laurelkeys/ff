@@ -166,16 +166,8 @@ def convert_airsim_to_log(airsim_rec_path):
 ###############################################################################
 
 
-def evaluate(gt_traj_path, est_traj_path, save_gt_aligned=False, save_est_aligned=False):
-    assert os.path.isfile(gt_traj_path), f"File not found: '{gt_traj_path}'"
-    assert os.path.isfile(est_traj_path), f"File not found: '{est_traj_path}'"
-
-    result = TartanAir.evaluate_trajectory(
-        # NOTE skip the header and the timestamp column, keeping tx ty tz qx qy qz qw
-        gt_traj=np.loadtxt(gt_traj_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7)),
-        est_traj=np.loadtxt(est_traj_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7)),
-    )
-
+def evaluate(gt_traj, est_traj):
+    result = TartanAir.evaluate_trajectory(gt_traj, est_traj, scale=True)
     print(
         "\n==> ATE: %.4f,\tRPE-R/t: %.4f, %.4f,\tKITTI-R/t: %.4f, %.4f"
         % (
@@ -186,14 +178,48 @@ def evaluate(gt_traj_path, est_traj_path, save_gt_aligned=False, save_est_aligne
             result.kitti_score[1],
         )
     )
-
     result.plot()
     print(result)
+    return result.gt_aligned, result.est_aligned
 
-    if save_est_aligned:
-        np.savetxt("est_aligned.txt", result.est_aligned)
+
+def evaluate_files(gt_traj_path, est_traj_path, save_gt_aligned=False, save_est_aligned=False):
+    assert os.path.isfile(gt_traj_path), f"File not found: '{gt_traj_path}'"
+    assert os.path.isfile(est_traj_path), f"File not found: '{est_traj_path}'"
+
+    gt_aligned, est_aligned = evaluate(
+        # NOTE skip the header and the timestamp column, keeping tx ty tz qx qy qz qw
+        gt_traj=np.loadtxt(gt_traj_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7)),
+        est_traj=np.loadtxt(est_traj_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7)),
+    )
+
     if save_gt_aligned:
-        np.savetxt("gt_aligned.txt", result.gt_aligned)
+        np.savetxt("gt_aligned.txt", gt_aligned)
+    if save_est_aligned:
+        np.savetxt("est_aligned.txt", est_aligned)
+
+
+###############################################################################
+###############################################################################
+
+
+def main(args):
+    if args.convert_meshroom is not None:
+        (cameras_sfm_path,) = args.convert_meshroom
+        convert_meshroom_to_log(cameras_sfm_path)
+
+    if args.convert_airsim is not None:
+        (airsim_rec_path,) = args.convert_airsim
+        convert_airsim_to_log(airsim_rec_path)
+
+    if args.eval is not None:
+        airsim_traj_path, meshroom_traj_path = args.eval
+        evaluate_files(
+            gt_traj_path=airsim_traj_path,
+            est_traj_path=meshroom_traj_path,
+            save_est_aligned=args.save_est_aligned,
+            save_gt_aligned=args.save_gt_aligned,
+        )
 
 
 ###############################################################################
@@ -210,45 +236,28 @@ if __name__ == "__main__":
         "--convert_meshroom",
         "-m",
         nargs=1,
-        metavar="CAMERAS_SFM_PATH",  # NOTE don't use new_cameras.sfm!
+        metavar="cameras_sfm_path",  # NOTE don't use new_cameras.sfm!
         help="Convert Meshroom's cameras.sfm to .log format",
     )
     parser.add_argument(
         "--convert_airsim",
         "-a",
         nargs=1,
-        metavar="AIRSIM_REC_PATH",
+        metavar="airsim_rec_path",
         help="Convert AirSim's airsim_rec.txt to .log format",
     )
 
     parser.add_argument(
         "--eval",
         nargs=2,
-        metavar=("GT_TRAJECTORY_PATH", "EST_TRAJECTORY_PATH"),
+        metavar=("gt_trajectory_path", "est_trajectory_path"),
         help="Compare (AirSim) ground-truth to (Meshroom) estimate trajectory .log files",
     )
 
     parser.add_argument("--save_est_aligned", "-sest", action="store_true")
     parser.add_argument("--save_gt_aligned", "-sgt", action="store_true")
 
-    args = parser.parse_args()
-
-    if args.convert_meshroom is not None:
-        (cameras_sfm_path,) = args.convert_meshroom
-        convert_meshroom_to_log(cameras_sfm_path)
-
-    if args.convert_airsim is not None:
-        (airsim_rec_path,) = args.convert_airsim
-        convert_airsim_to_log(airsim_rec_path)
-
-    if args.eval is not None:
-        airsim_traj_path, meshroom_traj_path = args.eval
-        evaluate(
-            gt_traj_path=airsim_traj_path,
-            est_traj_path=meshroom_traj_path,
-            save_est_aligned=args.save_est_aligned,
-            save_gt_aligned=args.save_gt_aligned,
-        )
+    main(args=parser.parse_args())
 
 
 ###############################################################################
