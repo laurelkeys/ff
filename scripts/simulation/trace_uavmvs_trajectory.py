@@ -1,20 +1,17 @@
 import os
-import time
 import argparse
 
 import ff
 import airsim
 
 from airsim import Vector3r
-from ff.types import to_xyz_str
-from ie.airsimy import AirSimImage, connect
-from uavmvs_parse_traj import convert_uavmvs_to_airsim_position
+from ie.airsimy import connect
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import parse_uavmvs, convert_uavmvs_to_airsim_pose
+    from uavmvs_parse_traj import parse_uavmvs, convert_uavmvs_to_airsim_position
 except:
     raise
 
@@ -31,8 +28,6 @@ def preflight(args: argparse.Namespace) -> None:
     assert ext in parse_uavmvs.keys(), f"Invalid trajectory extension: '{args.trajectory_path}'"
 
     args.trajectory = parse_uavmvs[ext](args.trajectory_path)
-    if args.verbose:
-        ff.log(f"The trajectory has {len(args.trajectory)} camera poses")
 
     if args.env_name is not None:
         # the --launch option was passed
@@ -46,12 +41,8 @@ def preflight(args: argparse.Namespace) -> None:
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
-    initial_pose = client.simGetVehiclePose()
-    if args.verbose:
-        ff.print_pose(initial_pose, airsim.to_eularian_angles)
-
-    if args.flush:
-        client.simFlushPersistentMarkers()
+    client.moveToZAsync(z=-10, velocity=2).join()  # XXX avoid colliding
+    client.hoverAsync().join()
 
     def transform(position):
         if args.scale is not None:
@@ -62,20 +53,19 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
     # NOTE (at least for now) don't worry about matching the camera rotation optimized
     # by uavmvs, simply follow the generated viewpoint positions with the drone.
-    camera_positions = [convert_uavmvs_to_airsim_position(_, transform) for _ in args.trajectory]
-    n_of_poses = len(camera_positions)
-    pad = len(str(n_of_poses))
+    camera_positions = [
+        convert_uavmvs_to_airsim_position(camera.position, transform) for camera in args.trajectory
+    ]
 
-    print("TimeStamp\tPOS_X\tPOS_Y\tPOS_Z\tQ_W\tQ_X\tQ_Y\tQ_Z\tImageFile")
-    for i, position in enumerate(camera_positions):
-        pose_str = f"{i:{pad}} / {n_of_poses}"
-        position_str = to_xyz_str(position, show_hints=False)
-        ff.log(f"Going to position ({pose_str}): {position_str}")
-
-        x, y, z = position.to_numpy_array()
-        client.moveToPositionAsync(x,y,z, velocity=2).join()
+    print("POS_X\tPOS_Y\tPOS_Z\tQ_W\tQ_X\tQ_Y\tQ_Z")
+    for position in camera_positions:
+        client.moveToPositionAsync(*ff.to_xyz_tuple(position), velocity=2).join()
         client.simPause(True)
-        # TODO print the same information as in airsim_rec.txt
+        # Reference: AirSim/Unreal/Plugins/AirSim/Source/PawnSimApi.cpp
+        kinematics = client.simGetGroundTruthKinematics()
+        pos_x, pos_y, pos_z = ff.to_xyz_tuple(kinematics.position)
+        q_x, q_y, q_z, q_w = ff.to_xyzw_tuple(kinematics.orientation)
+        print(pos_x, pos_y, pos_z, q_w, q_x, q_y, q_z, sep="\t")
         client.simPause(False)
 
 
@@ -95,7 +85,7 @@ def main(args: argparse.Namespace) -> None:
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting with Ctrl+C
     finally:
-        ff.log("Done")
+        pass  # ff.log("Done")
 
 
 ###############################################################################
@@ -110,8 +100,6 @@ def get_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument("trajectory_path", type=str, help="Path to a .TRAJ, .CSV or .UTJ file")
-
-    parser.add_argument("--flush", action="store_true", help="Flush old plots")
 
     parser.add_argument(
         "--offset",
