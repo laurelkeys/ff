@@ -174,25 +174,24 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         camera_positions = [pose.position for pose in camera_poses]
 
         # XXX
-        camera_poses = [
-            # FIXME point to Cidadela_Statue
-            Pose(pose.position, Quaternionr(0, 0, 0, w_val=1))
-            # Pose(pose.position, quaternion_look_at(pose.position, cfg.Ned.Cidadela_Statue))
-            # Pose(pose.position, (cfg.Ned.Cidadela_Statue - pose.position).to_Quaternionr().sgn())
-            for pose in camera_poses
-        ]
-        for pose in camera_poses:
-            print(ff.to_xyzw_str(pose.orientation))
-        client.simPlotLineList(
-            [_ for pose in camera_poses for _ in (pose.position, cfg.Ned.Cidadela_Statue)],
-            Rgba.Magenta,
-            TRAJECTORY_THICKNESS,
-            duration=60,
-        )
+        # camera_poses = [
+        #     Pose(pose.position, Quaternionr(0, 0, 0, w_val=1))
+        #     # Pose(pose.position, quaternion_look_at(pose.position, cfg.Ned.Cidadela_Statue))
+        #     # Pose(pose.position, (cfg.Ned.Cidadela_Statue - pose.position).to_Quaternionr().sgn())
+        #     for pose in camera_poses
+        # ]
+        # for pose in camera_poses:
+        #     print(ff.to_xyzw_str(pose.orientation))
+        # client.simPlotLineList(
+        #     [_ for pose in camera_poses for _ in (pose.position, cfg.Ned.Cidadela_Statue)],
+        #     Rgba.Magenta,
+        #     TRAJECTORY_THICKNESS / 2.0,
+        #     duration=60,
+        # )
         # XXX
 
-        # client.simPlotLineStrip(camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, duration=10)
-        # client.simPlotPoints(camera_positions, Rgba.White, CAMERA_POSE_SIZE, is_persistent=True)
+        client.simPlotLineStrip(camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, is_persistent=True)
+        client.simPlotPoints(camera_positions, Rgba.White, CAMERA_POSE_SIZE, is_persistent=True)
         client.simPlotTransforms(camera_poses, 10 * CAMERA_POSE_SIZE, is_persistent=True)
 
     if args.edit:

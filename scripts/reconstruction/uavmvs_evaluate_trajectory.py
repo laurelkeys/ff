@@ -22,10 +22,9 @@ except:
 
 def main(airsim_log_path, uavmvs_out_path):
     assert os.path.isfile(airsim_log_path), f"File not found: '{airsim_log_path}'"
-    assert os.path.splitext(uavmvs_out_path)[1] == ".log"
+    assert os.path.splitext(airsim_log_path)[1] == ".log"
 
     airsim_traj = np.loadtxt(airsim_log_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7))
-    print(f"airsim_traj.shape = {airsim_traj}")
 
     # XXX this code started as an inlining of `convert_meshroom_to_log`
     # and `convert_airsim_to_log`, but addapted to uavmvs' file format:
@@ -46,10 +45,7 @@ def main(airsim_log_path, uavmvs_out_path):
         line_tuple = make_record_line(i, position, orientation=(x, y, z, w), as_string=False)
         uavmvs_traj[i] = np.array(line_tuple[1:], dtype=uavmvs_traj.dtype)
 
-    print(f"uavmvs_traj.shape = {uavmvs_traj}")
-
-    raise NotImplementedError
-    # TODO evaluate(gt_traj_path=airsim_traj_path, est_traj_path=uavmvs_traj_path)
+    evaluate(gt_traj=airsim_traj, est_traj=uavmvs_traj)
 
 
 ###############################################################################
