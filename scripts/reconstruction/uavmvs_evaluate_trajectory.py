@@ -27,7 +27,7 @@ def main(airsim_log_path, uavmvs_out_path):
     airsim_traj = np.loadtxt(airsim_log_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7))
     print(f"airsim_traj.shape = {airsim_traj}")
 
-    # NOTE this is pretty much an inlining of `convert_meshroom_to_log`
+    # XXX this code started as an inlining of `convert_meshroom_to_log`
     # and `convert_airsim_to_log`, but addapted to uavmvs' file format:
     assert os.path.isfile(uavmvs_out_path), f"File not found: '{uavmvs_out_path}'"
     assert os.path.splitext(uavmvs_out_path)[1] in [".traj", ".csv"]
@@ -74,7 +74,7 @@ if __name__ == "__main__":
         help="Path to AirSim's .log ground-truth trajectory",
     )
 
-    # NOTE unlike evaluate_trajectory.py, we can't simply conver a uavmvs trajectory
+    # NOTE unlike evaluate_trajectory.py, we can't simply convert a uavmvs trajectory
     # without the corresponding AirSim file since it is only a "flight plan". Hence,
     # it doesn't have any timestamps, so we need to associate the planned positions
     # to the ones that were actually recorded in AirSim and copy their timestamps.
