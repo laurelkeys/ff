@@ -54,44 +54,44 @@ class TrajectoryCamera(NamedTuple):
             v2 = 1.0 - R[0, 0] + R[1, 1] - R[2, 2]
             v3 = 1.0 - R[0, 0] - R[1, 1] + R[2, 2]
             if v0 >= v1 and v0 >= v2 and v0 >= v3:
-                tmp = 2 * np.sqrt(v0)
+                tmp = 0.5 * np.sqrt(v0)
                 return np.array(
                     [
-                        tmp / 4,
-                        R[2, 1] - R[1, 2] / tmp,
-                        R[0, 2] - R[2, 0] / tmp,
-                        R[1, 0] - R[0, 1] / tmp,
+                        tmp,
+                        (R[2, 1] - R[1, 2]) / (4 * tmp),
+                        (R[0, 2] - R[2, 0]) / (4 * tmp),
+                        (R[1, 0] - R[0, 1]) / (4 * tmp),
                     ]
                 )
             elif v1 >= v0 and v1 >= v2 and v1 >= v3:
-                tmp = 2 * np.sqrt(v1)
+                tmp = 0.5 * np.sqrt(v1)
                 return np.array(
                     [
-                        R[2, 1] - R[1, 2] / tmp,
-                        tmp / 4,
-                        R[0, 1] + R[1, 0] / tmp,
-                        R[0, 2] + R[2, 0] / tmp,
+                        (R[2, 1] - R[1, 2]) / (4 * tmp),
+                        tmp,
+                        (R[0, 1] + R[1, 0]) / (4 * tmp),
+                        (R[0, 2] + R[2, 0]) / (4 * tmp),
                     ]
                 )
             elif v2 >= v0 and v2 >= v1 and v2 >= v3:
-                tmp = 2 * np.sqrt(v2)
+                tmp = 0.5 * np.sqrt(v2)
                 return np.array(
                     [
-                        R[0, 2] - R[2, 0] / tmp,
-                        R[0, 1] + R[1, 0] / tmp,
-                        tmp / 4,
-                        R[1, 2] + R[2, 1] / tmp,
+                        (R[0, 2] - R[2, 0]) / (4 * tmp),
+                        (R[0, 1] + R[1, 0]) / (4 * tmp),
+                        tmp,
+                        (R[1, 2] + R[2, 1]) / (4 * tmp),
                     ]
                 )
             else:
                 assert v3 >= v0 and v3 >= v1 and v3 >= v2
-                tmp = 2 * np.sqrt(v3)
+                tmp = 0.5 * np.sqrt(v3)
                 return np.array(
                     [
-                        R[1, 0] - R[0, 1] / tmp,
-                        R[0, 2] + R[2, 0] / tmp,
-                        R[1, 2] + R[2, 1] / tmp,
-                        tmp / 4,
+                        (R[1, 0] - R[0, 1]) / (4 * tmp),
+                        (R[0, 2] + R[2, 0]) / (4 * tmp),
+                        (R[1, 2] + R[2, 1]) / (4 * tmp),
+                        tmp,
                     ]
                 )
 
