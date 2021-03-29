@@ -23,6 +23,7 @@ try:
         parse_uavmvs,
         convert_uavmvs_to_airsim_pose,
         convert_uavmvs_to_airsim_position,
+        transform_uavmvs_position_fn,
     )
 
     include(FF_PROJECT_ROOT, "scripts", "data", "data_config")
@@ -52,9 +53,11 @@ def preflight(args: argparse.Namespace) -> None:
     while not k:
         try:
             k = int(input_or_exit("Do you want to plot one every how many points? "))
+        except KeyboardInterrupt:
+            exit()
         except:
             k = 0
-            print("Please input a valid integer. ", end="")
+            print("\nPlease input a valid integer. ", end="")
             continue
 
         answer = input_or_exit(
@@ -152,25 +155,18 @@ def enter_edit_mode(client: airsim.MultirotorClient, points: List[Vector3r]) -> 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     initial_pose = client.simGetVehiclePose()
-
     if args.verbose:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
 
     if args.flush:
         client.simFlushPersistentMarkers()
 
-    def transform(position):
-        if args.scale is not None:
-            position *= args.scale
-        if args.offset is not None:
-            position += Vector3r(*args.offset)
-        return position
-
-    points = [convert_uavmvs_to_airsim_position(_, transform) for _ in args.points[:: args.every_k]]
+    transform_fn = transform_uavmvs_position_fn(translation=args.offset, scaling=args.scale)
+    points = [convert_uavmvs_to_airsim_position(_, transform_fn) for _ in args.points[:: args.every_k]]
     client.simPlotPoints(points, Rgba.Blue, POINT_CLOUD_POINT_SIZE, is_persistent=True)
 
     if args.trajectory is not None:
-        camera_poses = [convert_uavmvs_to_airsim_pose(_, transform) for _ in args.trajectory]
+        camera_poses = [convert_uavmvs_to_airsim_pose(_, transform_fn) for _ in args.trajectory]
         camera_positions = [pose.position for pose in camera_poses]
 
         # XXX

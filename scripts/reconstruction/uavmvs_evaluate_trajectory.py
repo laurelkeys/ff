@@ -5,7 +5,7 @@ import argparse
 
 import numpy as np
 
-from evaluate_trajectory import evaluate, make_record_line, convert_airsim_to_log
+from evaluate_trajectory import evaluate, make_record_line
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
@@ -41,6 +41,16 @@ def main(airsim_log_path, uavmvs_out_path):
         assert camera.rotation.shape == (4,)  # sanity check
         w, x, y, z = camera.rotation
 
+        # Apply the transformations used to trace uavmvs' trajectory in AirSim
+        # to the original data now, so that they refer to the same coordinates.
+        # TODO apply orientation transforms as well...
+        position = uavmvs.convert_uavmvs_to_airsim_position(
+            position,
+            position_transform_fn=uavmvs.transform_uavmvs_position_fn(
+                translation=args.offset, scaling=args.scale
+            ),
+        )
+
         # NOTE we skip the timestamp anyway (when calling evaluate)
         line_tuple = make_record_line(i, position, orientation=(x, y, z, w), as_string=False)
         uavmvs_traj[i] = np.array(line_tuple[1:], dtype=uavmvs_traj.dtype)
@@ -69,6 +79,15 @@ if __name__ == "__main__":
         # NOTE use evaluate_trajectory.py to convert airsim_rec.txt to .log
         help="Path to AirSim's .log ground-truth trajectory",
     )
+
+    parser.add_argument(
+        "--offset",
+        type=float,
+        nargs=3,
+        metavar=("X", "Y", "Z"),
+        help="Offset added to all uavmvs points",
+    )
+    parser.add_argument("--scale", type=float, help="Scale added to all uavmvs points")
 
     # NOTE unlike evaluate_trajectory.py, we can't simply convert a uavmvs trajectory
     # without the corresponding AirSim file since it is only a "flight plan". Hence,

@@ -239,26 +239,39 @@ parse_uavmvs: Dict[str, Callable[[str], List[TrajectoryCamera]]] = {
 ###############################################################################
 
 
-def convert_uavmvs_to_airsim_position(camera_position, position_transform=None):
+def transform_uavmvs_position_fn(translation, scaling):
+    def transform_fn(position):
+        import airsim
+        if scaling is not None:
+            position *= scaling
+        if translation is not None:
+            position += airsim.Vector3r(*translation)
+        # TODO rotation
+        del airsim
+        return position
+    return transform_fn
+
+
+def convert_uavmvs_to_airsim_position(camera_position, position_transform_fn=None):
     import airsim
     x, y, z = map(float, camera_position)
     position = airsim.Vector3r(x, -y, -z)
     del airsim
-    if position_transform is not None:
-        return position_transform(position)
+    if position_transform_fn is not None:
+        return position_transform_fn(position)
     return position
 
 
 def convert_uavmvs_to_airsim_pose(
-    camera: TrajectoryCamera, position_transform=None, orientation_transform=None
+    camera: TrajectoryCamera, position_transform_fn=None, orientation_transform_fn=None
 ):
     import airsim
     assert camera.kind == TrajectoryCameraKind.Traj
-    position = convert_uavmvs_to_airsim_position(camera.position, position_transform)
+    position = convert_uavmvs_to_airsim_position(camera.position, position_transform_fn)
     qw, qx, qy, qz = map(float, camera._rotation_into(TrajectoryCameraKind.Csv))
     orientation = airsim.Quaternionr(qx, qy, qz, qw)
-    if orientation_transform is not None:
-        pose = airsim.Pose(position, orientation_transform(orientation))
+    if orientation_transform_fn is not None:
+        pose = airsim.Pose(position, orientation_transform_fn(orientation))
     pose = airsim.Pose(position, orientation)
     del airsim
     return pose

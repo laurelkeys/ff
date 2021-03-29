@@ -5,7 +5,6 @@ import argparse
 import ff
 import airsim
 
-from airsim import Vector3r
 from ff.types import to_xyz_str
 from ie.airsimy import AirSimImage, connect
 
@@ -13,7 +12,11 @@ try:
     from include_in_path import FF_PROJECT_ROOT, include
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import parse_uavmvs, convert_uavmvs_to_airsim_pose
+    from uavmvs_parse_traj import (
+        parse_uavmvs,
+        convert_uavmvs_to_airsim_pose,
+        transform_uavmvs_position_fn,
+    )
 except:
     raise
 
@@ -53,14 +56,9 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush:
         client.simFlushPersistentMarkers()
 
-    def transform(position):
-        if args.scale is not None:
-            position *= args.scale
-        if args.offset is not None:
-            position += Vector3r(*args.offset)
-        return position
+    transform_fn = transform_uavmvs_position_fn(translation=args.offset, scaling=args.scale)
 
-    camera_poses = [convert_uavmvs_to_airsim_pose(_, transform) for _ in args.trajectory]
+    camera_poses = [convert_uavmvs_to_airsim_pose(_, transform_fn) for _ in args.trajectory]
     n_of_poses = len(camera_poses)
     pad = len(str(n_of_poses))
 

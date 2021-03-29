@@ -1,5 +1,4 @@
 # To-do list
-- [ ] Unify the `transform` function used for scaling/translating uavmvs trajectories into a single file (see `cv_trace_uavmvs_trajectory.py` and `trace_uavmvs_trajectory.py`, for example)
 - [ ] Automatically change `SimMode` for `cv_*.py` files (and also restore it)
 - [ ] Use longer (more descriptive) names for the files under `scripts/`
 - [ ] Merge `data/` and `scripts/data/`
