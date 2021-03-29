@@ -273,12 +273,18 @@ def main():
 
         csv_quat = csv_camera.rotation
         traj_rot = traj_camera.rotation
-        traj_rot_to_csv_quat = traj_camera._rotation_into(TrajectoryCameraKind.Csv)
 
         # Check rotation matrix to quaternion conversion:
+        traj_rot_to_csv_quat = traj_camera._rotation_into(TrajectoryCameraKind.Csv)
         assert np.allclose(
             csv_quat, traj_rot_to_csv_quat, RTOL, ATOL
         ), f"{csv_quat} != {traj_rot_to_csv_quat}"
+
+        # Check quaternion to rotation matrix conversion:
+        csv_quat_to_traj_rot = csv_camera._rotation_into(TrajectoryCameraKind.Traj)
+        assert np.allclose(
+            traj_rot, csv_quat_to_traj_rot, RTOL, ATOL * 1e3
+        ), f"{traj_rot} != {csv_quat_to_traj_rot}"
 
 
 if __name__ == "__main__":

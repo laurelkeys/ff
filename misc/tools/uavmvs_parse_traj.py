@@ -42,11 +42,11 @@ class TrajectoryCamera(NamedTuple):
     # - (4,) WXYZ quaternion, if kind == CSV
     # - (3,) pitch,roll,yaw, if kind == UTJ
 
-    # ref.: uavmvs/apps/trajectory_tools/interpolate.cpp
     def _rotation_into(self, other_kind: TrajectoryCameraKind):
         if self.kind == other_kind:
             return self.rotation
 
+        # ref.: uavmvs/apps/trajectory_tools/interpolate.cpp
         def rot_to_quat(R):
             assert R.shape == (3, 3)
             v0 = 1.0 + R[0, 0] + R[1, 1] + R[2, 2]
@@ -99,10 +99,29 @@ class TrajectoryCamera(NamedTuple):
             assert R.shape == (3, 3)
             return quat_to_euler(rot_to_quat(R))
 
+        # ref.: https://github.com/nmoehrle/mve/blob/master/libs/math/quaternion.h
         def quat_to_rot(q):
             assert q.shape == (4,)
-            raise NotImplementedError
+            xxzz = q[1] ** 2 - q[3] ** 2
+            rryy = q[0] ** 2 - q[2] ** 2
+            yyrrxxzz = q[2] ** 2 + q[0] ** 2 - q[1] ** 2 - q[3] ** 2
 
+            xr2 = q[1] * q[0] * 2
+            xy2 = q[1] * q[2] * 2
+            xz2 = q[1] * q[3] * 2
+            yr2 = q[2] * q[0] * 2
+            yz2 = q[2] * q[3] * 2
+            zr2 = q[3] * q[0] * 2
+
+            return np.array(
+                [
+                    [(xxzz + rryy), (xy2 - zr2), ( xz2 + yr2 )],
+                    [( xy2 + zr2 ), (yyrrxxzz ), ( yz2 - xr2 )],
+                    [( xz2 - yr2 ), (yz2 + xr2), (rryy - xxzz)],
+                ]
+            )
+
+        # ref.: uavmvs/apps/trajectory_tools/interpolate.cpp
         def quat_to_euler(q):
             assert q.shape == (4,)
             phi = np.arctan2(2 * (q[0] * q[1] + q[2] * q[3]), 1 - 2 * (q[1] ** 2 + q[2] ** 2))
@@ -126,9 +145,9 @@ class TrajectoryCamera(NamedTuple):
             {
                 (TRAJ, CSV): rot_to_quat,
                 (TRAJ, UTJ): rot_to_euler,
+                (CSV, TRAJ): quat_to_rot,
                 (CSV, UTJ): quat_to_euler,
                 # TODO
-                (CSV, TRAJ): quat_to_rot,
                 (UTJ, TRAJ): euler_to_rot,
                 (UTJ, CSV): euler_to_quat,
             },
