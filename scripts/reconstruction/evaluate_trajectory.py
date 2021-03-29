@@ -72,8 +72,8 @@ class TartanAir:
             print(f"Scale: {result['scale']}")
             print(f"ATE scale: {result['ate_scale']}")
             print(f"    T: {np_indent(result['ate_T'], '    T: ')}")
-            print(f"    rot: {np_indent(result['ate_rot'], '    rot: ')}")
-            print(f"    trans: {np_indent(result['ate_trans'], '    trans: ')}")
+            print(f"  rot: {np_indent(result['ate_rot'], '  rot: ')}")
+            print(f"trans: {np_indent(result['ate_trans'], 'trans: ')}")
 
         return TartanAir.Result(
             result["ate_score"],
@@ -166,8 +166,8 @@ def convert_airsim_to_log(airsim_rec_path):
 ###############################################################################
 
 
-def evaluate(gt_traj, est_traj):
-    result = TartanAir.evaluate_trajectory(gt_traj, est_traj, scale=True)
+def evaluate(gt_traj, est_traj, scale=True):
+    result = TartanAir.evaluate_trajectory(gt_traj, est_traj, scale)
     print(
         "\n==> ATE: %.4f,\tRPE-R/t: %.4f, %.4f,\tKITTI-R/t: %.4f, %.4f"
         % (
@@ -179,11 +179,11 @@ def evaluate(gt_traj, est_traj):
         )
     )
     result.plot()
-    print(result)
+    # print(result)
     return result.gt_aligned, result.est_aligned
 
 
-def evaluate_files(gt_traj_path, est_traj_path, save_gt_aligned=False, save_est_aligned=False):
+def evaluate_files(gt_traj_path, est_traj_path, save_gt_aligned=False, save_est_aligned=False, scale=True):
     assert os.path.isfile(gt_traj_path), f"File not found: '{gt_traj_path}'"
     assert os.path.isfile(est_traj_path), f"File not found: '{est_traj_path}'"
 
@@ -191,6 +191,7 @@ def evaluate_files(gt_traj_path, est_traj_path, save_gt_aligned=False, save_est_
         # NOTE skip the header and the timestamp column, keeping tx ty tz qx qy qz qw
         gt_traj=np.loadtxt(gt_traj_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7)),
         est_traj=np.loadtxt(est_traj_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7)),
+        scale=scale,
     )
 
     if save_gt_aligned:

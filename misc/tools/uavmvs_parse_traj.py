@@ -266,9 +266,9 @@ def convert_uavmvs_to_airsim_pose(
     camera: TrajectoryCamera, position_transform_fn=None, orientation_transform_fn=None
 ):
     import airsim
-    assert camera.kind == TrajectoryCameraKind.Traj
+    assert camera.kind in [TRAJ, CSV]
     position = convert_uavmvs_to_airsim_position(camera.position, position_transform_fn)
-    qw, qx, qy, qz = map(float, camera._rotation_into(TrajectoryCameraKind.Csv))
+    qw, qx, qy, qz = map(float, camera._rotation_into(CSV))
     orientation = airsim.Quaternionr(qx, qy, qz, qw)
     if orientation_transform_fn is not None:
         pose = airsim.Pose(position, orientation_transform_fn(orientation))

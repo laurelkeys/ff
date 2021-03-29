@@ -18,16 +18,17 @@ try:
     include(FF_PROJECT_ROOT, "misc", "tools", "io_ply")
     from io_ply import read_ply
 
-    include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import (
-        parse_uavmvs,
-        convert_uavmvs_to_airsim_pose,
-        convert_uavmvs_to_airsim_position,
-        transform_uavmvs_position_fn,
-    )
-
     include(FF_PROJECT_ROOT, "scripts", "data", "data_config")
     import data_config as cfg
+
+    include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
+    from uavmvs_parse_traj import (
+        TrajectoryCameraKind,
+        parse_uavmvs,
+        transform_uavmvs_position_fn,
+        convert_uavmvs_to_airsim_pose,
+        convert_uavmvs_to_airsim_position,
+    )
 except:
     raise
 
@@ -166,28 +167,19 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     client.simPlotPoints(points, Rgba.Blue, POINT_CLOUD_POINT_SIZE, is_persistent=True)
 
     if args.trajectory is not None:
-        camera_poses = [convert_uavmvs_to_airsim_pose(_, transform_fn) for _ in args.trajectory]
+        camera_poses = [
+            camera_pose
+            for camera_pose in args.trajectory
+            if not camera_pose.spline_interpolated
+            # if (camera_pose.kind == TrajectoryCameraKind.Traj) or (
+            #     camera_pose.kind == TrajectoryCameraKind.Csv and not camera_pose.spline_interpolated
+            # )
+        ]
+        camera_poses = [convert_uavmvs_to_airsim_pose(_, transform_fn) for _ in camera_poses]
         camera_positions = [pose.position for pose in camera_poses]
 
-        # XXX
-        # camera_poses = [
-        #     Pose(pose.position, Quaternionr(0, 0, 0, w_val=1))
-        #     # Pose(pose.position, quaternion_look_at(pose.position, cfg.Ned.Cidadela_Statue))
-        #     # Pose(pose.position, (cfg.Ned.Cidadela_Statue - pose.position).to_Quaternionr().sgn())
-        #     for pose in camera_poses
-        # ]
-        # for pose in camera_poses:
-        #     print(ff.to_xyzw_str(pose.orientation))
-        # client.simPlotLineList(
-        #     [_ for pose in camera_poses for _ in (pose.position, cfg.Ned.Cidadela_Statue)],
-        #     Rgba.Magenta,
-        #     TRAJECTORY_THICKNESS / 2.0,
-        #     duration=60,
-        # )
-        # XXX
-
         client.simPlotLineStrip(camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, is_persistent=True)
-        client.simPlotPoints(camera_positions, Rgba.White, CAMERA_POSE_SIZE, is_persistent=True)
+        # client.simPlotPoints(camera_positions, Rgba.White, CAMERA_POSE_SIZE, is_persistent=True)
         client.simPlotTransforms(camera_poses, 10 * CAMERA_POSE_SIZE, is_persistent=True)
 
     if args.edit:

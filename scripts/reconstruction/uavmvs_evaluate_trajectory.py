@@ -50,12 +50,13 @@ def main(airsim_log_path, uavmvs_out_path):
                 translation=args.offset, scaling=args.scale
             ),
         )
+        position = position.to_numpy_array()
 
         # NOTE we skip the timestamp anyway (when calling evaluate)
         line_tuple = make_record_line(i, position, orientation=(x, y, z, w), as_string=False)
         uavmvs_traj[i] = np.array(line_tuple[1:], dtype=uavmvs_traj.dtype)
 
-    evaluate(gt_traj=airsim_traj, est_traj=uavmvs_traj)
+    evaluate(gt_traj=airsim_traj, est_traj=uavmvs_traj, scale=True)
 
 
 ###############################################################################
