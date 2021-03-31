@@ -45,10 +45,7 @@ def main(airsim_log_path, uavmvs_out_path):
         # to the original data now, so that they refer to the same coordinates.
         # TODO apply orientation transforms as well...
         position = uavmvs.convert_uavmvs_to_airsim_position(
-            position,
-            position_transform_fn=uavmvs.transform_uavmvs_position_fn(
-                translation=args.offset, scaling=args.scale
-            ),
+            position, translation=args.offset, scaling=args.scale
         )
         position = position.to_numpy_array()
 

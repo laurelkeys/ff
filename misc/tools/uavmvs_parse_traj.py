@@ -258,40 +258,39 @@ parse_uavmvs: Dict[str, Callable[[str], List[TrajectoryCamera]]] = {
 ###############################################################################
 
 
-def transform_uavmvs_position_fn(translation, scaling):
-    def transform_fn(position):
-        import airsim
-        if scaling is not None:
-            position *= scaling
-        if translation is not None:
-            position += airsim.Vector3r(*translation)
-        # TODO rotation
-        del airsim
-        return position
-    return transform_fn
-
-
-def convert_uavmvs_to_airsim_position(camera_position, position_transform_fn=None):
+def convert_uavmvs_to_airsim_position(camera_position, translation=None, scaling=None):
     import airsim
+
     x, y, z = map(float, camera_position)
-    position = airsim.Vector3r(x, -y, -z)
+    y = -y
+    z = -z
+    position = airsim.Vector3r(x, y, z)
+
+    if translation is not None:
+        position += airsim.Vector3r(*map(float, translation))
+    if scaling is not None:
+        position *= float(scaling)
+
     del airsim
-    if position_transform_fn is not None:
-        return position_transform_fn(position)
     return position
 
 
-def convert_uavmvs_to_airsim_pose(
-    camera: TrajectoryCamera, position_transform_fn=None, orientation_transform_fn=None
-):
+def convert_uavmvs_to_airsim_pose(camera: TrajectoryCamera, translation=None, scaling=None):
     import airsim
+
     assert camera.kind in [TRAJ, CSV]
-    position = convert_uavmvs_to_airsim_position(camera.position, position_transform_fn)
+
+    position = convert_uavmvs_to_airsim_position(camera.position, translation, scaling)
+
     qw, qx, qy, qz = map(float, camera._rotation_into(CSV))
-    orientation = airsim.Quaternionr(qx, qy, qz, qw)
-    if orientation_transform_fn is not None:
-        pose = airsim.Pose(position, orientation_transform_fn(orientation))
+    qy = -qy
+    qz = -qz
+    orientation = airsim.Quaternionr(qx, -qy, -qz, qw)
+
+    # NOTE ignore translation and scaling for orientation
+
     pose = airsim.Pose(position, orientation)
+
     del airsim
     return pose
 

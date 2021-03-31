@@ -12,11 +12,7 @@ try:
     from include_in_path import FF_PROJECT_ROOT, include
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import (
-        parse_uavmvs,
-        convert_uavmvs_to_airsim_pose,
-        transform_uavmvs_position_fn,
-    )
+    from uavmvs_parse_traj import parse_uavmvs, convert_uavmvs_to_airsim_pose
 except:
     raise
 
@@ -56,9 +52,10 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush:
         client.simFlushPersistentMarkers()
 
-    transform_fn = transform_uavmvs_position_fn(translation=args.offset, scaling=args.scale)
-
-    camera_poses = [convert_uavmvs_to_airsim_pose(_, transform_fn) for _ in args.trajectory]
+    camera_poses = [
+        convert_uavmvs_to_airsim_pose(_, translation=args.offset, scaling=args.scale)
+        for _ in args.trajectory
+    ]
     n_of_poses = len(camera_poses)
     pad = len(str(n_of_poses))
 

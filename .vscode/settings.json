@@ -1,22 +1,24 @@
 {
+    "python.pythonPath": "${workspaceFolder}/airenv/Scripts/python.exe",
+
     "python.autoComplete.addBrackets": false,
     "python.autoComplete.showAdvancedMembers": true,
     "python.autoComplete.extraPaths": [
         "D:/dev/AirSim/PythonClient",
+        "${workspaceFolder}/misc/tools",
+        "${workspaceFolder}/scripts/reconstruction",
+        // "${workspaceFolder}/scripts/simulation",
         "${workspaceFolder}/vendor/TanksAndTemples",
         "${workspaceFolder}/vendor/tartanair_tools/evaluation",
-        // Note: fixes PyLance for uses of include_in_path.py:
-        "${workspaceFolder}/scripts/reconstruction",
-        "${workspaceFolder}/misc/tools",
     ],
 
     "python.analysis.extraPaths": [
         "D:/dev/AirSim/PythonClient",
+        "${workspaceFolder}/misc/tools",
+        "${workspaceFolder}/scripts/reconstruction",
+        // "${workspaceFolder}/scripts/simulation",
         "${workspaceFolder}/vendor/TanksAndTemples",
         "${workspaceFolder}/vendor/tartanair_tools/evaluation",
-        // Note: fixes PyLance for uses of include_in_path.py:
-        "${workspaceFolder}/scripts/reconstruction",
-        "${workspaceFolder}/misc/tools",
     ],
 
     "python.linting.enabled": false,
@@ -40,7 +42,6 @@
 
         "airenv/": true,
         "scripts/reconstruction/venv3d/": true,
-        "scripts/simulation/venv/": true,
 
         "scripts/reconstruction/.vscode/": true,
         "scripts/simulation/.vscode/": true,
@@ -52,12 +53,12 @@
 
         "vendor/tartanair_tools/LICENSE": true,
         "vendor/tartanair_tools/download*": true,
-        "vendor/tartanair_tools/data_type.md": false, // true,
+        "vendor/tartanair_tools/data_type.md": true, // false
         "vendor/tartanair_tools/TartanAir_Sample.ipynb": true,
 
         "vendor/TanksAndTemples/FAQ.md": true,
         "vendor/TanksAndTemples/LICENSE": true,
-        "vendor/TanksAndTemples/test_data/": false, // true,
+        "vendor/TanksAndTemples/test_data/": true, // false
         "vendor/TanksAndTemples/python_toolbox/*.sh": true,
         "vendor/TanksAndTemples/python_toolbox/*_t2_*.py": true,
         "vendor/TanksAndTemples/python_toolbox/evaluation/images/": true,

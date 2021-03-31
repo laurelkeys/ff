@@ -10,11 +10,7 @@ try:
     from include_in_path import FF_PROJECT_ROOT, include
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import (
-        parse_uavmvs,
-        convert_uavmvs_to_airsim_position,
-        transform_uavmvs_position_fn,
-    )
+    from uavmvs_parse_traj import parse_uavmvs, convert_uavmvs_to_airsim_position
 except:
     raise
 
@@ -47,12 +43,12 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     client.moveToZAsync(z=-10, velocity=2).join()  # XXX avoid colliding
     client.hoverAsync().join()
 
-    transform_fn = transform_uavmvs_position_fn(translation=args.offset, scaling=args.scale)
-
     # NOTE (at least for now) don't worry about matching the camera rotation optimized
     # by uavmvs, simply follow the generated viewpoint positions with the drone.
     camera_positions = [
-        convert_uavmvs_to_airsim_position(camera.position, transform_fn)
+        convert_uavmvs_to_airsim_position(
+            camera.position, translation=args.offset, scaling=args.scale
+        )
         for camera in args.trajectory
     ]
 

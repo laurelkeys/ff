@@ -25,7 +25,6 @@ try:
     from uavmvs_parse_traj import (
         TrajectoryCameraKind,
         parse_uavmvs,
-        transform_uavmvs_position_fn,
         convert_uavmvs_to_airsim_pose,
         convert_uavmvs_to_airsim_position,
     )
@@ -162,23 +161,23 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush:
         client.simFlushPersistentMarkers()
 
-    transform_fn = transform_uavmvs_position_fn(translation=args.offset, scaling=args.scale)
-    points = [convert_uavmvs_to_airsim_position(_, transform_fn) for _ in args.points[:: args.every_k]]
+    points = [
+        convert_uavmvs_to_airsim_position(_, translation=args.offset, scaling=args.scale)
+        for _ in args.points[:: args.every_k]
+    ]
     client.simPlotPoints(points, Rgba.Blue, POINT_CLOUD_POINT_SIZE, is_persistent=True)
 
     if args.trajectory is not None:
+        camera_poses = [_ for _ in args.trajectory if not _.spline_interpolated]
         camera_poses = [
-            camera_pose
-            for camera_pose in args.trajectory
-            if not camera_pose.spline_interpolated
-            # if (camera_pose.kind == TrajectoryCameraKind.Traj) or (
-            #     camera_pose.kind == TrajectoryCameraKind.Csv and not camera_pose.spline_interpolated
-            # )
+            convert_uavmvs_to_airsim_pose(_, translation=args.offset, scaling=args.scale)
+            for _ in camera_poses
         ]
-        camera_poses = [convert_uavmvs_to_airsim_pose(_, transform_fn) for _ in camera_poses]
-        camera_positions = [pose.position for pose in camera_poses]
 
-        client.simPlotLineStrip(camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, is_persistent=True)
+        camera_positions = [_.position for _ in camera_poses]
+        client.simPlotLineStrip(
+            camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, is_persistent=True
+        )
         # client.simPlotPoints(camera_positions, Rgba.White, CAMERA_POSE_SIZE, is_persistent=True)
         client.simPlotTransforms(camera_poses, 10 * CAMERA_POSE_SIZE, is_persistent=True)
 

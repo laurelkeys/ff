@@ -286,6 +286,8 @@ def main():
             traj_rot, csv_quat_to_traj_rot, RTOL, ATOL * 1e3
         ), f"{traj_rot} != {csv_quat_to_traj_rot}"
 
+    print("No asserts fired.")
+
 
 if __name__ == "__main__":
     main()
