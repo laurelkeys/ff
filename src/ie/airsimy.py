@@ -126,6 +126,22 @@ RIGHT = Vector3r( 0,  1,  0)  # East
 LEFT  = Vector3r( 0, -1,  0)  # West
 
 
+def matrix_from_rotation_axis_angle(axis: Vector3r, angle: float) -> np.ndarray:
+    x, y, z = axis.to_numpy_array()
+
+    ca = np.cos(angle)
+    sa = np.sin(angle)
+    omca = 1 - ca
+
+    return np.array(
+        [
+            [ca + (x ** 2) * omca, x * y * omca - z * sa, x * z * omca + y * sa],
+            [y * x * omca + z * sa, ca + (y ** 2) * omca, y * z * omca - x * sa],
+            [z * x * omca - y * sa, z * y * omca + x * sa, ca + (z ** 2) * omca],
+        ]
+    )
+
+
 def quaternion_from_rotation_axis_angle(axis: Vector3r, angle: float) -> Quaternionr:
     angle /= 2
     axis /= axis.get_length()  # normalize

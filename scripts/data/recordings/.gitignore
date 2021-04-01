@@ -1,6 +1,10 @@
 # NOTE keep this folder to store AirSim recordings
 # and their Meshroom reconstructions.
 
+**/*.log
+**/*.json
+**/*.pdf
+
 **/*.png
 **/*.txt
 

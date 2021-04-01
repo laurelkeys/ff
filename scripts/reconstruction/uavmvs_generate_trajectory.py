@@ -62,6 +62,9 @@ AIRSPACE_MIN_D = 3.5
 OPTIMIZE_MIN_D = 2.5
 OPTIMIZE_MAX_D = 50.0
 
+# waypoints per meter for the interpolated trajectory
+RESOLUTION = 0.5
+
 # XXX camera focal length and sensor aspect ratio
 FOCAL_LENGTH = 0.86
 ASPECT_RATIO = 0.66
@@ -150,6 +153,7 @@ def main(args: argparse.Namespace) -> None:
         Uavmvs.interpolate_trajectory(
             in_trajectory   = fn_out("shortened"),
             out_csv         = fn_out("interpolated", ext=".csv"),
+            resolution      = RESOLUTION,
         )
 
     if args.verbose:

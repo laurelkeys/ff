@@ -4,13 +4,12 @@
 
 ```bash
 .
-├── data/                   # Generated data logs (.txt, .ply, .json, ...)
-│
 ├── docs/                   # Project proposal and reports
 │
 ├── misc/                   # General scripts for setup and workflow automation
 │
 ├── scripts/
+│   ├── data/               # Generated data logs (.txt, .ply, .json, ...)
 │   ├── reconstruction/     # Meshroom and Open3D related code
 │   └── simulation/         # AirSim related code for drone control
 │

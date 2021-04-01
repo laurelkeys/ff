@@ -1,7 +1,6 @@
 # To-do list
 - [ ] Automatically change `SimMode` for `cv_*.py` files (and also restore it)
 - [ ] Use longer (more descriptive) names for the files under `scripts/`
-- [ ] Merge `data/` and `scripts/data/`
 - [ ] Only choose the first environment (when there's more than one possibility) if a flag `--choose` is passed
   - [ ] Add an argument so that `$ ... --launch --choose 2` starts the second environment from the list
 - [ ] See https://github.com/harvard-edge/airlearning-rl/blob/master/game_handling/game_handler_class.py#L30

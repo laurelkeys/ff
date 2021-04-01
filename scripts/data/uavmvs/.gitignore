@@ -1,0 +1,17 @@
+# NOTE keep this folder to store the outputs from uavmvs (and related files).
+# See `uavmvs_generate_trajectory.py` and `uavmvs_evaluate_trajectory.py`, for example.
+
+*.csv
+*.traj
+*.utj
+*.vol
+
+*.mtl
+*.obj
+*.png
+
+*.py
+*.sh
+*.txt
+*.out
+*.log

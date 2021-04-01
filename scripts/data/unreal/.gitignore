@@ -1,0 +1,5 @@
+# NOTE keep this folder to store meshes exported from Unreal Engine
+# (which are used as ground-truth).
+
+**/*.fbx
+**/*.ply

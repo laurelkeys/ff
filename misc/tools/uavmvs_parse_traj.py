@@ -287,7 +287,11 @@ def convert_uavmvs_to_airsim_pose(camera: TrajectoryCamera, translation=None, sc
     qz = -qz
     orientation = airsim.Quaternionr(qx, -qy, -qz, qw)
 
-    # NOTE ignore translation and scaling for orientation
+    length = orientation.get_length()
+    assert 0.99 <= length <= 1.01, orientation
+    # orientation /= length
+
+    # NOTE ignore translation and scaling for orientation (we'd only care for rotation)
 
     pose = airsim.Pose(position, orientation)
 

@@ -27,11 +27,6 @@
 *.ply
 **/*cameras.json
 
-# evaluation
-data/**/*.log
-data/**/*.json
-data/**/*.pdf
-
 # old files
 **/v1/reconstruction/models/**/sfm*.json
 **/v1/reconstruction/models/**/cloud_and_poses.json
