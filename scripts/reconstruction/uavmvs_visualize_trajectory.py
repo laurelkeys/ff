@@ -8,10 +8,10 @@ import numpy as np
 import open3d as o3d
 
 try:
-    from include_in_path import include, FF_PROJECT_ROOT
+    from include_in_path import FF_PROJECT_ROOT, include
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import parse_uavmvs, TrajectoryCamera
+    from uavmvs_parse_traj import TrajectoryCamera, TrajectoryCameraKind, parse_uavmvs
 except:
     raise
 
@@ -26,21 +26,45 @@ BLACK = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
 WHITE = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]
 
 
-def coordinate_axes_line_set(axes_origins, size=1.0, colors=None):
+def coordinate_axes_line_set(axes_origins, axes_rotations=None, size=1.0, colors=None):
     points, lines = [], []
 
     # NOTE Open3D can't really handle rendering more than 50 meshes, so we merge
     #      multiple coordinate axes into a single LineSet for it to run smoothly.
 
-    for origin in axes_origins:
+    def update_points_and_lines(origin, x_axis, y_axis, z_axis):
+        def scale_and_translate(xyz):
+            return np.asarray(origin, dtype=np.float32) + size * np.asarray(xyz, dtype=np.float32)
+
         o = len(points)
         lines.extend([[o, o + 1], [o, o + 2], [o, o + 3]])  # o-x o-y o-z
-        points.extend(
-            [
-                np.asarray(origin, dtype=np.float32) + size * np.asarray(_, dtype=np.float32)
-                for _ in [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]]  # o x y z
-            ]
-        )
+        points.extend([scale_and_translate(_) for _ in [[0, 0, 0], x_axis, y_axis, z_axis]])
+
+        # FIXME update colors to work with this:
+        # br, tr, tl, bl = o + 1, o + 2, o + 3, o + 4
+        # lines.extend([[o, br], [o, tr], [o, tl], [o, bl]])  # o-br o-tr o-tl o-bl
+        # lines.extend([[br, tr], [tr, tl], [tl, bl], [bl, br]])  # br-tr tr-tl tl-bl bl-br
+        # sx = 2  # scale z_axis by some small constant factor so that the frustum looks nicer
+        # points.extend(
+        #     [
+        #         scale_and_translate(_)
+        #         for _ in [
+        #             [0, 0, 0],
+        #             sx * z_axis + x_axis - y_axis,  # bottom right
+        #             sx * z_axis + x_axis + y_axis,  # top right
+        #             sx * z_axis - x_axis + y_axis,  # top left
+        #             sx * z_axis - x_axis - y_axis,  # bottom left
+        #         ]
+        #     ]
+        # )
+
+    if axes_rotations is None:
+        for origin in axes_origins:
+            update_points_and_lines(origin, [1, 0, 0], [0, 1, 0], [0, 0, 1])
+    else:
+        assert len(axes_origins) == len(axes_rotations)
+        for origin, rotation in zip(axes_origins, axes_rotations):
+            update_points_and_lines(origin, rotation[:, 0], rotation[:, 1], rotation[:, 2])
 
     if colors is None:
         colors = [RGB for _ in range(len(axes_origins))]
@@ -52,7 +76,7 @@ def coordinate_axes_line_set(axes_origins, size=1.0, colors=None):
     line_set.colors = o3d.utility.Vector3dVector(np.asarray(colors).reshape((-1, 3)))
 
     return line_set  # TODO rotate this based on the camera's rotation
-                     # http://www.open3d.org/docs/latest/tutorial/Basic/transformation.html
+    # http://www.open3d.org/docs/latest/tutorial/Basic/transformation.html
 
 
 ###############################################################################
@@ -60,7 +84,19 @@ def coordinate_axes_line_set(axes_origins, size=1.0, colors=None):
 
 
 def draw_trajectory(args: argparse.Namespace, trajectory: List[TrajectoryCamera]) -> None:
-    camera_positions = [camera.position for camera in trajectory]
+    skipped_any = False
+    camera_positions = []
+    camera_rotation_matrices = []
+    for camera in trajectory:
+        if not camera.spline_interpolated:  # NOTE skips some TrajectoryCameraKind.Csv cameras
+            camera = camera.into(TrajectoryCameraKind.Traj)  # represents rotation as a 3x3 matrix
+            camera_positions.append(camera.position)
+            camera_rotation_matrices.append(camera.rotation)
+        else:
+            skipped_any = True
+
+    if skipped_any:
+        print("Note: some cameras have been skipped (spline interpolated positions)")
 
     if args.export is not None:
         pcd = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(camera_positions))
@@ -68,8 +104,9 @@ def draw_trajectory(args: argparse.Namespace, trajectory: List[TrajectoryCamera]
 
     geometry_list = [
         coordinate_axes_line_set(
-            size=args.size,
             axes_origins=camera_positions,
+            axes_rotations=camera_rotation_matrices,
+            size=args.size,
             colors=[RGB if not camera.spline_interpolated else BLACK for camera in trajectory],
         )
     ]
