@@ -26,7 +26,7 @@ BLACK = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
 WHITE = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]
 
 
-def coordinate_axes_line_set(axes_origins, axes_rotations=None, size=1.0, colors=None):
+def coordinate_axes_line_set(axes_origins, axes_rotations=None, size=1.0, colors=None, frustum=False):
     points, lines = [], []
 
     # NOTE Open3D can't really handle rendering more than 50 meshes, so we merge
@@ -39,24 +39,22 @@ def coordinate_axes_line_set(axes_origins, axes_rotations=None, size=1.0, colors
         o = len(points)
         lines.extend([[o, o + 1], [o, o + 2], [o, o + 3]])  # o-x o-y o-z
         points.extend([scale_and_translate(_) for _ in [[0, 0, 0], x_axis, y_axis, z_axis]])
-
-        # FIXME update colors to work with this:
-        # br, tr, tl, bl = o + 1, o + 2, o + 3, o + 4
-        # lines.extend([[o, br], [o, tr], [o, tl], [o, bl]])  # o-br o-tr o-tl o-bl
-        # lines.extend([[br, tr], [tr, tl], [tl, bl], [bl, br]])  # br-tr tr-tl tl-bl bl-br
-        # sx = 2  # scale z_axis by some small constant factor so that the frustum looks nicer
-        # points.extend(
-        #     [
-        #         scale_and_translate(_)
-        #         for _ in [
-        #             [0, 0, 0],
-        #             sx * z_axis + x_axis - y_axis,  # bottom right
-        #             sx * z_axis + x_axis + y_axis,  # top right
-        #             sx * z_axis - x_axis + y_axis,  # top left
-        #             sx * z_axis - x_axis - y_axis,  # bottom left
-        #         ]
-        #     ]
-        # )
+        if frustum:
+            br, tr, tl, bl = o + 4, o + 5, o + 6, o + 7
+            lines.extend([[o, br], [o, tr], [o, tl], [o, bl]])  # o-br o-tr o-tl o-bl
+            lines.extend([[br, tr], [tr, tl], [tl, bl], [bl, br]])  # br-tr tr-tl tl-bl bl-br
+            sx = 2  # scale z_axis by some small constant factor so that the frustum looks nicer
+            points.extend(
+                [
+                    scale_and_translate(_)
+                    for _ in [
+                        sx * z_axis + x_axis - y_axis,  # bottom right
+                        sx * z_axis + x_axis + y_axis,  # top right
+                        sx * z_axis - x_axis + y_axis,  # top left
+                        sx * z_axis - x_axis - y_axis,  # bottom left
+                    ]
+                ]
+            )
 
     if axes_rotations is None:
         for origin in axes_origins:
@@ -67,7 +65,18 @@ def coordinate_axes_line_set(axes_origins, axes_rotations=None, size=1.0, colors
             update_points_and_lines(origin, rotation[:, 0], rotation[:, 1], rotation[:, 2])
 
     if colors is None:
-        colors = [RGB for _ in range(len(axes_origins))]
+        colors = (
+            [RGB for _ in range(len(axes_origins))]
+            if not frustum
+            else [RGB + ([[0, 0, 0]] * 8) for _ in range(len(axes_origins))]
+        )
+
+    colors = np.asarray(colors).reshape((-1, 3))
+    colors_shape = colors.shape  # (num_lines, 3)
+    lines_shape = np.asarray(lines).shape  # (num_lines, 2)
+    assert (
+        colors_shape[0] == lines_shape[0]
+    ), f"colors.shape = {colors_shape}, lines.shape = {lines_shape}"
 
     line_set = o3d.geometry.LineSet(
         points=o3d.utility.Vector3dVector(points),
@@ -88,7 +97,7 @@ def draw_trajectory(args: argparse.Namespace, trajectory: List[TrajectoryCamera]
     camera_positions = []
     camera_rotation_matrices = []
     for camera in trajectory:
-        if not camera.spline_interpolated:  # NOTE skips some TrajectoryCameraKind.Csv cameras
+        if not camera.spline_interpolated:  # XXX skips some TrajectoryCameraKind.Csv cameras
             camera = camera.into(TrajectoryCameraKind.Traj)  # represents rotation as a 3x3 matrix
             camera_positions.append(camera.position)
             camera_rotation_matrices.append(camera.rotation)
@@ -107,7 +116,8 @@ def draw_trajectory(args: argparse.Namespace, trajectory: List[TrajectoryCamera]
             axes_origins=camera_positions,
             axes_rotations=camera_rotation_matrices,
             size=args.size,
-            colors=[RGB if not camera.spline_interpolated else BLACK for camera in trajectory],
+            # colors=[RGB if not _.spline_interpolated else BLACK for _ in trajectory],  # XXX
+            frustum=True,
         )
     ]
 
