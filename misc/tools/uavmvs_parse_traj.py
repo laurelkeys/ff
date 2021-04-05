@@ -262,6 +262,7 @@ def convert_uavmvs_to_airsim_position(camera_position, translation=None, scaling
     import airsim
 
     x, y, z = map(float, camera_position)
+    # x = -x  # XXX
     y = -y
     z = -z
     position = airsim.Vector3r(x, y, z)
@@ -283,9 +284,10 @@ def convert_uavmvs_to_airsim_pose(camera: TrajectoryCamera, translation=None, sc
     position = convert_uavmvs_to_airsim_position(camera.position, translation, scaling)
 
     qw, qx, qy, qz = map(float, camera._rotation_into(CSV))
+    # qx = -qx  # XXX
     qy = -qy
     qz = -qz
-    orientation = airsim.Quaternionr(qx, -qy, -qz, qw)
+    orientation = airsim.Quaternionr(qx, qy, qz, qw)
 
     length = orientation.get_length()
     assert 0.99 <= length <= 1.01, orientation

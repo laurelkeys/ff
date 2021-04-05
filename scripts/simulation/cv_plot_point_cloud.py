@@ -8,9 +8,9 @@ import ff
 import airsim
 
 from ds import Rgba, EditMode
-from airsim import Pose, Vector3r, Quaternionr
+from airsim import Vector3r
 from ff.helper import input_or_exit
-from ie.airsimy import connect, quaternion_look_at
+from ie.airsimy import connect
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
@@ -18,12 +18,8 @@ try:
     include(FF_PROJECT_ROOT, "misc", "tools", "io_ply")
     from io_ply import read_ply
 
-    include(FF_PROJECT_ROOT, "scripts", "data", "data_config")
-    import data_config as cfg
-
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
     from uavmvs_parse_traj import (
-        TrajectoryCameraKind,
         parse_uavmvs,
         convert_uavmvs_to_airsim_pose,
         convert_uavmvs_to_airsim_position,
@@ -168,16 +164,17 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     client.simPlotPoints(points, Rgba.Blue, POINT_CLOUD_POINT_SIZE, is_persistent=True)
 
     if args.trajectory is not None:
-        camera_poses = [_ for _ in args.trajectory if not _.spline_interpolated]
-        camera_poses = [
-            convert_uavmvs_to_airsim_pose(_, translation=args.offset, scaling=args.scale)
-            for _ in camera_poses
-        ]
+        camera_poses, camera_positions = [], []
+        for i, camera in enumerate(args.trajectory):
+            if not camera.spline_interpolated:  # XXX
+                pose = convert_uavmvs_to_airsim_pose(camera=camera, translation=args.offset, scaling=args.scale)
+                # print(f"=== {i} ===")
+                # print(camera)
+                # print(pose)
+                camera_poses.append(pose)
+                camera_positions.append(pose.position)
 
-        camera_positions = [_.position for _ in camera_poses]
-        client.simPlotLineStrip(
-            camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, is_persistent=True
-        )
+        # client.simPlotLineStrip(camera_positions, Rgba.Black, TRAJECTORY_THICKNESS, is_persistent=True)
         # client.simPlotPoints(camera_positions, Rgba.White, CAMERA_POSE_SIZE, is_persistent=True)
         client.simPlotTransforms(camera_poses, 10 * CAMERA_POSE_SIZE, is_persistent=True)
 
