@@ -6,8 +6,8 @@
     "python.autoComplete.extraPaths": [
         "D:/dev/AirSim/PythonClient",
         "${workspaceFolder}/misc/tools",
+        "${workspaceFolder}/scripts",
         "${workspaceFolder}/scripts/reconstruction",
-        // "${workspaceFolder}/scripts/simulation",
         "${workspaceFolder}/vendor/TanksAndTemples",
         "${workspaceFolder}/vendor/tartanair_tools/evaluation",
     ],
@@ -15,8 +15,8 @@
     "python.analysis.extraPaths": [
         "D:/dev/AirSim/PythonClient",
         "${workspaceFolder}/misc/tools",
+        "${workspaceFolder}/scripts",
         "${workspaceFolder}/scripts/reconstruction",
-        // "${workspaceFolder}/scripts/simulation",
         "${workspaceFolder}/vendor/TanksAndTemples",
         "${workspaceFolder}/vendor/tartanair_tools/evaluation",
     ],
