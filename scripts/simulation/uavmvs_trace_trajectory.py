@@ -1,12 +1,14 @@
 import os
 import argparse
-from airsim.types import DrivetrainType, Vector3r, YawMode
 
 import ff
+import numpy as np
 import airsim
-from ff.types import to_xyz_str
 
-from ie.airsimy import connect
+from ff.types import to_xyz_str
+from ie.airsimy import connect, quaternion_look_at
+from airsim.types import Quaternionr, YawMode, Vector3r, DrivetrainType
+from airsim.utils import to_quaternion
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
@@ -44,7 +46,17 @@ def preflight(args: argparse.Namespace) -> None:
 ###############################################################################
 
 
-TEST_AIMING_AT_ROI = True  # HACK improve this after testing
+# HACK fix after testing
+TEST_AIMING_AT_ROI = True
+center_of_roi = data_config.Ned.Cidadela_Statue
+
+
+def angle_between(v1, v2):
+    def clipped_arccos(x):
+        if x < -1.0: return 3.141592653589793  # arccos(-1.0)
+        if x > 1.0: return 0.0  # arccos(1.0)
+        return np.arccos(x)
+    return clipped_arccos(v1.dot(v2) / (v1.get_length() * v2.get_length()))
 
 
 YAW_N = 0
@@ -78,31 +90,41 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             *ff.to_xyz_tuple(position),
             velocity=2,
             drivetrain=DrivetrainType.MaxDegreeOfFreedom,
-            yaw_mode=YawMode(is_rate=False, yaw_or_rate=-90),
+            yaw_mode=YawMode(is_rate=False, yaw_or_rate=YAW_N),
         ).join()
 
         client.simPause(True)
         kinematics = client.simGetGroundTruthKinematics()
+        camera_info = client.simGetCameraInfo(ff.CameraName.front_center)
         client.simPause(False)
+
         print_record_line(kinematics)
 
-        def plot_arrow(unit_vector, r, g, b, scale=1.2):
-            client.simPlotArrows(
-                [kinematics.position],
-                [kinematics.position + unit_vector * scale],
-                color_rgba=[r, g, b, 1.0],
-                duration=5,
-            )
-
-        plot_arrow(Vector3r(1, 0, 0), 1, 0, 0)
-        plot_arrow(Vector3r(0, 1, 0), 0, 1, 0)
-        plot_arrow(Vector3r(0, 0, 1), 0, 0, 1)
-
         if TEST_AIMING_AT_ROI:
-            body_to_roi = data_config.Ned.Cidadela_Statue - kinematics.position
+            body_to_roi = center_of_roi - kinematics.position
             unit_body_to_roi = body_to_roi / body_to_roi.get_length()
-            # ff.log_info(f"{to_xyz_str(body_to_roi)} (unit = {to_xyz_str(unit_body_to_roi)})")
+            ff.log_info(f"{to_xyz_str(body_to_roi)} (unit = {to_xyz_str(unit_body_to_roi)})")
+
+            def plot_arrow(unit_vector, r, g, b, scale=1.2):
+                client.simPlotArrows(
+                    [kinematics.position],
+                    [kinematics.position + unit_vector * scale],
+                    color_rgba=[r, g, b, 1.0],
+                    duration=5,
+                )
+
+            plot_arrow(Vector3r(1, 0, 0), 1, 0, 0)
+            plot_arrow(Vector3r(0, 1, 0), 0, 1, 0)
+            plot_arrow(Vector3r(0, 0, 1), 0, 0, 1)
             plot_arrow(unit_body_to_roi, 1, 0, 1)
+
+            pose = camera_info.pose
+            # x = pose.position.x_val
+            # y = pose.position.y_val
+            # z = pose.position.z_val
+            # pose.orientation = Quaternionr(x, y, z, 0)
+            pose.orientation = quaternion_look_at(source_point=pose.position, target_point=center_of_roi)
+            client.simSetCameraPose(ff.CameraName.front_center, pose)
 
 
 
