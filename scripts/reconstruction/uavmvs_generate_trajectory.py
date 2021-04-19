@@ -133,28 +133,40 @@ def main(args: argparse.Namespace) -> None:
 
     # fmt:off
     def refine(in_trajectory, fn_out):
-        Uavmvs.optimize_trajectory(
-            in_trajectory   = in_trajectory,
-            proxy_mesh      = PROXY_MESH,
-            proxy_cloud     = PROXY_CLOUD,
-            airspace        = AIRSPACE,
-            out_trajectory  = fn_out("optimized"),
-            min_distance    = OPTIMIZE_MIN_D,
-            max_distance    = OPTIMIZE_MAX_D,
-            max_iters       = 3000,
-        )
-        if args.verbose:
-            # i oindices.size() avg_wrecon volume
-            print(f"# > {fn_out('optimized', ext='.out')}")
-        Uavmvs.shorten_trajectory(
-            in_trajectory   = fn_out("optimized"),
-            out_trajectory  = fn_out("shortened"),
-        )
-        Uavmvs.interpolate_trajectory(
-            in_trajectory   = fn_out("shortened"),
-            out_csv         = fn_out("interpolated", ext=".csv"),
-            resolution      = RESOLUTION,
-        )
+        if args.no_optimize:
+            if args.verbose:
+                print(f"\n# skipped optimize_trajectory")
+            Uavmvs.shorten_trajectory(
+                in_trajectory   = in_trajectory,
+                out_trajectory  = fn_out("shortened"),
+            )
+        else:
+            Uavmvs.optimize_trajectory(
+                in_trajectory   = in_trajectory,
+                proxy_mesh      = PROXY_MESH,
+                proxy_cloud     = PROXY_CLOUD,
+                airspace        = AIRSPACE,
+                out_trajectory  = fn_out("optimized"),
+                min_distance    = OPTIMIZE_MIN_D,
+                max_distance    = OPTIMIZE_MAX_D,
+                max_iters       = 3000,
+            )
+            if args.verbose:
+                # i oindices.size() avg_wrecon volume
+                print(f"# > {fn_out('optimized', ext='.out')}")
+            Uavmvs.shorten_trajectory(
+                in_trajectory   = fn_out("optimized"),
+                out_trajectory  = fn_out("shortened"),
+            )
+        if args.no_interpolate:
+            if args.verbose:
+                print(f"\n# skipped interpolate_trajectory")
+        else:
+            Uavmvs.interpolate_trajectory(
+                in_trajectory   = fn_out("shortened"),
+                out_csv         = fn_out("interpolated", ext=".csv"),
+                resolution      = RESOLUTION,
+            )
 
     if args.verbose:
         print("\n#\n# geometric scene proxy\n#")
@@ -243,6 +255,9 @@ if __name__ == "__main__":
 
     parser.add_argument("--planar", action="store_true", help="Generate planar trajectory")
     parser.add_argument("--spatial", action="store_true", help="Generate spatial trajectory")
+
+    parser.add_argument("--no_optimize", action="store_true", help="Shorten the initial trajectory")
+    parser.add_argument("--no_interpolate", action="store_true", help="Skip spline interpolation")
 
     parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")
 
