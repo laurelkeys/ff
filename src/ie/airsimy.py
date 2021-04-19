@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Dict, List, Union, cast
+from contextlib import contextmanager
 
 import ff
 import numpy as np
@@ -33,6 +34,19 @@ def reset(client: airsim.MultirotorClient) -> None:
     client.reset()
     client.enableApiControl(True)
     client.armDisarm(True)
+
+
+###############################################################################
+###############################################################################
+
+
+@contextmanager
+def paused_simulation(client: airsim.MultirotorClient):
+    client.simPause(is_paused=True)
+    try:
+        yield client.simGetVehiclePose()
+    finally:
+        client.simPause(is_paused=False)
 
 
 ###############################################################################
@@ -117,6 +131,13 @@ class AirSimImage:
 ###############################################################################
 
 
+# NOTE this values can be used with YawMode(is_rate=False) to change orientation
+YAW_N =   0  # North
+YAW_E =  90  # East
+YAW_W = -90  # West
+YAW_S = 180  # South
+
+
 # NOTE see AirLib/include/common/VectorMath.hpp
 FRONT = Vector3r( 1,  0,  0)  # North
 BACK  = Vector3r(-1,  0,  0)  # South
@@ -124,6 +145,10 @@ DOWN  = Vector3r( 0,  0,  1)
 UP    = Vector3r( 0,  0, -1)
 RIGHT = Vector3r( 0,  1,  0)  # East
 LEFT  = Vector3r( 0, -1,  0)  # West
+
+
+###############################################################################
+###############################################################################
 
 
 def matrix_from_rotation_axis_angle(axis: Vector3r, angle: float) -> np.ndarray:

@@ -18,7 +18,8 @@ from ff.types import Vec3
 
 # https://microsoft.github.io/AirSim/apis/#apis-for-multirotor
 USE_AIRSIM_HIGH_LEVEL_CONTROL = True
-ff.log_warning(f"{USE_AIRSIM_HIGH_LEVEL_CONTROL=}")
+if not USE_AIRSIM_HIGH_LEVEL_CONTROL:
+    ff.log_warning(f"{USE_AIRSIM_HIGH_LEVEL_CONTROL=}")
 
 CONFIRMATION_DISTANCE = 3.0
 WAIT_TIME = 0.1  # FIXME using `time.sleep` won't go well with changing clock speeds

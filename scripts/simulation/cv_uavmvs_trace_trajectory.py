@@ -55,12 +55,6 @@ TEST_AIMING_AT_ROI = True
 center_of_roi = data_config.Ned.Cidadela_Statue
 
 
-YAW_N = 0
-YAW_E = 90
-YAW_W = -90
-YAW_S = 180
-
-
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     initial_pose = client.simGetVehiclePose()
     if args.verbose:
