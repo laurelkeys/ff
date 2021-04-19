@@ -2,7 +2,6 @@ import os
 import argparse
 
 import ff
-import numpy as np
 import airsim
 
 from ff.types import to_xyz_str
@@ -49,14 +48,6 @@ def preflight(args: argparse.Namespace) -> None:
 # HACK fix after testing
 TEST_AIMING_AT_ROI = True
 center_of_roi = data_config.Ned.Cidadela_Statue
-
-
-def angle_between(v1, v2):
-    def clipped_arccos(x):
-        if x < -1.0: return 3.141592653589793  # arccos(-1.0)
-        if x > 1.0: return 0.0  # arccos(1.0)
-        return np.arccos(x)
-    return clipped_arccos(v1.dot(v2) / (v1.get_length() * v2.get_length()))
 
 
 YAW_N = 0

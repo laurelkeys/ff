@@ -16,3 +16,4 @@
 - [ ] See https://github.com/microsoft/AirSim-Drone-Racing-Lab/blob/master/baselines/baseline_racer.py#L36
 - [ ] See https://github.com/microsoft/AirSim/issues/3251
 - [ ] See https://github.com/microsoft/AirSim/pull/3239/files
+- [ ] See https://github.com/microsoft/AirSim-Drone-Racing-VAE-Imitation/blob/master/racing_utils/geom_utils.py

@@ -5,14 +5,20 @@ import argparse
 import ff
 import airsim
 
+from ie import airsimy
 from ff.types import to_xyz_str
-from ie.airsimy import AirSimImage, connect
+from ie.airsimy import AirSimImage, connect, quaternion_look_at, quaternion_from_two_vectors
+from airsim.types import Pose, Quaternionr
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import parse_uavmvs, convert_uavmvs_to_airsim_pose
+    from uavmvs_parse_traj import (parse_uavmvs, convert_uavmvs_to_airsim_pose,
+                                   convert_uavmvs_to_airsim_position)
+
+    include(FF_PROJECT_ROOT, "scripts", "data_config")
+    import data_config
 except:
     raise
 
@@ -44,6 +50,17 @@ def preflight(args: argparse.Namespace) -> None:
 ###############################################################################
 
 
+# HACK fix after testing
+TEST_AIMING_AT_ROI = True
+center_of_roi = data_config.Ned.Cidadela_Statue
+
+
+YAW_N = 0
+YAW_E = 90
+YAW_W = -90
+YAW_S = 180
+
+
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     initial_pose = client.simGetVehiclePose()
     if args.verbose:
@@ -52,10 +69,27 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush:
         client.simFlushPersistentMarkers()
 
-    camera_poses = [
-        convert_uavmvs_to_airsim_pose(_, translation=args.offset, scaling=args.scale)
-        for _ in args.trajectory
-    ]
+    if not TEST_AIMING_AT_ROI:
+        camera_poses = [
+            convert_uavmvs_to_airsim_pose(_, translation=args.offset, scaling=args.scale)
+            for _ in args.trajectory
+        ]
+    else:
+        camera_poses = []
+        for camera in args.trajectory:
+            pose = Pose()
+            pose.position = convert_uavmvs_to_airsim_position(
+                camera.position, translation=args.offset, scaling=args.scale
+            )
+            eye_to_roi = airsimy.UP
+            # eye_to_roi = center_of_roi - pose.position
+            x = eye_to_roi.x_val
+            y = eye_to_roi.y_val
+            z = eye_to_roi.z_val
+            pose.orientation = Quaternionr(-x, y, z, 0)
+            # pose.orientation = quaternion_look_at(source_point=pose.position, target_point=center_of_roi)
+            camera_poses.append(pose)
+
     n_of_poses = len(camera_poses)
     pad = len(str(n_of_poses))
 

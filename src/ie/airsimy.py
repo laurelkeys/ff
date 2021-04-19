@@ -142,6 +142,19 @@ def matrix_from_rotation_axis_angle(axis: Vector3r, angle: float) -> np.ndarray:
     )
 
 
+def quaternion_from_two_vectors(a: Vector3r, b: Vector3r) -> Quaternionr:
+    # Reference: https://gitlab.com/libeigen/eigen/-/blob/master/Eigen/src/Geometry/Quaternion.h
+    v0 = a / a.get_length()
+    v1 = b / b.get_length()
+    c = v1.dot(v0)
+
+    assert c > -1  # FIXME handle the case when the vectors are nearly opposites
+
+    s = np.sqrt((1 + c) * 2)
+    axis = v0.cross(v1) / s
+    return Quaternionr(axis.x_val, axis.y_val, axis.z_val, w_val=(s / 2))
+
+
 def quaternion_from_rotation_axis_angle(axis: Vector3r, angle: float) -> Quaternionr:
     angle /= 2
     axis /= axis.get_length()  # normalize
