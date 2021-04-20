@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Dict, List, Union, cast
 from contextlib import contextmanager
 
@@ -151,7 +152,69 @@ LEFT  = Vector3r( 0, -1,  0)  # West
 ###############################################################################
 
 
-def matrix_from_rotation_axis_angle(axis: Vector3r, angle: float) -> np.ndarray:
+class AirSimNedTransform:
+    # References:
+    #   https://github.com/microsoft/AirSim/blob/master/docs/apis.md#coordinate-system
+    #   https://github.com/microsoft/AirSim/blob/master/Unreal/Plugins/AirSim/Source/NedTransform.h
+
+    class CoordinateSystem(Enum):
+        """ Vehicles are spawned at position specified in settings in global NED. """
+        Unreal    = 1  # UU or Unreal Units or Unreal Coordinate system
+        GlobalNed = 2  # NED transformation of UU with origin set to 0,0,0
+        LocalNed  = 3  # NED transformation of UU with origin set to vehicle's spawning UU location
+        Geo       = 4  # GPS coordinate where UU origin is assigned some geo-coordinate
+
+    # NOTE UU  is left  handed, with units in centimeters, and +X = Front, +Y = Right, +Z = Up
+    # NOTE NED is right handed, with units in      meters, and +X = North, +Y = East,  +Z = Down
+
+    UU_TO_NED_SCALE = 0.01
+    NED_TO_UU_SCALE = 100
+
+    @staticmethod
+    def vector_from_uu_to_ned(v: Vector3r, scale: float = UU_TO_NED_SCALE):
+        return Vector3r(v.x_val * scale, v.y_val * scale, -v.z_val * scale)
+
+    @staticmethod
+    def vector_from_ned_to_uu(v: Vector3r, scale: float = NED_TO_UU_SCALE):
+        return Vector3r(v.x_val * scale, v.y_val * scale, -v.z_val * scale)
+
+    @staticmethod
+    def quaternion_from_uu_to_ned(q: Quaternionr):
+        return Quaternionr(-q.x_val, -q.y_val, q.z_val, w_val=q.w_val)
+
+    @staticmethod
+    def quaternion_from_ned_to_uu(q: Quaternionr):
+        return Quaternionr(-q.x_val, -q.y_val, q.z_val, w_val=q.w_val)
+
+
+###############################################################################
+###############################################################################
+
+
+def matrix_from_eularian_angles(pitch: float, roll: float, yaw: float, is_degrees: bool = False) -> np.ndarray:
+    # Reference: https://github.com/microsoft/AirSim/blob/master/PythonClient/computer_vision/capture_ir_segmentation.py
+    if is_degrees:
+        pitch = np.deg2rad(pitch)
+        yaw = np.deg2rad(yaw)
+        roll = np.deg2rad(roll)
+
+    sp, cp = np.sin(pitch), np.cos(pitch)
+    sy, cy = np.sin(yaw), np.cos(yaw)
+    sr, cr = np.sin(roll), np.cos(roll)
+
+    Rx = np.array([[1, 0, 0], [0, cr, -sr], [0, sr, cr]])
+    Ry = np.array([[cp, 0, sp], [0, 1, 0], [-sp, 0, cp]])
+    Rz = np.array([[cy, -sy, 0], [sy, cy, 0], [0, 0, 1]])
+
+    # NOTE roll is applied first, then pitch, then yaw.
+    RyRx = np.matmul(Ry, Rx)
+    return np.matmul(Rz, RyRx)
+
+
+def matrix_from_rotation_axis_angle(axis: Vector3r, angle: float, is_degrees: bool = False) -> np.ndarray:
+    if is_degrees:
+        angle = np.deg2rad(angle)
+
     x, y, z = axis.to_numpy_array()
 
     ca = np.cos(angle)
@@ -180,23 +243,89 @@ def quaternion_from_two_vectors(a: Vector3r, b: Vector3r) -> Quaternionr:
     return Quaternionr(axis.x_val, axis.y_val, axis.z_val, w_val=(s / 2))
 
 
-def quaternion_from_rotation_axis_angle(axis: Vector3r, angle: float) -> Quaternionr:
-    angle /= 2
+def quaternion_from_rotation_axis_angle(axis: Vector3r, angle: float, is_degrees: bool = False) -> Quaternionr:
+    # Reference: https://github.com/microsoft/AirSim/blob/master/AirLibUnitTests/QuaternionTest.hpp
+    if is_degrees:
+        angle = np.deg2rad(angle)
+
+    half_angle = angle / 2
     axis /= axis.get_length()  # normalize
-    axis *= np.sin(angle / 2)
-    return Quaternionr(axis.x_val, axis.y_val, axis.z_val, w_val=np.cos(angle / 2))
+    axis *= np.sin(half_angle)
+    return Quaternionr(axis.x_val, axis.y_val, axis.z_val, w_val=np.cos(half_angle))
 
 
 def quaternion_look_at(source_point: Vector3r, target_point: Vector3r) -> Quaternionr:
+    # Reference: https://github.com/microsoft/AirSim/blob/master/AirLibUnitTests/QuaternionTest.hpp
     to_vector = target_point - source_point
-    to_vector /= to_vector.get_length()  # normalize
 
-    dot = FRONT.dot(to_vector)
     axis = FRONT.cross(to_vector)
-    length = axis.get_length()
-    axis = UP if length == 0 else axis / length  # normalize
+    axis = UP if axis.get_length() == 0 else axis / axis.get_length()  # normalize
 
-    return quaternion_from_rotation_axis_angle(axis, angle=np.arccos(dot))
+    return quaternion_from_rotation_axis_angle(axis, angle=np.arccos(FRONT.dot(to_vector)))
+
+
+def rotate_vector_by_quaternion(v: Vector3r, q: Quaternionr) -> Vector3r:
+    # Reference: https://gamedev.stackexchange.com/questions/28395/rotating-vector3-by-a-quaternion
+    if q.get_length() != 1.0: q /= q.get_length()  # normalize q if it isn't a unit quaternion
+    u, s = Vector3r(q.x_val, q.y_val, q.z_val), q.w_val  # extract vector and scalar parts of q
+    v_prime = u * (2 * u.dot(v)) + v * (s * s - u.dot(u)) + u.cross(v) * (2 * s)
+    return v_prime  # TODO assert v_prime == (q * v * q.conjugate())
+
+
+if False:
+    def matrix_from_rotator(pitch: float, yaw: float, roll: float, is_degrees: bool = False) -> np.ndarray:
+        """ Reference: https://docs.unrealengine.com/en-US/API/Runtime/Core/Math/FRotator/index.html
+
+            `pitch`: Rotation around the right axis (around Y axis), Looking up and down (0=Straight Ahead, +Up, -Down).
+            `yaw`:   Rotation around the up axis (around Z axis), Running in circles 0=East, +North, -South.
+            `roll`:  Rotation around the forward axis (around X axis), Tilting your head, 0=Straight, +Clockwise, -CCW.
+        """
+        if is_degrees:
+            pitch = np.deg2rad(pitch)
+            yaw = np.deg2rad(yaw)
+            roll = np.deg2rad(roll)
+
+        sp, cp = np.sin(pitch), np.cos(pitch)
+        sy, cy = np.sin(yaw), np.cos(yaw)
+        sr, cr = np.sin(roll), np.cos(roll)
+
+        x_axis = [(cp * cy), (cp * sy), sp]
+        y_axis = [(sr * sp * cy - cr * sy), (sr * sp * sy + cr * cy), -(sr * cp)]
+        z_axis = [-(cr * sp * cy + sr * sy), (cy * sr - cr * sp * sy), (cr * cp)]
+
+        rotation_matrix = np.hstack((np.vstack((x_axis, y_axis, z_axis, [0, 0, 0])), [0, 0, 0, 1]))
+
+        return rotation_matrix
+
+
+    def quaternion_from_rotator(pitch: float, yaw: float, roll: float, is_degrees: bool = False) -> Quaternionr:
+        """ Reference: https://docs.unrealengine.com/en-US/API/Runtime/Core/Math/FRotator/index.html
+
+            `pitch`: Rotation around the right axis (around Y axis), Looking up and down (0=Straight Ahead, +Up, -Down).
+            `yaw`:   Rotation around the up axis (around Z axis), Running in circles 0=East, +North, -South.
+            `roll`:  Rotation around the forward axis (around X axis), Tilting your head, 0=Straight, +Clockwise, -CCW.
+        """
+        if is_degrees:
+            pitch = np.deg2rad(np.fmod(pitch, 360))
+            yaw = np.deg2rad(np.fmod(yaw, 360))
+            roll = np.deg2rad(np.fmod(roll, 360))
+
+        pitch *= 0.5
+        yaw *= 0.5
+        roll *= 0.5
+
+        sp, cp = np.sin(pitch), np.cos(pitch)
+        sy, cy = np.sin(yaw), np.cos(yaw)
+        sr, cr = np.sin(roll), np.cos(roll)
+
+        x = +(cr * sp * sy) - (sr * cp * cy)
+        y = -(cr * sp * cy) - (sr * cp * sy)
+        z = +(cr * cp * sy) - (sr * sp * cy)
+        w = +(cr * cp * cy) + (sr * sp * sy)
+
+        # NOTE calling airsim.to_quaternion(pitch, roll, yaw) is equivalent to
+        # passing this return to AirSimNedTransform.quaternion_from_uu_to_ned.
+        return Quaternionr(x, y, z, w_val=w)
 
 
 ###############################################################################

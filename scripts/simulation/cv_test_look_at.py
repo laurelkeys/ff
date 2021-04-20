@@ -6,8 +6,8 @@ import airsim
 
 from ie import airsimy
 from ds.rgba import Rgba
-from ie.airsimy import connect
-from airsim.types import Vector3r
+from ie.airsimy import connect, matrix_from_eularian_angles, quaternion_from_two_vectors
+from airsim.types import Pose, Vector3r
 from airsim.utils import to_quaternion, to_eularian_angles
 
 try:
@@ -48,6 +48,15 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.reset: client.reset()
     client.simFlushPersistentMarkers()
 
+    def plot_transform(p, q, scale=1.0, thickness=1.0, duration = -1.0, is_persistent = False):
+        pitch, roll, yaw = to_eularian_angles(q)
+        rotation_matrix = matrix_from_eularian_angles(pitch, roll, yaw)
+        x_axis = rotation_matrix[0, :]
+        y_axis = rotation_matrix[1, :]
+        z_axis = rotation_matrix[2, :]
+        client.simPlotArrows([p], )
+        simPlotTransforms(self, poses, scale = 5.0, thickness = 5.0, duration = -1.0, is_persistent = False):
+
     with airsimy.paused_simulation(client) as pose:
         p = pose.position
         q = pose.orientation
@@ -73,13 +82,15 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         #
 
         pitch, roll, yaw = to_eularian_angles(q)
-        pitch += np.deg2rad(args.pitch)  # rotates X^Z
-        roll += np.deg2rad(args.roll)  # rotates Z^Y
-        yaw += np.deg2rad(args.yaw)  # rotates X^Y
+        pitch += np.deg2rad(args.pitch)  # rotates X^Z in UE4 coordinate system
+        roll += np.deg2rad(args.roll)  # rotates Z^Y in UE4 coordinate system
+        yaw += np.deg2rad(args.yaw)  # rotates X^Y in UE4 coordinate system
         pose.orientation = to_quaternion(pitch, roll, yaw)
 
+        pose.orientation = quaternion_from_two_vectors(airsimy.FRONT, LOOK_AT_TARGET - airsimy.FRONT)
+
         client.simPlotTransforms([pose], scale=200, thickness=2.5, is_persistent=True)
-        client.simSetVehiclePose(pose, ignore_collison=True)
+        # client.simSetVehiclePose(pose, ignore_collison=True)
 
 
 ###############################################################################
