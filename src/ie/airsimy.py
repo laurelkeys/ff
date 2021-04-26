@@ -54,6 +54,17 @@ def paused_simulation(client: airsim.MultirotorClient):
 ###############################################################################
 
 
+def compute_camera_intrinsics(image_width, image_height, fov, is_degrees=False):
+    if is_degrees:
+        fov = np.deg2rad(fov)
+
+    f = image_width / (2 * np.tan(fov))
+    cu = image_width / 2
+    cv = image_height / 2
+
+    return np.array([[f, 0, cu], [0, f, cv], [0, 0, 1]])
+
+
 class AirSimImage:
     @staticmethod
     def array_from_uncompressed(image, height, width):
@@ -132,7 +143,7 @@ class AirSimImage:
 ###############################################################################
 
 
-# NOTE this values can be used with YawMode(is_rate=False) to change orientation
+# NOTE these values can be used with YawMode(is_rate=False) to change orientation
 YAW_N =   0  # North
 YAW_E =  90  # East
 YAW_W = -90  # West
@@ -231,7 +242,7 @@ def matrix_from_rotation_axis_angle(axis: Vector3r, angle: float, is_degrees: bo
 
 
 def quaternion_from_two_vectors(a: Vector3r, b: Vector3r) -> Quaternionr:
-    # Reference: https://gitlab.com/libeigen/eigen/-/blob/master/Eigen/src/Geometry/Quaternion.h
+    # Reference: https://gitlab.com/libeigen/eigen/-/blob/master/Eigen/src/Geometry/Quaternion.h (FromTwoVectors)
     v0 = a / a.get_length()
     v1 = b / b.get_length()
     c = v1.dot(v0)
@@ -244,7 +255,6 @@ def quaternion_from_two_vectors(a: Vector3r, b: Vector3r) -> Quaternionr:
 
 
 def quaternion_from_rotation_axis_angle(axis: Vector3r, angle: float, is_degrees: bool = False) -> Quaternionr:
-    # Reference: https://github.com/microsoft/AirSim/blob/master/AirLibUnitTests/QuaternionTest.hpp
     if is_degrees:
         angle = np.deg2rad(angle)
 
@@ -255,7 +265,7 @@ def quaternion_from_rotation_axis_angle(axis: Vector3r, angle: float, is_degrees
 
 
 def quaternion_look_at(source_point: Vector3r, target_point: Vector3r) -> Quaternionr:
-    # Reference: https://github.com/microsoft/AirSim/blob/master/AirLibUnitTests/QuaternionTest.hpp
+    # Reference: https://github.com/microsoft/AirSim/blob/master/AirLibUnitTests/QuaternionTest.hpp (lookAt)
     to_vector = target_point - source_point
 
     axis = FRONT.cross(to_vector)
@@ -265,11 +275,23 @@ def quaternion_look_at(source_point: Vector3r, target_point: Vector3r) -> Quater
 
 
 def rotate_vector_by_quaternion(v: Vector3r, q: Quaternionr) -> Vector3r:
+    if q.get_length() != 1.0:
+        q /= q.get_length()  # normalize
+
+    # Extract the vector and scalar parts of q:
+    u, s = Vector3r(q.x_val, q.y_val, q.z_val), q.w_val
+
+    # NOTE the results from these two methods are the same up to 7 decimal places.
+
     # Reference: https://gamedev.stackexchange.com/questions/28395/rotating-vector3-by-a-quaternion
-    if q.get_length() != 1.0: q /= q.get_length()  # normalize q if it isn't a unit quaternion
-    u, s = Vector3r(q.x_val, q.y_val, q.z_val), q.w_val  # extract vector and scalar parts of q
-    v_prime = u * (2 * u.dot(v)) + v * (s * s - u.dot(u)) + u.cross(v) * (2 * s)
-    return v_prime  # TODO assert v_prime == (q * v * q.conjugate())
+    # v_prime = u * (2 * u.dot(v)) + v * (s * s - u.dot(u)) + u.cross(v) * (2 * s)
+
+    # Reference: https://gitlab.com/libeigen/eigen/-/blob/master/Eigen/src/Geometry/Quaternion.h (_transformVector)
+    uv = u.cross(v)
+    uv += uv
+    v_prime = v + uv * s + u.cross(uv)
+
+    return v_prime
 
 
 if False:
