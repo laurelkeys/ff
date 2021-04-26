@@ -42,7 +42,7 @@ def reset(client: airsim.MultirotorClient) -> None:
 
 
 @contextmanager
-def paused_simulation(client: airsim.MultirotorClient):
+def pose_at_simulation_pause(client: airsim.MultirotorClient):
     client.simPause(is_paused=True)
     try:
         yield client.simGetVehiclePose()
