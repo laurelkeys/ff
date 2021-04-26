@@ -105,8 +105,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         print(f"{q = }")
 
         client.simPlotArrows([p], [LOOK_AT_TARGET], Rgba.White, is_persistent=True)
-        # client.simPlotTransforms([pose], scale=110, thickness=1.0, is_persistent=True)
-        plot_pose(client, pose)
+        ## plot_pose(client, pose)
 
         # NOTE use x' = (LOOK_AT_TARGET - p) as the new x-axis (i.e. front vector),
         # and project the current up/down vector (z-axis in AirSim) into the plane
@@ -123,21 +122,15 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         y_prime /= y_prime.get_length()
         z_prime /= z_prime.get_length()
 
-        plot_xyz_axis(client, x_prime, y_prime, z_prime, origin=p)
+        ## plot_xyz_axis(client, x_prime, y_prime, z_prime, origin=p)
 
         # Now, find the orientation that corresponds to the x'-y'-z' axis frame:
-        # ref.: https://math.stackexchange.com/a/909245
-        quat = lambda v: Quaternionr(v.x_val, v.y_val, v.z_val, w_val=0)
-        qx = quat(x_prime) * quat(X)
-        qy = quat(y_prime) * quat(Y)
-        qz = quat(z_prime) * quat(Z)
-        rx = qx.x_val + qy.x_val + qz.x_val
-        ry = qx.y_val + qy.y_val + qz.y_val
-        rz = qx.z_val + qy.z_val + qz.z_val
-        rw = qx.w_val + qy.w_val + qz.w_val
-        rotation = Quaternionr(-rx, -ry, -rz, w_val=(1 - rw))
-        rotation /= rotation.get_length()  # normalize
-        plot_pose(client, Pose(p, rotation))
+        orientation = airsimy.quaternion_that_rotates_axis_frame(
+            source_xyz_axis=(X, Y, Z),
+            target_xyz_axis=(x_prime, y_prime, z_prime),
+        )
+
+        plot_pose(client, Pose(p, orientation))
 
 
 ###############################################################################

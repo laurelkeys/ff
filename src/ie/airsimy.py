@@ -307,6 +307,34 @@ def quaternion_flip_y_axis(q: Quaternionr) -> Quaternionr: return Quaternionr(-q
 def quaternion_flip_x_axis(q: Quaternionr) -> Quaternionr: return Quaternionr(q.x_val, -q.y_val, -q.z_val, w_val=q.w_val)
 
 
+def quaternion_that_rotates_axis_frame(
+    source_xyz_axis: Tuple[Vector3r, Vector3r, Vector3r],
+    target_xyz_axis: Tuple[Vector3r, Vector3r, Vector3r],
+) -> Quaternionr:
+    """ Returns the quaternion that rotates vectors from the `source` coordinate system to the target axis frame. """
+    # ref.: https://math.stackexchange.com/a/909245
+    i, j, k = source_xyz_axis
+    a, b, c = target_xyz_axis
+
+    def quaternion_from_vector(v: Vector3r) -> Quaternionr:
+        return Quaternionr(v.x_val, v.y_val, v.z_val, w_val=0)
+
+    qx = quaternion_from_vector(a) * quaternion_from_vector(i)
+    qy = quaternion_from_vector(b) * quaternion_from_vector(j)
+    qz = quaternion_from_vector(c) * quaternion_from_vector(k)
+
+    rx = qx.x_val + qy.x_val + qz.x_val
+    ry = qx.y_val + qy.y_val + qz.y_val
+    rz = qx.z_val + qy.z_val + qz.z_val
+    rw = qx.w_val + qy.w_val + qz.w_val
+
+    rotation = Quaternionr(-rx, -ry, -rz, w_val=(1 - rw))
+    length = rotation.get_length()
+    assert length != 0
+
+    return rotation / length  # normalize
+
+
 def vector_projected_onto_vector(v: Vector3r, u: Vector3r) -> Vector3r:
     """ Returns the projection of `v` onto `u`. """
     return u * v.dot(u) / u.dot(u)
