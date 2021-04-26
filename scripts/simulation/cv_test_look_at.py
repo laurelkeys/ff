@@ -118,29 +118,26 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         z_prime = airsimy.vector_projected_onto_plane(z_axis, plane_normal=x_prime)
         y_prime = z_prime.cross(x_prime)
 
-        plot_xyz_axis(client, x_prime, y_prime, z_prime, origin=p, normalize=True)
+        # NOTE don't forget to normalize! Not doing so will break the orientation below.
+        x_prime /= x_prime.get_length()
+        y_prime /= y_prime.get_length()
+        z_prime /= z_prime.get_length()
 
-        # TODO find the orientation that corresponds to the x'-y'-z' axis frame:
+        plot_xyz_axis(client, x_prime, y_prime, z_prime, origin=p)
 
-        x_to_x_prime = airsimy.quaternion_from_two_vectors(X, x_prime)
-        y_to_y_prime = airsimy.quaternion_from_two_vectors(Y, y_prime)
-        z_to_z_prime = airsimy.quaternion_from_two_vectors(Z, z_prime)
-
-        print(f"{x_to_x_prime = }")
-        print(f"{y_to_y_prime = }")
-        print(f"{z_to_z_prime = }")
-
-        x_y_z_rotation = x_to_x_prime * y_to_y_prime * z_to_z_prime
-        z_x_y_rotation = z_to_z_prime * x_to_x_prime * y_to_y_prime
-        y_z_x_rotation = y_to_y_prime * z_to_z_prime * x_to_x_prime
-
-        print(f"{x_y_z_rotation = }")
-        print(f"{z_x_y_rotation = }")
-        print(f"{y_z_x_rotation = }")
-
-        plot_pose(client, Pose(p, x_y_z_rotation))
-        plot_pose(client, Pose(p, z_x_y_rotation))
-        plot_pose(client, Pose(p, y_z_x_rotation))
+        # Now, find the orientation that corresponds to the x'-y'-z' axis frame:
+        # ref.: https://math.stackexchange.com/a/909245
+        quat = lambda v: Quaternionr(v.x_val, v.y_val, v.z_val, w_val=0)
+        qx = quat(x_prime) * quat(X)
+        qy = quat(y_prime) * quat(Y)
+        qz = quat(z_prime) * quat(Z)
+        rx = qx.x_val + qy.x_val + qz.x_val
+        ry = qx.y_val + qy.y_val + qz.y_val
+        rz = qx.z_val + qy.z_val + qz.z_val
+        rw = qx.w_val + qy.w_val + qz.w_val
+        rotation = Quaternionr(-rx, -ry, -rz, w_val=(1 - rw))
+        rotation /= rotation.get_length()  # normalize
+        plot_pose(client, Pose(p, rotation))
 
 
 ###############################################################################
