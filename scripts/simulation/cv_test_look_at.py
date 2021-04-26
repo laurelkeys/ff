@@ -1,12 +1,11 @@
 import argparse
-from typing import Tuple
 
 import ff
 import airsim
 
 from ie import airsimy
 from ds.rgba import Rgba
-from ie.airsimy import connect
+from ie.airsimy import connect, AirSimNedTransform
 from airsim.types import Pose, Vector3r, Quaternionr
 
 try:
@@ -40,6 +39,9 @@ X = Vector3r(1, 0, 0)
 Y = Vector3r(0, 1, 0)
 Z = Vector3r(0, 0, 1)
 
+RGB = (Rgba.Red, Rgba.Green, Rgba.Blue)
+CMY = (Rgba.Cyan, Rgba.Magenta, Rgba.Yellow)
+
 LOOK_AT_TARGET = data_config.Ned.Cidadela_Statue
 
 TEST_POSE = Pose(
@@ -53,40 +55,24 @@ TEST_POSE = Pose(
 )
 
 
-def get_xyz_axis(pose: Pose, flip_z: bool = False) -> Tuple[Vector3r, Vector3r, Vector3r]:
-    q = pose.orientation
-    x_axis = airsimy.vector_rotated_by_quaternion(X, q)  # airsimy.FRONT
-    y_axis = airsimy.vector_rotated_by_quaternion(Y, q)  # airsimy.RIGHT
-    z_axis = airsimy.vector_rotated_by_quaternion(Z, q)  # airsimy.DOWN
-    if flip_z:
-        z_axis *= -1
-    return x_axis, y_axis, z_axis
-
-
 def plot_xyz_axis(
     client: airsim.MultirotorClient,
     x_axis: Vector3r,
     y_axis: Vector3r,
     z_axis: Vector3r,
     origin: Vector3r,
-    normalize: bool = False,
-    thickness: float = 2.5,
+    colors=RGB,
+    thickness=2.5,
 ) -> None:
-    r, g, b = Rgba.Red, Rgba.Green, Rgba.Blue
-    if normalize:
-        r, g, b = Rgba.Cyan, Rgba.Magenta, Rgba.Yellow
-        x_axis = x_axis / x_axis.get_length()
-        y_axis = y_axis / y_axis.get_length()
-        z_axis = z_axis / z_axis.get_length()
-    client.simPlotArrows([origin], [origin + x_axis], r, thickness=thickness, is_persistent=True)
-    client.simPlotArrows([origin], [origin + y_axis], g, thickness=thickness, is_persistent=True)
-    client.simPlotArrows([origin], [origin + z_axis], b, thickness=thickness, is_persistent=True)
+    client.simPlotArrows([origin], [origin + x_axis], colors[0], thickness, is_persistent=True)
+    client.simPlotArrows([origin], [origin + y_axis], colors[1], thickness, is_persistent=True)
+    client.simPlotArrows([origin], [origin + z_axis], colors[2], thickness, is_persistent=True)
 
 
-def plot_pose(client: airsim.MultirotorClient, pose: Pose, flip_z: bool = False) -> None:
-    # NOTE setting flip_z=True gives the same result as client.simPlotTransforms([pose])
-    x_axis, y_axis, z_axis = get_xyz_axis(pose, flip_z)
-    plot_xyz_axis(client, x_axis, y_axis, z_axis, origin=pose.position, thickness=2.0)
+def plot_pose(client: airsim.MultirotorClient, pose: Pose) -> None:
+    x_axis, y_axis, z_axis = AirSimNedTransform.axes_frame_from(pose)
+    plot_xyz_axis(client, x_axis, y_axis, z_axis, origin=pose.position)
+    # client.simPlotTransforms([pose], scale=110, thickness=1.0, is_persistent=True)
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
@@ -94,43 +80,52 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         client.reset()
     client.simFlushPersistentMarkers()
 
+    plot_pose(client, TEST_POSE)
     plot_xyz_axis(client, X, Y, Z, origin=O)
 
-    # client.simPlotTransforms([TEST_POSE], scale=110, thickness=1.0, is_persistent=True)
-    # plot_pose(client, TEST_POSE)
-
     with airsimy.pose_at_simulation_pause(client) as pose:
-        p, q = pose.position, pose.orientation
-        print(f"{p = }")
-        print(f"{q = }")
+        plot_pose(client, pose)
 
-        client.simPlotArrows([p], [LOOK_AT_TARGET], Rgba.White, is_persistent=True)
-        ## plot_pose(client, pose)
+        client.simPlotArrows([pose.position], [LOOK_AT_TARGET], Rgba.White, is_persistent=True)
 
         # NOTE use x' = (LOOK_AT_TARGET - p) as the new x-axis (i.e. front vector),
         # and project the current up/down vector (z-axis in AirSim) into the plane
         # that is normal to x' at point p. This way we can get the remaining right
         # vector by computing cross(down, front).
 
-        x_prime = LOOK_AT_TARGET - p
-        _, _, z_axis = get_xyz_axis(pose, flip_z=False)
+        x_prime = LOOK_AT_TARGET - pose.position
+        _, _, z_axis = AirSimNedTransform.axes_frame_from(pose)
         z_prime = airsimy.vector_projected_onto_plane(z_axis, plane_normal=x_prime)
         y_prime = z_prime.cross(x_prime)
+
+        # plot_xyz_axis(client, x_prime, y_prime, z_prime, origin=pose.position, colors=CMY)
 
         # NOTE don't forget to normalize! Not doing so will break the orientation below.
         x_prime /= x_prime.get_length()
         y_prime /= y_prime.get_length()
         z_prime /= z_prime.get_length()
 
-        ## plot_xyz_axis(client, x_prime, y_prime, z_prime, origin=p)
-
-        # Now, find the orientation that corresponds to the x'-y'-z' axis frame:
-        orientation = airsimy.quaternion_that_rotates_axis_frame(
-            source_xyz_axis=(X, Y, Z),
-            target_xyz_axis=(x_prime, y_prime, z_prime),
+        plot_xyz_axis(
+            client,
+            x_prime * 2,
+            y_prime * 2,
+            z_prime * 2,
+            origin=pose.position,
+            colors=CMY,
+            thickness=3.0,
         )
 
-        plot_pose(client, Pose(p, orientation))
+        # Now, find the orientation that corresponds to the x'-y'-z' axis frame:
+        new_pose = Pose(
+            pose.position,
+            airsimy.quaternion_that_rotates_axis_frame(
+                source_xyz_axis=(X, Y, Z),
+                target_xyz_axis=(x_prime, y_prime, z_prime),
+            ),
+        )
+        plot_pose(client, new_pose)  # NOTE this should be the same as the plot_xyz_axis above!
+        if args.set:
+            client.simSetVehiclePose(new_pose, ignore_collison=True)
 
 
 ###############################################################################
@@ -162,6 +157,7 @@ def get_parser() -> argparse.ArgumentParser:
         description="Set a specific camera orientation in ComputerVision mode."
     )
     parser.add_argument("--reset", action="store_true")
+    parser.add_argument("--set", action="store_true")
     # parser.add_argument("pitch", nargs="?", default=0.0, type=float)
     # parser.add_argument("roll", nargs="?", default=0.0, type=float)
     # parser.add_argument("yaw", nargs="?", default=0.0, type=float)

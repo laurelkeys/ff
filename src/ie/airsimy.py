@@ -8,7 +8,7 @@ import ff
 import numpy as np
 import airsim
 
-from airsim.types import Vector3r, Quaternionr
+from airsim.types import Vector3r, Quaternionr, Pose
 
 ###############################################################################
 ###############################################################################
@@ -117,7 +117,7 @@ class AirSimImage:
             AirSimImage._array_from_uncompressed(
                 response_left.image_data_uint8, response_left.height, response_left.width
             ),
-            AirSimImage.__array_from_uncompressed(
+            AirSimImage._array_from_uncompressed(
                 response_right.image_data_uint8, response_right.height, response_right.width
             ),
         )
@@ -177,6 +177,23 @@ class AirSimNedTransform:
     @staticmethod
     def quaternion_from_ned_to_uu(q: Quaternionr):
         return Quaternionr(-q.x_val, -q.y_val, q.z_val, w_val=q.w_val)
+
+    @staticmethod
+    def axes_frame_from(pose: Pose, normalize_axes: bool = True, flip_z_axis: bool = False):
+        """ Rotates the axes of AirSim's coordinate system by the pose orientation. """
+        # NOTE if flip_z_axis=True, then client.simPlotTransforms([pose]) is equivalent to:
+        # client.simPlotArrows([pose.position], [pose.position + x_axis])
+        # client.simPlotArrows([pose.position], [pose.position + y_axis])
+        # client.simPlotArrows([pose.position], [pose.position + z_axis])
+        q = pose.orientation
+        x_axis = vector_rotated_by_quaternion(FRONT, q)
+        y_axis = vector_rotated_by_quaternion(RIGHT, q)
+        z_axis = vector_rotated_by_quaternion(UP if flip_z_axis else DOWN, q)
+        if normalize_axes:
+            x_axis /= x_axis.get_length()
+            y_axis /= y_axis.get_length()
+            z_axis /= z_axis.get_length()
+        return x_axis, y_axis, z_axis
 
 
 ###############################################################################
@@ -311,7 +328,7 @@ def quaternion_that_rotates_axis_frame(
     source_xyz_axis: Tuple[Vector3r, Vector3r, Vector3r],
     target_xyz_axis: Tuple[Vector3r, Vector3r, Vector3r],
 ) -> Quaternionr:
-    """ Returns the quaternion that rotates vectors from the `source` coordinate system to the target axis frame. """
+    """ Returns the quaternion that rotates vectors from the `source` coordinate system to the `target` axis frame. """
     # ref.: https://math.stackexchange.com/a/909245
     i, j, k = source_xyz_axis
     a, b, c = target_xyz_axis
@@ -495,7 +512,7 @@ class AirSimRotation:
     def as_dict(self) -> dict:
         return {"Yaw": self.yaw, "Pitch": self.pitch, "Roll": self.roll}
 
-    def as_quaternion(self) -> airsim.Quaternionr:
+    def as_quaternion(self) -> Quaternionr:
         """ Returns a quaternion representing the rotation angles.
 
             Note: AirSim's `Quaternionr` expresses coordinates in WXYZ order.
@@ -625,7 +642,7 @@ class AirSimSettings:
         def __init__(
             self,
             capture_settings: List[AirSimSettings.CaptureSettings] = None,
-            position: airsim.Vector3r = None,
+            position: Vector3r = None,
             rotation: AirSimRotation = None,
             gimbal: AirSimSettings.Gimbal = None,
         ):
@@ -681,7 +698,7 @@ class AirSimSettings:
             name: str,
             vehicle_type: str = VehicleType.SimpleFlight,
             default_vehicle_state: str = None,
-            position: airsim.Vector3r = None,  # NOTE in global NED coordinates, SI units and origin at PlayerStart
+            position: Vector3r = None,  # NOTE in global NED coordinates, SI units and origin at PlayerStart
             rotation: AirSimRotation = None,  # NOTE in degrees
             cameras: Dict[str, AirSimSettings.Camera] = None,
         ):
