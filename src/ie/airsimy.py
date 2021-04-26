@@ -54,20 +54,20 @@ def pose_at_simulation_pause(client: airsim.MultirotorClient):
 ###############################################################################
 
 
-def compute_camera_intrinsics(image_width, image_height, fov, is_degrees=False):
-    if is_degrees:
-        fov = np.deg2rad(fov)
-
-    f = image_width / (2 * np.tan(fov))
-    cu = image_width / 2
-    cv = image_height / 2
-
-    return np.array([[f, 0, cu], [0, f, cv], [0, 0, 1]])
-
-
 class AirSimImage:
     @staticmethod
-    def array_from_uncompressed(image, height, width):
+    def compute_camera_intrinsics(image_width, image_height, fov, is_degrees=False):
+        if is_degrees:
+            fov = np.deg2rad(fov)
+
+        f = image_width / (2 * np.tan(fov))
+        cu = image_width / 2
+        cv = image_height / 2
+
+        return np.array([[f, 0, cu], [0, f, cv], [0, 0, 1]])
+
+    @staticmethod
+    def _array_from_uncompressed(image, height, width):
         return np.flipud(np.fromstring(image, dtype=np.uint8).reshape(height, width, -1))
 
     @staticmethod
@@ -85,7 +85,7 @@ class AirSimImage:
 
         response, *_ = client.simGetImages(**request)
 
-        return AirSimImage.array_from_uncompressed(
+        return AirSimImage._array_from_uncompressed(
             response.image_data_uint8, response.height, response.width
         )
 
@@ -114,10 +114,10 @@ class AirSimImage:
         response_left, response_right, *_ = client.simGetImages(**request)
 
         return (
-            AirSimImage.array_from_uncompressed(
+            AirSimImage._array_from_uncompressed(
                 response_left.image_data_uint8, response_left.height, response_left.width
             ),
-            AirSimImage.array_from_uncompressed(
+            AirSimImage.__array_from_uncompressed(
                 response_right.image_data_uint8, response_right.height, response_right.width
             ),
         )
@@ -137,26 +137,6 @@ class AirSimImage:
         pose = client.simGetVehiclePose() if vehicle_name is None else client.simGetVehiclePose(vehicle_name)
         client.simPause(False)
         return image, pose
-
-
-###############################################################################
-###############################################################################
-
-
-# NOTE these values can be used with YawMode(is_rate=False) to change orientation
-YAW_N =   0  # North
-YAW_E =  90  # East
-YAW_W = -90  # West
-YAW_S = 180  # South
-
-
-# NOTE see AirLib/include/common/VectorMath.hpp
-FRONT = Vector3r( 1,  0,  0)  # North
-BACK  = Vector3r(-1,  0,  0)  # South
-DOWN  = Vector3r( 0,  0,  1)
-UP    = Vector3r( 0,  0, -1)
-RIGHT = Vector3r( 0,  1,  0)  # East
-LEFT  = Vector3r( 0, -1,  0)  # West
 
 
 ###############################################################################
@@ -203,20 +183,40 @@ class AirSimNedTransform:
 ###############################################################################
 
 
-def matrix_from_eularian_angles(pitch: float, roll: float, yaw: float, is_degrees: bool = False) -> np.ndarray:
+# NOTE these values can be used with YawMode(is_rate=False) to change orientation
+YAW_N =   0  # North
+YAW_E =  90  # East
+YAW_W = -90  # West
+YAW_S = 180  # South
+
+
+# NOTE see AirLib/include/common/VectorMath.hpp
+FRONT = Vector3r( 1,  0,  0)  # North
+BACK  = Vector3r(-1,  0,  0)  # South
+DOWN  = Vector3r( 0,  0,  1)
+UP    = Vector3r( 0,  0, -1)
+RIGHT = Vector3r( 0,  1,  0)  # East
+LEFT  = Vector3r( 0, -1,  0)  # West
+
+
+###############################################################################
+###############################################################################
+
+
+def matrix_from_eularian_angles(roll: float, pitch: float, yaw: float, is_degrees: bool = False) -> np.ndarray:
     # ref.: https://github.com/microsoft/AirSim/blob/master/PythonClient/computer_vision/capture_ir_segmentation.py
     if is_degrees:
+        roll = np.deg2rad(roll)
         pitch = np.deg2rad(pitch)
         yaw = np.deg2rad(yaw)
-        roll = np.deg2rad(roll)
 
+    sr, cr = np.sin(roll), np.cos(roll)
     sp, cp = np.sin(pitch), np.cos(pitch)
     sy, cy = np.sin(yaw), np.cos(yaw)
-    sr, cr = np.sin(roll), np.cos(roll)
 
-    Rx = np.array([[1, 0, 0], [0, cr, -sr], [0, sr, cr]])
-    Ry = np.array([[cp, 0, sp], [0, 1, 0], [-sp, 0, cp]])
-    Rz = np.array([[cy, -sy, 0], [sy, cy, 0], [0, 0, 1]])
+    Rx = np.array([[1, 0, 0], [0, cr, -sr], [0, sr, cr]])  # roll
+    Ry = np.array([[cp, 0, sp], [0, 1, 0], [-sp, 0, cp]])  # pitch
+    Rz = np.array([[cy, -sy, 0], [sy, cy, 0], [0, 0, 1]])  # yaw
 
     # NOTE roll is applied first, then pitch, then yaw.
     RyRx = np.matmul(Ry, Rx)
@@ -300,7 +300,18 @@ def quaternion_flip_y_axis(q: Quaternionr) -> Quaternionr: return Quaternionr(-q
 def quaternion_flip_x_axis(q: Quaternionr) -> Quaternionr: return Quaternionr(q.x_val, -q.y_val, -q.z_val, w_val=q.w_val)
 
 
-def rotate_vector_by_quaternion(v: Vector3r, q: Quaternionr) -> Vector3r:
+def vector_projected_onto_vector(v: Vector3r, u: Vector3r) -> Vector3r:
+    """ Returns the projection of `v` onto `u`. """
+    return u * v.dot(u) / u.dot(u)
+
+
+def vector_projected_onto_plane(v: Vector3r, plane_normal: Vector3r) -> Vector3r:
+    """ Returns the projection of `v` onto the plane defined by `plane_normal`. """
+    n = plane_normal / plane_normal.get_length()
+    return v - vector_projected_onto_vector(v, n)
+
+
+def vector_rotated_by_quaternion(v: Vector3r, q: Quaternionr) -> Vector3r:
     if q.get_length() != 1.0:
         q /= q.get_length()  # normalize
 
@@ -321,13 +332,13 @@ def rotate_vector_by_quaternion(v: Vector3r, q: Quaternionr) -> Vector3r:
 
 
 if False:
-    def matrix_from_rotator(pitch: float, yaw: float, roll: float, is_degrees: bool = False) -> np.ndarray:
-        """ Reference: https://docs.unrealengine.com/en-US/API/Runtime/Core/Math/FRotator/index.html
+    # ref.: https://docs.unrealengine.com/en-US/API/Runtime/Core/Math/FRotator/index.html
+    #
+    # `pitch`: Rotation around the right axis (around Y axis), Looking up and down (0=Straight Ahead, +Up, -Down).
+    # `yaw`:   Rotation around the up axis (around Z axis), Running in circles 0=East, +North, -South.
+    # `roll`:  Rotation around the forward axis (around X axis), Tilting your head, 0=Straight, +Clockwise, -CCW.
 
-            `pitch`: Rotation around the right axis (around Y axis), Looking up and down (0=Straight Ahead, +Up, -Down).
-            `yaw`:   Rotation around the up axis (around Z axis), Running in circles 0=East, +North, -South.
-            `roll`:  Rotation around the forward axis (around X axis), Tilting your head, 0=Straight, +Clockwise, -CCW.
-        """
+    def matrix_from_rotator(pitch: float, yaw: float, roll: float, is_degrees: bool = False) -> np.ndarray:
         if is_degrees:
             pitch = np.deg2rad(pitch)
             yaw = np.deg2rad(yaw)
@@ -345,14 +356,7 @@ if False:
 
         return rotation_matrix
 
-
     def quaternion_from_rotator(pitch: float, yaw: float, roll: float, is_degrees: bool = False) -> Quaternionr:
-        """ Reference: https://docs.unrealengine.com/en-US/API/Runtime/Core/Math/FRotator/index.html
-
-            `pitch`: Rotation around the right axis (around Y axis), Looking up and down (0=Straight Ahead, +Up, -Down).
-            `yaw`:   Rotation around the up axis (around Z axis), Running in circles 0=East, +North, -South.
-            `roll`:  Rotation around the forward axis (around X axis), Tilting your head, 0=Straight, +Clockwise, -CCW.
-        """
         if is_degrees:
             pitch = np.deg2rad(np.fmod(pitch, 360))
             yaw = np.deg2rad(np.fmod(yaw, 360))

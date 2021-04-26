@@ -1,4 +1,5 @@
 import argparse
+from typing import Tuple
 
 import ff
 import numpy as np
@@ -54,20 +55,40 @@ TEST_POSE = Pose(
 )
 
 
+def get_xyz_axis(pose: Pose, flip_z: bool = False) -> Tuple[Vector3r, Vector3r, Vector3r]:
+    q = pose.orientation
+    x_axis = airsimy.vector_rotated_by_quaternion(X, q)
+    y_axis = airsimy.vector_rotated_by_quaternion(Y, q)
+    z_axis = airsimy.vector_rotated_by_quaternion(Z, q)
+    if flip_z:
+        z_axis *= -1
+    return x_axis, y_axis, z_axis
+
+
+def plot_xyz_axis(
+    client: airsim.MultirotorClient,
+    x_axis: Vector3r,
+    y_axis: Vector3r,
+    z_axis: Vector3r,
+    origin: Vector3r,
+    normalize: bool = False,
+    thickness: float = 2.5,
+) -> None:
+    r, g, b = Rgba.Red, Rgba.Green, Rgba.Blue
+    if normalize:
+        r, g, b = Rgba.Cyan, Rgba.Magenta, Rgba.Yellow
+        x_axis = x_axis / x_axis.get_length()
+        y_axis = y_axis / y_axis.get_length()
+        z_axis = z_axis / z_axis.get_length()
+    client.simPlotArrows([origin], [origin + x_axis], r, thickness=thickness, is_persistent=True)
+    client.simPlotArrows([origin], [origin + y_axis], g, thickness=thickness, is_persistent=True)
+    client.simPlotArrows([origin], [origin + z_axis], b, thickness=thickness, is_persistent=True)
+
+
 def plot_pose(client: airsim.MultirotorClient, pose: Pose, flip_z: bool = False) -> None:
     # NOTE setting flip_z=True gives the same result as client.simPlotTransforms([pose])
-    p = pose.position
-    q = pose.orientation
-
-    x_prime = airsimy.rotate_vector_by_quaternion(X, q)
-    y_prime = airsimy.rotate_vector_by_quaternion(Y, q)
-    z_prime = airsimy.rotate_vector_by_quaternion(Z, q)
-    if flip_z:
-        z_prime *= -1
-
-    client.simPlotArrows([p], [p + x_prime], Rgba.Red, thickness=2.0, is_persistent=True)
-    client.simPlotArrows([p], [p + y_prime], Rgba.Green, thickness=2.0, is_persistent=True)
-    client.simPlotArrows([p], [p + z_prime], Rgba.Blue, thickness=2.0, is_persistent=True)
+    x_axis, y_axis, z_axis = get_xyz_axis(pose, flip_z)
+    plot_xyz_axis(client, x_axis, y_axis, z_axis, origin=pose.position, thickness=2.0)
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
@@ -75,25 +96,31 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         client.reset()
     client.simFlushPersistentMarkers()
 
-    client.simPlotArrows([O], [O + X], Rgba.Red, is_persistent=True)
-    client.simPlotArrows([O], [O + Y], Rgba.Green, is_persistent=True)
-    client.simPlotArrows([O], [O + Z], Rgba.Blue, is_persistent=True)
+    plot_xyz_axis(client, X, Y, Z, origin=O)
 
     # client.simPlotTransforms([TEST_POSE], scale=110, thickness=1.0, is_persistent=True)
     # plot_pose(client, TEST_POSE)
 
     with airsimy.pose_at_simulation_pause(client) as pose:
-        p = pose.position
-        q = pose.orientation
+        p, q = pose.position, pose.orientation
+        print(f"{p = }")
+        print(f"{q = }")
 
         client.simPlotArrows([p], [LOOK_AT_TARGET], Rgba.White, is_persistent=True)
-        client.simPlotTransforms([pose], scale=110, thickness=1.0, is_persistent=True)
+        # client.simPlotTransforms([pose], scale=110, thickness=1.0, is_persistent=True)
         plot_pose(client, pose)
 
-        # TODO use x' = (LOOK_AT_TARGET - p) as the new x-axis (i.e. front vector),
+        # NOTE use x' = (LOOK_AT_TARGET - p) as the new x-axis (i.e. front vector),
         # and project the current up/down vector (z-axis in AirSim) into the plane
         # that is normal to x' at point p. This way we can get the remaining right
         # vector by computing cross(down, front).
+
+        x_prime = LOOK_AT_TARGET - p
+        _, _, z_axis = get_xyz_axis(pose, flip_z=False)
+        z_prime = airsimy.vector_projected_onto_plane(z_axis, plane_normal=x_prime)
+        y_prime = z_prime.cross(x_prime)
+
+        plot_xyz_axis(client, x_prime, y_prime, z_prime, origin=p, normalize=True)
 
 
 ###############################################################################
