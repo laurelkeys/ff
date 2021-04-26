@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, List, Union, cast
+from typing import Dict, List, Tuple, Union, cast
 from contextlib import contextmanager
 
 import ff
@@ -243,6 +243,13 @@ def matrix_from_rotation_axis_angle(axis: Vector3r, angle: float, is_degrees: bo
     )
 
 
+def quaternion_to_rotation_axis_angle(q: Quaternionr) -> Tuple[Vector3r, float]:
+    axis = Vector3r(q.x_val, q.y_val, q.z_val)
+    axis /= axis.get_length()  # normalize
+    angle = 2 * np.arccos(q.w_val)
+    return axis, angle
+
+
 def quaternion_from_rotation_axis_angle(axis: Vector3r, angle: float, is_degrees: bool = False) -> Quaternionr:
     if is_degrees:
         angle = np.deg2rad(angle)
@@ -263,21 +270,21 @@ def quaternion_look_at(source_point: Vector3r, target_point: Vector3r) -> Quater
     axis = UP if axis.get_length() == 0 else axis / axis.get_length()  # normalize
 
     return quaternion_from_rotation_axis_angle(axis, angle=np.arccos(FRONT.dot(to_vector)))
-
-    # def quaternion_from_two_vectors(a: Vector3r, b: Vector3r) -> Quaternionr:
-    #     """ What rotation (around the intersection of the two vectors) we need to rotate `a` to `b`? """
-    #     # ref.: https://gitlab.com/libeigen/eigen/-/blob/master/Eigen/src/Geometry/Quaternion.h (FromTwoVectors)
-    #     v0 = a / a.get_length()
-    #     v1 = b / b.get_length()
-    #     c = v1.dot(v0)
-    #
-    #     assert c > -1  # FIXME handle the case when the vectors are nearly opposites
-    #
-    #     s = np.sqrt((1 + c) * 2)
-    #     axis = v0.cross(v1) / s
-    #     return Quaternionr(axis.x_val, axis.y_val, axis.z_val, w_val=(s / 2))
-    #
     # return quaternion_from_two_vectors(FRONT, to_vector)
+
+
+def quaternion_from_two_vectors(a: Vector3r, b: Vector3r) -> Quaternionr:
+    """ What rotation (around the intersection of the two vectors) we need to rotate `a` to `b`? """
+    # ref.: https://gitlab.com/libeigen/eigen/-/blob/master/Eigen/src/Geometry/Quaternion.h (FromTwoVectors)
+    v0 = a / a.get_length()
+    v1 = b / b.get_length()
+    c = v1.dot(v0)
+
+    assert c > -1  # FIXME handle the case when the vectors are nearly opposites
+
+    s = np.sqrt((1 + c) * 2)
+    axis = v0.cross(v1) / s
+    return Quaternionr(axis.x_val, axis.y_val, axis.z_val, w_val=(s / 2))
 
 
 def quaternion_from_yaw(yaw: float, is_degrees: bool = False) -> Quaternionr:
@@ -285,7 +292,7 @@ def quaternion_from_yaw(yaw: float, is_degrees: bool = False) -> Quaternionr:
     return quaternion_from_rotation_axis_angle(DOWN, yaw, is_degrees)
 
 
-def yaw_from_quaternion(q: Quaternionr) -> float:
+def quaternion_to_yaw(q: Quaternionr) -> float:
     """ Extracts the yaw part from `q`, using RPY / euler (z-y'-x'') angles. """
     # ref.: https://github.com/microsoft/AirSim/blob/master/AirLib/include/common/VectorMath.hpp (yawFromQuaternion)
     return np.arctan2(
@@ -321,14 +328,17 @@ def vector_rotated_by_quaternion(v: Vector3r, q: Quaternionr) -> Vector3r:
     # NOTE the results from these two methods are the same up to 7 decimal places.
 
     # ref.: https://gamedev.stackexchange.com/questions/28395/rotating-vector3-by-a-quaternion
-    # v_prime = u * (2 * u.dot(v)) + v * (s * s - u.dot(u)) + u.cross(v) * (2 * s)
+    # return u * (2 * u.dot(v)) + v * (s * s - u.dot(u)) + u.cross(v) * (2 * s)
 
     # ref.: https://gitlab.com/libeigen/eigen/-/blob/master/Eigen/src/Geometry/Quaternion.h (_transformVector)
     uv = u.cross(v)
     uv += uv
-    v_prime = v + uv * s + u.cross(uv)
+    return v + uv * s + u.cross(uv)
 
-    return v_prime
+
+def vector_rotated_by_quaternion_reversed(v: Vector3r, q: Quaternionr) -> Vector3r:
+    # NOTE we could have used q.conjugate(), if we assumed q was a unit quaternion
+    return vector_rotated_by_quaternion(v, q.inverse())
 
 
 if False:

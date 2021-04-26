@@ -2,14 +2,12 @@ import argparse
 from typing import Tuple
 
 import ff
-import numpy as np
 import airsim
 
 from ie import airsimy
 from ds.rgba import Rgba
 from ie.airsimy import connect
 from airsim.types import Pose, Vector3r, Quaternionr
-from airsim.utils import to_quaternion, to_eularian_angles
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
@@ -57,9 +55,9 @@ TEST_POSE = Pose(
 
 def get_xyz_axis(pose: Pose, flip_z: bool = False) -> Tuple[Vector3r, Vector3r, Vector3r]:
     q = pose.orientation
-    x_axis = airsimy.vector_rotated_by_quaternion(X, q)
-    y_axis = airsimy.vector_rotated_by_quaternion(Y, q)
-    z_axis = airsimy.vector_rotated_by_quaternion(Z, q)
+    x_axis = airsimy.vector_rotated_by_quaternion(X, q)  # airsimy.FRONT
+    y_axis = airsimy.vector_rotated_by_quaternion(Y, q)  # airsimy.RIGHT
+    z_axis = airsimy.vector_rotated_by_quaternion(Z, q)  # airsimy.DOWN
     if flip_z:
         z_axis *= -1
     return x_axis, y_axis, z_axis
@@ -121,6 +119,28 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         y_prime = z_prime.cross(x_prime)
 
         plot_xyz_axis(client, x_prime, y_prime, z_prime, origin=p, normalize=True)
+
+        # TODO find the orientation that corresponds to the x'-y'-z' axis frame:
+
+        x_to_x_prime = airsimy.quaternion_from_two_vectors(X, x_prime)
+        y_to_y_prime = airsimy.quaternion_from_two_vectors(Y, y_prime)
+        z_to_z_prime = airsimy.quaternion_from_two_vectors(Z, z_prime)
+
+        print(f"{x_to_x_prime = }")
+        print(f"{y_to_y_prime = }")
+        print(f"{z_to_z_prime = }")
+
+        x_y_z_rotation = x_to_x_prime * y_to_y_prime * z_to_z_prime
+        z_x_y_rotation = z_to_z_prime * x_to_x_prime * y_to_y_prime
+        y_z_x_rotation = y_to_y_prime * z_to_z_prime * x_to_x_prime
+
+        print(f"{x_y_z_rotation = }")
+        print(f"{z_x_y_rotation = }")
+        print(f"{y_z_x_rotation = }")
+
+        plot_pose(client, Pose(p, x_y_z_rotation))
+        plot_pose(client, Pose(p, z_x_y_rotation))
+        plot_pose(client, Pose(p, y_z_x_rotation))
 
 
 ###############################################################################
