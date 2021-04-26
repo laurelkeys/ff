@@ -65,7 +65,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     ]
 
     def print_record_line(kinematics):
-        # Reference: AirSim/Unreal/Plugins/AirSim/Source/PawnSimApi.cpp
+        # ref.: AirSim/Unreal/Plugins/AirSim/Source/PawnSimApi.cpp
         pos_x, pos_y, pos_z = ff.to_xyz_tuple(kinematics.position)
         q_x, q_y, q_z, q_w = ff.to_xyzw_tuple(kinematics.orientation)
         print(pos_x, pos_y, pos_z, q_w, q_x, q_y, q_z, sep="\t")

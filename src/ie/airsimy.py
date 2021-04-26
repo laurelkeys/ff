@@ -164,9 +164,10 @@ LEFT  = Vector3r( 0, -1,  0)  # West
 
 
 class AirSimNedTransform:
-    # References:
-    #   https://github.com/microsoft/AirSim/blob/master/docs/apis.md#coordinate-system
-    #   https://github.com/microsoft/AirSim/blob/master/Unreal/Plugins/AirSim/Source/NedTransform.h
+    """ References:
+        https://github.com/microsoft/AirSim/blob/master/docs/apis.md#coordinate-system
+        https://github.com/microsoft/AirSim/blob/master/Unreal/Plugins/AirSim/Source/NedTransform.h
+    """
 
     class CoordinateSystem(Enum):
         """ Vehicles are spawned at position specified in settings in global NED. """
@@ -203,7 +204,7 @@ class AirSimNedTransform:
 
 
 def matrix_from_eularian_angles(pitch: float, roll: float, yaw: float, is_degrees: bool = False) -> np.ndarray:
-    # Reference: https://github.com/microsoft/AirSim/blob/master/PythonClient/computer_vision/capture_ir_segmentation.py
+    # ref.: https://github.com/microsoft/AirSim/blob/master/PythonClient/computer_vision/capture_ir_segmentation.py
     if is_degrees:
         pitch = np.deg2rad(pitch)
         yaw = np.deg2rad(yaw)
@@ -223,6 +224,7 @@ def matrix_from_eularian_angles(pitch: float, roll: float, yaw: float, is_degree
 
 
 def matrix_from_rotation_axis_angle(axis: Vector3r, angle: float, is_degrees: bool = False) -> np.ndarray:
+    # ref.: https://en.wikipedia.org/wiki/Rotation_matrix#Rotation_matrix_from_axis_and_angle
     if is_degrees:
         angle = np.deg2rad(angle)
 
@@ -241,19 +243,6 @@ def matrix_from_rotation_axis_angle(axis: Vector3r, angle: float, is_degrees: bo
     )
 
 
-def quaternion_from_two_vectors(a: Vector3r, b: Vector3r) -> Quaternionr:
-    # Reference: https://gitlab.com/libeigen/eigen/-/blob/master/Eigen/src/Geometry/Quaternion.h (FromTwoVectors)
-    v0 = a / a.get_length()
-    v1 = b / b.get_length()
-    c = v1.dot(v0)
-
-    assert c > -1  # FIXME handle the case when the vectors are nearly opposites
-
-    s = np.sqrt((1 + c) * 2)
-    axis = v0.cross(v1) / s
-    return Quaternionr(axis.x_val, axis.y_val, axis.z_val, w_val=(s / 2))
-
-
 def quaternion_from_rotation_axis_angle(axis: Vector3r, angle: float, is_degrees: bool = False) -> Quaternionr:
     if is_degrees:
         angle = np.deg2rad(angle)
@@ -265,13 +254,50 @@ def quaternion_from_rotation_axis_angle(axis: Vector3r, angle: float, is_degrees
 
 
 def quaternion_look_at(source_point: Vector3r, target_point: Vector3r) -> Quaternionr:
-    # Reference: https://github.com/microsoft/AirSim/blob/master/AirLibUnitTests/QuaternionTest.hpp (lookAt)
+    """ Assuming you are looking at `FRONT` vector, what rotation you need to look at `target_point`?. """
+    # ref.: https://github.com/microsoft/AirSim/blob/master/AirLibUnitTests/QuaternionTest.hpp (lookAt)
     to_vector = target_point - source_point
+    to_vector /= to_vector.get_length()  # normalize
 
     axis = FRONT.cross(to_vector)
     axis = UP if axis.get_length() == 0 else axis / axis.get_length()  # normalize
 
     return quaternion_from_rotation_axis_angle(axis, angle=np.arccos(FRONT.dot(to_vector)))
+
+    # def quaternion_from_two_vectors(a: Vector3r, b: Vector3r) -> Quaternionr:
+    #     """ What rotation (around the intersection of the two vectors) we need to rotate `a` to `b`? """
+    #     # ref.: https://gitlab.com/libeigen/eigen/-/blob/master/Eigen/src/Geometry/Quaternion.h (FromTwoVectors)
+    #     v0 = a / a.get_length()
+    #     v1 = b / b.get_length()
+    #     c = v1.dot(v0)
+    #
+    #     assert c > -1  # FIXME handle the case when the vectors are nearly opposites
+    #
+    #     s = np.sqrt((1 + c) * 2)
+    #     axis = v0.cross(v1) / s
+    #     return Quaternionr(axis.x_val, axis.y_val, axis.z_val, w_val=(s / 2))
+    #
+    # return quaternion_from_two_vectors(FRONT, to_vector)
+
+
+def quaternion_from_yaw(yaw: float, is_degrees: bool = False) -> Quaternionr:
+    # ref.: https://github.com/microsoft/AirSim/blob/master/AirLib/include/common/VectorMath.hpp (quaternionFromYaw)
+    return quaternion_from_rotation_axis_angle(DOWN, yaw, is_degrees)
+
+
+def yaw_from_quaternion(q: Quaternionr) -> float:
+    """ Extracts the yaw part from `q`, using RPY / euler (z-y'-x'') angles. """
+    # ref.: https://github.com/microsoft/AirSim/blob/master/AirLib/include/common/VectorMath.hpp (yawFromQuaternion)
+    return np.arctan2(
+        2.0 * (q.w_val * q.z_val + q.x_val * q.y_val),
+        1.0 - 2.0 * (q.y_val * q.y_val + q.z_val * q.z_val),
+    )
+
+
+# ref.: https://stackoverflow.com/questions/32438252/efficient-way-to-apply-mirror-effect-on-quaternion-rotation/40334755#40334755
+def quaternion_flip_z_axis(q: Quaternionr) -> Quaternionr: return Quaternionr(-q.x_val, -q.y_val, q.z_val, w_val=q.w_val)
+def quaternion_flip_y_axis(q: Quaternionr) -> Quaternionr: return Quaternionr(-q.x_val, q.y_val, -q.z_val, w_val=q.w_val)
+def quaternion_flip_x_axis(q: Quaternionr) -> Quaternionr: return Quaternionr(q.x_val, -q.y_val, -q.z_val, w_val=q.w_val)
 
 
 def rotate_vector_by_quaternion(v: Vector3r, q: Quaternionr) -> Vector3r:
@@ -283,10 +309,10 @@ def rotate_vector_by_quaternion(v: Vector3r, q: Quaternionr) -> Vector3r:
 
     # NOTE the results from these two methods are the same up to 7 decimal places.
 
-    # Reference: https://gamedev.stackexchange.com/questions/28395/rotating-vector3-by-a-quaternion
+    # ref.: https://gamedev.stackexchange.com/questions/28395/rotating-vector3-by-a-quaternion
     # v_prime = u * (2 * u.dot(v)) + v * (s * s - u.dot(u)) + u.cross(v) * (2 * s)
 
-    # Reference: https://gitlab.com/libeigen/eigen/-/blob/master/Eigen/src/Geometry/Quaternion.h (_transformVector)
+    # ref.: https://gitlab.com/libeigen/eigen/-/blob/master/Eigen/src/Geometry/Quaternion.h (_transformVector)
     uv = u.cross(v)
     uv += uv
     v_prime = v + uv * s + u.cross(uv)
