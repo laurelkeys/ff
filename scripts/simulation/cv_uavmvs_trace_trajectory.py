@@ -7,15 +7,18 @@ import airsim
 
 from ie import airsimy
 from ff.types import to_xyz_str
-from ie.airsimy import AirSimImage, connect, quaternion_look_at, quaternion_from_two_vectors
-from airsim.types import Pose, Quaternionr
+from ie.airsimy import AirSimImage, connect
+from airsim.types import Pose
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import (parse_uavmvs, convert_uavmvs_to_airsim_pose,
-                                   convert_uavmvs_to_airsim_position)
+    from uavmvs_parse_traj import (
+        parse_uavmvs,
+        convert_uavmvs_to_airsim_pose,
+        convert_uavmvs_to_airsim_position,
+    )
 
     include(FF_PROJECT_ROOT, "scripts", "data_config")
     import data_config
@@ -50,9 +53,9 @@ def preflight(args: argparse.Namespace) -> None:
 ###############################################################################
 
 
-# HACK fix after testing
-TEST_AIMING_AT_ROI = True
-center_of_roi = data_config.Ned.Cidadela_Statue
+# FIXME find a good way to pass this in via args
+INGORE_LOOK_AT_TARGET = False  # use uavmvs pose
+LOOK_AT_TARGET = data_config.Ned.Cidadela_Statue
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
@@ -63,32 +66,41 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush:
         client.simFlushPersistentMarkers()
 
-    if not TEST_AIMING_AT_ROI:
+    if not INGORE_LOOK_AT_TARGET:
+        camera_poses = []
+        for camera in args.trajectory:
+            position = convert_uavmvs_to_airsim_position(
+                camera.position, translation=args.offset, scaling=args.scale
+            )
+
+            # Compute the forward axis as the vector which points
+            # from the camera eye to the region of interest (ROI):
+            x_axis = LOOK_AT_TARGET - position
+            x_axis /= x_axis.get_length()  # normalize
+
+            z_axis = airsimy.vector_projected_onto_plane(airsimy.DOWN, plane_normal=x_axis)
+            z_axis /= z_axis.get_length()  # normalize
+
+            y_axis = z_axis.cross(x_axis)
+
+            orientation = airsimy.quaternion_that_rotates_axes_frame(
+                source_xyz_axes=airsimy.NED_AXES_FRAME,
+                target_xyz_axes=(x_axis, y_axis, z_axis),
+            )
+
+            camera_poses.append(Pose(position, orientation))
+    else:
         camera_poses = [
             convert_uavmvs_to_airsim_pose(_, translation=args.offset, scaling=args.scale)
             for _ in args.trajectory
         ]
-    else:
-        camera_poses = []
-        for camera in args.trajectory:
-            pose = Pose()
-            pose.position = convert_uavmvs_to_airsim_position(
-                camera.position, translation=args.offset, scaling=args.scale
-            )
-            eye_to_roi = airsimy.UP
-            # eye_to_roi = center_of_roi - pose.position
-            x = eye_to_roi.x_val
-            y = eye_to_roi.y_val
-            z = eye_to_roi.z_val
-            pose.orientation = Quaternionr(-x, y, z, 0)
-            # pose.orientation = quaternion_look_at(source_point=pose.position, target_point=center_of_roi)
-            camera_poses.append(pose)
 
     n_of_poses = len(camera_poses)
     pad = len(str(n_of_poses))
 
     for i, pose in enumerate(camera_poses):
         client.simSetVehiclePose(pose, ignore_collison=True)
+        # client.simPlotTransforms([pose], scale=100, is_persistent=True)
 
         pose_str = f"{i:{pad}} / {n_of_poses}"
         position_str = to_xyz_str(pose.position, show_hints=False)
@@ -145,9 +157,15 @@ def get_parser() -> argparse.ArgumentParser:
         type=float,
         nargs=3,
         metavar=("X", "Y", "Z"),
-        help="Offset added to all points  (e.g. --offset -55 11 1)",
+        help="Offset added to all points "
+        " (e.g. --offset 1.2375 -6.15 7.75)",  # data_config.Uavmvs.Cidadela_Statue_Offset
     )
-    parser.add_argument("--scale", type=float, help="Scale added to all points  (e.g. --scale 0.2)")
+    parser.add_argument(
+        "--scale",
+        type=float,
+        help="Scale added to all points "
+        " (e.g. --scale 0.168)",  # data_config.Uavmvs.Cidadela_Statue_Scale
+    )
 
     ff.add_arguments_to(parser)
     return parser

@@ -216,6 +216,7 @@ DOWN  = Vector3r( 0,  0,  1)
 UP    = Vector3r( 0,  0, -1)
 RIGHT = Vector3r( 0,  1,  0)  # East
 LEFT  = Vector3r( 0, -1,  0)  # West
+NED_AXES_FRAME = (FRONT, RIGHT, DOWN)
 
 
 ###############################################################################
@@ -326,18 +327,18 @@ def quaternion_flip_y_axis(q: Quaternionr) -> Quaternionr: return Quaternionr(-q
 def quaternion_flip_x_axis(q: Quaternionr) -> Quaternionr: return Quaternionr(q.x_val, -q.y_val, -q.z_val, w_val=q.w_val)
 
 
-def quaternion_that_rotates_axis_frame(
-    source_xyz_axis: Tuple[Vector3r, Vector3r, Vector3r],
-    target_xyz_axis: Tuple[Vector3r, Vector3r, Vector3r],
+def quaternion_that_rotates_axes_frame(
+    source_xyz_axes: Tuple[Vector3r, Vector3r, Vector3r],
+    target_xyz_axes: Tuple[Vector3r, Vector3r, Vector3r],
     assume_normalized: bool = False,  # warn if it isn't
 ) -> Quaternionr:
-    """ Returns the quaternion that rotates vectors from the `source` coordinate system to the `target` axis frame. """
+    """ Returns the quaternion that rotates vectors from the `source` coordinate system to the `target` axes frame. """
     if not assume_normalized:
-        assert all(_.get_length() == 1 for _ in source_xyz_axis + target_xyz_axis)
+        assert all(np.isclose(_.get_length(), 1) for _ in source_xyz_axes + target_xyz_axes)
 
     # ref.: https://math.stackexchange.com/a/909245
-    i, j, k = source_xyz_axis
-    a, b, c = target_xyz_axis
+    i, j, k = source_xyz_axes
+    a, b, c = target_xyz_axes
 
     def quaternion_from_vector(v: Vector3r) -> Quaternionr:
         return Quaternionr(v.x_val, v.y_val, v.z_val, w_val=0)
@@ -353,7 +354,7 @@ def quaternion_that_rotates_axis_frame(
 
     rotation = Quaternionr(-rx, -ry, -rz, w_val=(1 - rw))
     length = rotation.get_length()
-    assert length != 0
+    assert not np.isclose(length, 0)
 
     return rotation / length  # normalize
 

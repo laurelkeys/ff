@@ -96,14 +96,12 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         x_prime = LOOK_AT_TARGET - pose.position
         _, _, z_axis = AirSimNedTransform.local_axes_frame(pose)
         z_prime = airsimy.vector_projected_onto_plane(z_axis, plane_normal=x_prime)
-        y_prime = z_prime.cross(x_prime)
-
-        # plot_xyz_axis(client, x_prime, y_prime, z_prime, origin=pose.position, colors=CMY)
 
         # NOTE don't forget to normalize! Not doing so will break the orientation below.
         x_prime /= x_prime.get_length()
-        y_prime /= y_prime.get_length()
         z_prime /= z_prime.get_length()
+
+        y_prime = z_prime.cross(x_prime)
 
         plot_xyz_axis(
             client,
@@ -118,9 +116,9 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         # Now, find the orientation that corresponds to the x'-y'-z' axis frame:
         new_pose = Pose(
             pose.position,
-            airsimy.quaternion_that_rotates_axis_frame(
-                source_xyz_axis=(X, Y, Z),
-                target_xyz_axis=(x_prime, y_prime, z_prime),
+            airsimy.quaternion_that_rotates_axes_frame(
+                source_xyz_axes=(X, Y, Z),
+                target_xyz_axes=(x_prime, y_prime, z_prime),
             ),
         )
         plot_pose(client, new_pose)  # NOTE this should be the same as the plot_xyz_axis above!
