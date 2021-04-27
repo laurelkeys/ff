@@ -179,21 +179,23 @@ class AirSimNedTransform:
         return Quaternionr(-q.x_val, -q.y_val, q.z_val, w_val=q.w_val)
 
     @staticmethod
-    def axes_frame_from(pose: Pose, normalize_axes: bool = True, flip_z_axis: bool = False):
-        """ Rotates the axes of AirSim's coordinate system by the pose orientation. """
+    def local_axes_frame(pose: Pose, normalized: bool = True, flip_z_axis: bool = False):
+        """ Returns AirSim's coordinate system axes rotated by the pose's orientation. """
         # NOTE if flip_z_axis=True, then client.simPlotTransforms([pose]) is equivalent to:
         # client.simPlotArrows([pose.position], [pose.position + x_axis])
         # client.simPlotArrows([pose.position], [pose.position + y_axis])
         # client.simPlotArrows([pose.position], [pose.position + z_axis])
+
         q = pose.orientation
+        if normalized:
+            q /= q.get_length()
+
         x_axis = vector_rotated_by_quaternion(FRONT, q)
         y_axis = vector_rotated_by_quaternion(RIGHT, q)
         z_axis = vector_rotated_by_quaternion(UP if flip_z_axis else DOWN, q)
-        if normalize_axes:
-            x_axis /= x_axis.get_length()
-            y_axis /= y_axis.get_length()
-            z_axis /= z_axis.get_length()
+
         return x_axis, y_axis, z_axis
+
 
 
 ###############################################################################
@@ -327,8 +329,12 @@ def quaternion_flip_x_axis(q: Quaternionr) -> Quaternionr: return Quaternionr(q.
 def quaternion_that_rotates_axis_frame(
     source_xyz_axis: Tuple[Vector3r, Vector3r, Vector3r],
     target_xyz_axis: Tuple[Vector3r, Vector3r, Vector3r],
+    assume_normalized: bool = False,  # warn if it isn't
 ) -> Quaternionr:
     """ Returns the quaternion that rotates vectors from the `source` coordinate system to the `target` axis frame. """
+    if not assume_normalized:
+        assert all(_.get_length() == 1 for _ in source_xyz_axis + target_xyz_axis)
+
     # ref.: https://math.stackexchange.com/a/909245
     i, j, k = source_xyz_axis
     a, b, c = target_xyz_axis
@@ -364,8 +370,7 @@ def vector_projected_onto_plane(v: Vector3r, plane_normal: Vector3r) -> Vector3r
 
 
 def vector_rotated_by_quaternion(v: Vector3r, q: Quaternionr) -> Vector3r:
-    if q.get_length() != 1.0:
-        q /= q.get_length()  # normalize
+    q /= q.get_length()  # normalize
 
     # Extract the vector and scalar parts of q:
     u, s = Vector3r(q.x_val, q.y_val, q.z_val), q.w_val

@@ -70,7 +70,7 @@ def plot_xyz_axis(
 
 
 def plot_pose(client: airsim.MultirotorClient, pose: Pose) -> None:
-    x_axis, y_axis, z_axis = AirSimNedTransform.axes_frame_from(pose)
+    x_axis, y_axis, z_axis = AirSimNedTransform.local_axes_frame(pose)
     plot_xyz_axis(client, x_axis, y_axis, z_axis, origin=pose.position)
     # client.simPlotTransforms([pose], scale=110, thickness=1.0, is_persistent=True)
 
@@ -94,7 +94,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         # vector by computing cross(down, front).
 
         x_prime = LOOK_AT_TARGET - pose.position
-        _, _, z_axis = AirSimNedTransform.axes_frame_from(pose)
+        _, _, z_axis = AirSimNedTransform.local_axes_frame(pose)
         z_prime = airsimy.vector_projected_onto_plane(z_axis, plane_normal=x_prime)
         y_prime = z_prime.cross(x_prime)
 
@@ -107,12 +107,12 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
         plot_xyz_axis(
             client,
-            x_prime * 2,
-            y_prime * 2,
-            z_prime * 2,
+            x_prime * 1.25,
+            y_prime * 1.25,
+            z_prime * 1.25,
             origin=pose.position,
             colors=CMY,
-            thickness=3.0,
+            thickness=1.5,
         )
 
         # Now, find the orientation that corresponds to the x'-y'-z' axis frame:
