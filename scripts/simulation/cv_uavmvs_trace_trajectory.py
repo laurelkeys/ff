@@ -6,6 +6,7 @@ import ff
 import airsim
 
 from ie import airsimy
+from ds.rgba import Rgba
 from ff.types import to_xyz_str
 from ie.airsimy import AirSimImage, connect
 from airsim.types import Pose
@@ -56,6 +57,7 @@ def preflight(args: argparse.Namespace) -> None:
 # FIXME find a good way to pass this in via args
 INGORE_LOOK_AT_TARGET = False  # use uavmvs pose
 LOOK_AT_TARGET = data_config.Ned.Cidadela_Statue
+CAPTURE_CAMERA = ff.CameraName.front_center
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
@@ -63,7 +65,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.verbose:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
 
-    if args.flush:
+    if args.flush or (args.capture_dir and not args.debug):
         client.simFlushPersistentMarkers()
 
     if not INGORE_LOOK_AT_TARGET:
@@ -95,21 +97,34 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             for _ in args.trajectory
         ]
 
+    if args.debug:
+        client.simPlotLineStrip(
+            [_.position for _ in camera_poses],
+            Rgba.White,
+            thickness=2.5,
+            is_persistent=True,
+        )
+
     n_of_poses = len(camera_poses)
     pad = len(str(n_of_poses))
 
     for i, pose in enumerate(camera_poses):
         client.simSetVehiclePose(pose, ignore_collison=True)
-        # client.simPlotTransforms([pose], scale=100, is_persistent=True)
 
         pose_str = f"{i:{pad}} / {n_of_poses}"
         position_str = to_xyz_str(pose.position, show_hints=False)
-        if not args.capture_dir:
-            ff.log(f"Going to pose ({pose_str}): {position_str}")
-        else:
+
+        if args.capture_dir and not args.debug:
             name = os.path.join(args.capture_dir, f"{args.prefix}pose{args.suffix}_{i:0{pad}}.png")
-            airsim.write_png(name, AirSimImage.get_mono(client, ff.CameraName.bottom_center))
+            airsim.write_png(name, AirSimImage.get_mono(client, CAPTURE_CAMERA))
             ff.log(f"Saved image ({pose_str}) to '{name}' at {position_str}")
+        else:
+            ff.log(f"Going to pose ({pose_str}): {position_str}")
+            if args.debug:
+                client.simPlotTransforms([pose], scale=100, is_persistent=True)
+                client.simPlotArrows(
+                    [pose.position], [LOOK_AT_TARGET], Rgba.White, thickness=2.0, duration=10
+                )
 
         time.sleep(args.sleep)
 
@@ -145,6 +160,7 @@ def get_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("trajectory_path", type=str, help="Path to a .TRAJ, .CSV or .UTJ file")
 
+    parser.add_argument("--debug", action="store_true", help="Skip capturing images but plot poses")
     parser.add_argument("--capture_dir", type=str, help="Folder where image captures will be saved")
     parser.add_argument("--sleep", type=float, help="Delay between each capture", default=0.1)
     parser.add_argument("--flush", action="store_true", help="Flush old plots")

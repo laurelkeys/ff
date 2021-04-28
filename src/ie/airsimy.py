@@ -67,11 +67,13 @@ class AirSimImage:
         return np.array([[f, 0, cu], [0, f, cv], [0, 0, 1]])
 
     @staticmethod
-    def _array_from_uncompressed(image, height, width):
+    def _array_from_uncompressed(image, height, width, flip):
+        if not flip:
+            return np.fromstring(image, dtype=np.uint8).reshape(height, width, -1)
         return np.flipud(np.fromstring(image, dtype=np.uint8).reshape(height, width, -1))
 
     @staticmethod
-    def get_mono(client, camera_name=ff.CameraName.front_center, vehicle_name=None):
+    def get_mono(client, camera_name=ff.CameraName.front_center, vehicle_name=None, flip=False):
         request = {
             "requests": [
                 airsim.ImageRequest(
@@ -86,11 +88,11 @@ class AirSimImage:
         response, *_ = client.simGetImages(**request)
 
         return AirSimImage._array_from_uncompressed(
-            response.image_data_uint8, response.height, response.width
+            response.image_data_uint8, response.height, response.width, flip
         )
 
     @staticmethod
-    def get_stereo(client, vehicle_name=None):
+    def get_stereo(client, vehicle_name=None, flip=False):
         request = {
             "requests": [
                 airsim.ImageRequest(
@@ -115,10 +117,10 @@ class AirSimImage:
 
         return (
             AirSimImage._array_from_uncompressed(
-                response_left.image_data_uint8, response_left.height, response_left.width
+                response_left.image_data_uint8, response_left.height, response_left.width, flip
             ),
             AirSimImage._array_from_uncompressed(
-                response_right.image_data_uint8, response_right.height, response_right.width
+                response_right.image_data_uint8, response_right.height, response_right.width, flip
             ),
         )
 
