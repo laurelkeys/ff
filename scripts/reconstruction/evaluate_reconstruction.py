@@ -19,13 +19,15 @@ try:
     python_toolbox_path = [FF_PROJECT_ROOT, "vendor", "TanksAndTemples", "python_toolbox"]
     v1_tanksandtemples_path = [FF_PROJECT_ROOT, "misc", "v1", "reconstruction", "tanksandtemples"]
 
+    # FIXME stop using the modified version from v1/, but also, don't use the different
+    # files from python_toolbox/evaluation/, instead, use tanksandtemples_evaluator.py!
+    # Check out eval_Cidadela_2021-01-09-18-27-07.py to see what changes are necessary.
     if False:
         include(*python_toolbox_path, "evaluation", "plot")
         include(*python_toolbox_path, "evaluation", "evaluation")
         include(*python_toolbox_path, "evaluation", "registration")
         include(*python_toolbox_path, "evaluation", "trajectory_io")
     else:
-        # FIXME stop using this old modified version
         include(*v1_tanksandtemples_path, "plot")
         include(*v1_tanksandtemples_path, "evaluation")
         include(*v1_tanksandtemples_path, "registration")
