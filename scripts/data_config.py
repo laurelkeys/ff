@@ -6,6 +6,8 @@ class Ned:
 
     Cidadela_Statue = Vector3r(-0.02, -5.485, -3.15)
 
+    Urban_Building = Vector3r(-50.0, 10.0, -10.0)
+
 
 class Uavmvs:
     """ Translation offset and scaling factor used for uavmvs. """

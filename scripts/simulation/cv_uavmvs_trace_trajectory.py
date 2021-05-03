@@ -56,7 +56,8 @@ def preflight(args: argparse.Namespace) -> None:
 
 # FIXME find a good way to pass this in via args
 INGORE_LOOK_AT_TARGET = False  # use uavmvs pose
-LOOK_AT_TARGET = data_config.Ned.Cidadela_Statue
+# LOOK_AT_TARGET = data_config.Ned.Cidadela_Statue
+LOOK_AT_TARGET = data_config.Ned.Urban_Building
 CAPTURE_CAMERA = ff.CameraName.front_center
 
 
@@ -64,6 +65,8 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     initial_pose = client.simGetVehiclePose()
     if args.verbose:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
+        ff.log("(front_center)  camera info:", client.simGetCameraInfo(camera_name=ff.CameraName.front_center))
+        ff.log("(bottom_center) camera info:", client.simGetCameraInfo(camera_name=ff.CameraName.bottom_center))
 
     if args.flush or (args.capture_dir and not args.debug):
         client.simFlushPersistentMarkers()
@@ -145,7 +148,8 @@ def main(args: argparse.Namespace) -> None:
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting with Ctrl+C
     finally:
-        ff.log("Done")
+        ff.log("Done\n")
+        ff.log_warning(f"Used scale = {args.scale} and offset = {args.offset}")
 
 
 ###############################################################################

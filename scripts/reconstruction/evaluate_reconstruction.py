@@ -15,27 +15,31 @@ from ie.meshroomy import MeshroomParser
 
 try:
     from include_in_path import include, FF_PROJECT_ROOT
-except:
-    pass
-finally:
-    python_toolbox_path = [FF_PROJECT_ROOT, "vendor", "TanksAndTemples", "python_toolbox"]
-    include(*python_toolbox_path, "convert_to_logfile")
-    from convert_to_logfile import quat2rotmat, write_SfM_log
 
-    # FIXME
+    python_toolbox_path = [FF_PROJECT_ROOT, "vendor", "TanksAndTemples", "python_toolbox"]
     v1_tanksandtemples_path = [FF_PROJECT_ROOT, "misc", "v1", "reconstruction", "tanksandtemples"]
-    # include(*python_toolbox_path, "evaluation", "plot")
-    # include(*python_toolbox_path, "evaluation", "evaluation")
-    # include(*python_toolbox_path, "evaluation", "registration")
-    # include(*python_toolbox_path, "evaluation", "trajectory_io")
-    include(*v1_tanksandtemples_path, "plot")
-    include(*v1_tanksandtemples_path, "evaluation")
-    include(*v1_tanksandtemples_path, "registration")
-    include(*v1_tanksandtemples_path, "trajectory_io")
+
+    if False:
+        include(*python_toolbox_path, "evaluation", "plot")
+        include(*python_toolbox_path, "evaluation", "evaluation")
+        include(*python_toolbox_path, "evaluation", "registration")
+        include(*python_toolbox_path, "evaluation", "trajectory_io")
+    else:
+        # FIXME stop using this old modified version
+        include(*v1_tanksandtemples_path, "plot")
+        include(*v1_tanksandtemples_path, "evaluation")
+        include(*v1_tanksandtemples_path, "registration")
+        include(*v1_tanksandtemples_path, "trajectory_io")
+
     from plot import plot_graph
     from evaluation import EvaluateHisto
     from registration import registration_unif, registration_vol_ds, trajectory_alignment
     from trajectory_io import read_trajectory
+
+    include(*python_toolbox_path, "convert_to_logfile")
+    from convert_to_logfile import quat2rotmat, write_SfM_log
+except:
+    raise
 
 
 # FIXME turn these into args
@@ -194,7 +198,7 @@ def evaluate(
     gt_traj = read_trajectory(airsim_traj_path)  # reference .log file
     gt_trans = np.loadtxt(alignment_matrix_path)  # alignment matrix (<scene>_trans.txt)
 
-    transformation = trajectory_alignment(SCENE, traj, gt_traj, gt_trans)
+    transformation = trajectory_alignment(None, traj, gt_traj, gt_trans)
 
     # Refine alignment by using the actual ground-truth pointcloud
     vol = o3d.visualization.read_selection_polygon_volume(crop_bbox_path)
@@ -207,13 +211,13 @@ def evaluate(
     # Histograms and P/R/F1
     precision, recall, fscore, *histograms_data = EvaluateHisto(
         SCENE,
-        EVALUATION_OUT_FOLDER,
-        pcd,
-        gt_pcd,
-        r.transformation,
-        vol,
-        DTAU / 2,
-        DTAU,
+        filename_mvs=EVALUATION_OUT_FOLDER,
+        source=pcd,
+        target=gt_pcd,
+        trans=r.transformation,
+        crop_volume=vol,
+        voxel_size=DTAU / 2,
+        threshold=DTAU,
         plot_stretch=5,
     )
 
@@ -232,12 +236,12 @@ def evaluate(
     edges_source, cum_source, edges_target, cum_target = histograms_data
     plot_graph(
         SCENE,
-        EVALUATION_OUT_FOLDER,
-        fscore,
-        edges_source,
-        cum_source,
-        edges_target,
-        cum_target,
+        mvs_outpath=EVALUATION_OUT_FOLDER,
+        fscore=fscore,
+        edges_source=edges_source,
+        cum_source=cum_source,
+        edges_target=edges_target,
+        cum_target=cum_target,
         plot_stretch=5,
         dist_threshold=DTAU,
     )
