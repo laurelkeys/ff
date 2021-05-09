@@ -41,7 +41,8 @@ def preflight(args: argparse.Namespace) -> None:
         ff.log(f"The trajectory has {len(args.trajectory)} camera poses")
 
     if args.capture_dir:
-        assert os.path.isdir(args.capture_dir)
+        args.capture_dir = os.path.abspath(args.capture_dir)
+        assert os.path.isdir(args.capture_dir), args.capture_dir
 
     if args.env_name is not None:
         # the --launch option was passed
@@ -56,8 +57,8 @@ def preflight(args: argparse.Namespace) -> None:
 
 # FIXME find a good way to pass this in via args
 INGORE_LOOK_AT_TARGET = False  # use uavmvs pose
-# LOOK_AT_TARGET = data_config.Ned.Cidadela_Statue
-LOOK_AT_TARGET = data_config.Ned.Urban_Building
+LOOK_AT_TARGET = data_config.Ned.Cidadela_Statue
+# LOOK_AT_TARGET = data_config.Ned.Urban_Building
 CAPTURE_CAMERA = ff.CameraName.front_center
 
 
@@ -111,6 +112,8 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     n_of_poses = len(camera_poses)
     pad = len(str(n_of_poses))
 
+    record = []
+
     for i, pose in enumerate(camera_poses):
         client.simSetVehiclePose(pose, ignore_collison=True)
 
@@ -121,6 +124,14 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             name = os.path.join(args.capture_dir, f"{args.prefix}pose{args.suffix}_{i:0{pad}}.png")
             airsim.write_png(name, AirSimImage.get_mono(client, CAPTURE_CAMERA))
             ff.log(f"Saved image ({pose_str}) to '{name}' at {position_str}")
+            record.append(
+                airsimy.AirSimRecord.make_line_string(
+                    pose.position,
+                    pose.orientation,
+                    time_stamp="0",  # HACK
+                    image_file=name,
+                )
+            )
         else:
             ff.log(f"Going to pose ({pose_str}): {position_str}")
             if args.debug:
@@ -130,6 +141,12 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
                 )
 
         time.sleep(args.sleep)
+
+    if record:
+        print()
+        print(airsimy.AirSimRecord.make_header_string())
+        for line in record:
+            print(line)
 
 
 ###############################################################################
@@ -150,6 +167,12 @@ def main(args: argparse.Namespace) -> None:
     finally:
         ff.log("Done\n")
         ff.log_warning(f"Used scale = {args.scale} and offset = {args.offset}")
+        ff.log_warning(f"Used CAPTURE_CAMERA = {CAPTURE_CAMERA}")
+        ff.log_warning(
+            "Ignored LOOK_AT_TARGET"
+            if INGORE_LOOK_AT_TARGET
+            else f"Used LOOK_AT_TARGET = {to_xyz_str(LOOK_AT_TARGET)}"
+        )
 
 
 ###############################################################################

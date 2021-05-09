@@ -52,6 +52,11 @@ center_of_roi = data_config.Ned.Cidadela_Statue
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
+    # exit(
+    #     "TODO update this file before using it again "
+    #     "(see changes made to cv_trace_uavmvs_trajectory.py)"
+    # )
+
     client.moveToZAsync(z=-10, velocity=2).join()  # XXX avoid colliding
     client.hoverAsync().join()
 

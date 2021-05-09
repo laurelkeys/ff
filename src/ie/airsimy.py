@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, List, Tuple, Union, cast
+from typing import Dict, List, Tuple, Union, Optional, cast
 from contextlib import contextmanager
 
 import ff
 import numpy as np
 import airsim
 
-from airsim.types import Vector3r, Quaternionr, Pose
+from airsim.types import Pose, Vector3r, Quaternionr
 
 ###############################################################################
 ###############################################################################
@@ -496,6 +496,34 @@ class AirSimRecord:
                 record = AirSimRecord._parse(*record_row.rstrip('\n').split('\t'))
                 record_dict[record.image_file] = record
         return record_dict
+
+    @staticmethod
+    def make_header_string(skip_time_stamp: bool = False, skip_image_file: bool = False) -> str:
+        # return "TimeStamp\tPOS_X\tPOS_Y\tPOS_Z\tQ_W\tQ_X\tQ_Y\tQ_Z\tImageFile"
+        return (
+            ("" if skip_time_stamp else "TimeStamp\t")
+            + "POS_X\tPOS_Y\tPOS_Z\tQ_W\tQ_X\tQ_Y\tQ_Z"
+            + ("" if skip_image_file else "\tImageFile")
+        )
+
+    @staticmethod
+    def make_line_string(
+        position: Vector3r,
+        orientation: Quaternionr,
+        time_stamp: Optional[str],
+        image_file: Optional[str],
+    ) -> str:
+        pos = position
+        q = orientation
+
+        pos_string = "\t".join([str(_) for _ in [pos.x_val, pos.y_val, pos.z_val]])
+        q_string = "\t".join([str(_) for _ in [q.w_val, q.x_val, q.y_val, q.z_val]])
+
+        return (
+            ("" if time_stamp is None else f"{time_stamp}\t")
+            + f"{pos_string}\t{q_string}"
+            + ("" if image_file is None else f"\t{image_file}")
+        )
 
 
 ###############################################################################

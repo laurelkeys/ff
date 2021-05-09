@@ -17,3 +17,4 @@
 - [ ] See https://github.com/microsoft/AirSim/issues/3251
 - [ ] See https://github.com/microsoft/AirSim/pull/3239/files
 - [ ] See https://github.com/microsoft/AirSim-Drone-Racing-VAE-Imitation/blob/master/racing_utils/geom_utils.py
+- [ ] Clarify https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats vs http://redwood-data.org/indoor/fileformat.html
