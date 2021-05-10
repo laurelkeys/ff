@@ -5,8 +5,6 @@ import argparse
 import numpy as np
 import open3d as o3d
 
-registration3d = o3d.pipelines.registration
-
 
 # FIXME temporarily testing hardcoded values generated with new_sfm_from_rec.py
 MESHROOM_TO_AIRSIM_CORRESPONDENCES = (
@@ -61,6 +59,8 @@ def main(args: argparse.Namespace) -> None:
     #
     print("\n> Initial alignment")  # TODO pass the source to target transformation matrix as an argument
     init_transformation = np.identity(4)  # initial transformation estimation                               http://www.open3d.org/docs/release/python_api/open3d.pipelines.registration.evaluate_registration.html
+
+    registration3d = o3d.pipelines.registration
 
     init_registration = registration3d.evaluate_registration(
         meshroom_pcd, airsim_pcd,

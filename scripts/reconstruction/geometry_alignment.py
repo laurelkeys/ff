@@ -26,15 +26,19 @@ def visualize_alignment(source_path: str, target_path: str, transform_path: Opti
         # FIXME parse directly from .mlp
         transform = np.array(
             [
-                [4.97279, 0.277086, 0.472141, -0.318997],
-                [0.240651, -4.98187, 0.389083, 3.7313],
-                [0.491713, -0.364035, -4.96528, 11.8308],
+                # [4.97279, 0.277086, 0.472141, -0.318997],
+                # [0.240651, -4.98187, 0.389083, 3.7313],
+                # [0.491713, -0.364035, -4.96528, 11.8308],
+                [-269.309, -273.127, 145.429, -76.5812],
+                [-300.555, 185.046, -209.046, 183.206],
+                [73.5837, -243.793, -321.599, 419.885],
                 [0.0, 0.0, 0.0, 1.0],
             ]
         )
 
     print("\n> Alignment matrix")
     print(transform)
+    np.savetxt("alignment.txt", transform)
     draw_registration_result(source_pcd, target_pcd, transform)
 
 
