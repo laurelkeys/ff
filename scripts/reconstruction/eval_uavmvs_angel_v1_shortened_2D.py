@@ -19,7 +19,7 @@ if __name__ == "__main__":
         description=f"Runs tanksandtemples_evaluator.py on {SCENE_FOLDER}/"
     )
 
-    parser.add_argument("--dtau", type=float, default=0.51)
+    parser.add_argument("--dtau", type=float, default=0.5)
     parser.add_argument("--out_dir", type=str, default=None)
     parser.add_argument("--plot_stretch", type=int, default=5)
 
@@ -36,17 +36,19 @@ if __name__ == "__main__":
         out_dir=out_dir,
         dTau=dTau,
         # Output from uavmvs:
-        gt_ply_path=os.path.join(SCENE_FOLDER, f"{SCENE_NAME}-proxy_cloud.ply"),
+        gt_ply_path=os.path.join(RECONSTRUCTION_FOLDER, "cropped_proxy_cloud.ply"),
         # Generated with evaluate_reconstruction.py from data captured in AirSim:
         gt_log_path=os.path.join(RECONSTRUCTION_FOLDER, "tanksandtemples.rec.log"),
         # Generated from Meshroom output with geometry_crop.py:
-        est_ply_path=os.path.join(RECONSTRUCTION_FOLDER, "cropped_1.ply"),
+        est_ply_path=os.path.join(RECONSTRUCTION_FOLDER, "cropped_sfm.ply"),
         # Generated from Meshroom output with evaluate_reconstruction.py:
         est_log_path=os.path.join(RECONSTRUCTION_FOLDER, "tanksandtemples.sfm.log"),
         # Eyeballed in Meshlab from uavmvs and Meshroom outputs:
-        align_txt_path=os.path.join(RECONSTRUCTION_FOLDER, "alignment2.txt"),
+        align_txt_path=os.path.join(RECONSTRUCTION_FOLDER, "tanksandtemples.align_rec_to_sfm.txt"),  # gt -> est
         # Generated from Meshroom output with geometry_crop.py:
-        crop_json_path=os.path.join(RECONSTRUCTION_FOLDER, "cropped_1.json"),
+        crop_json_path=None,
+        # crop_json_path=os.path.join(RECONSTRUCTION_FOLDER, "cropped_proxy_cloud.json"),
+        # crop_json_path=os.path.join(RECONSTRUCTION_FOLDER, "cropped_sfm.json"),
         plot_stretch=plot_stretch,
     )
 

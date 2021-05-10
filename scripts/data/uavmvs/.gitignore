@@ -6,6 +6,7 @@
 *.utj
 *.vol
 *.json
+*.pdf
 
 *.mtl
 *.obj
