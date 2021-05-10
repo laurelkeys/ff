@@ -11,7 +11,7 @@ except:
 
 SCENE_NAME = "angel"
 SCENE_FOLDER = os.path.join(FF_PROJECT_ROOT, "scripts", "data", "uavmvs", "angel_v1")
-RECONSTRUCTION_FOLDER = os.path.join(SCENE_FOLDER, "capture-shortened_2D", "Reconstruction")
+RECONSTRUCTION_FOLDER = os.path.join(SCENE_FOLDER, "capture-initial_2D", "Reconstruction")
 assert os.path.isdir(RECONSTRUCTION_FOLDER), RECONSTRUCTION_FOLDER
 
 if __name__ == "__main__":
@@ -35,20 +35,12 @@ if __name__ == "__main__":
         scene_name=SCENE_NAME,
         out_dir=out_dir,
         dTau=dTau,
-        # Output from uavmvs:
         gt_ply_path=os.path.join(RECONSTRUCTION_FOLDER, "cropped_proxy_cloud.ply"),
-        # Generated with evaluate_reconstruction.py from data captured in AirSim:
         gt_log_path=os.path.join(RECONSTRUCTION_FOLDER, "tanksandtemples.rec.log"),
-        # Generated from Meshroom output with geometry_crop.py:
         est_ply_path=os.path.join(RECONSTRUCTION_FOLDER, "cropped_sfm.ply"),
-        # Generated from Meshroom output with evaluate_reconstruction.py:
         est_log_path=os.path.join(RECONSTRUCTION_FOLDER, "tanksandtemples.sfm.log"),
-        # Eyeballed in Meshlab from uavmvs and Meshroom outputs:
         align_txt_path=os.path.join(RECONSTRUCTION_FOLDER, "tanksandtemples.align_rec_to_sfm.txt"),  # gt -> est
-        # Generated from Meshroom output with geometry_crop.py:
         crop_json_path=None,  # HACK (see the changes on TanksAndTemples "debug" branch)
-        # crop_json_path=os.path.join(RECONSTRUCTION_FOLDER, "cropped_proxy_cloud.json"),
-        # crop_json_path=os.path.join(RECONSTRUCTION_FOLDER, "cropped_sfm.json"),
         plot_stretch=plot_stretch,
     )
 

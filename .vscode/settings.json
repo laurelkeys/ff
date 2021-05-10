@@ -48,6 +48,8 @@
 
         "src/*.egg-info/": true,
 
+        "scripts/data/**/*.png": false, // true
+
         "vendor/**/.gitignore": true,
         "vendor/**/README.md": true,
 
