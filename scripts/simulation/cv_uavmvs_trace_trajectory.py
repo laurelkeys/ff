@@ -66,8 +66,14 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     initial_pose = client.simGetVehiclePose()
     if args.verbose:
         ff.print_pose(initial_pose, airsim.to_eularian_angles)
-        ff.log("(front_center)  camera info:", client.simGetCameraInfo(camera_name=ff.CameraName.front_center))
-        ff.log("(bottom_center) camera info:", client.simGetCameraInfo(camera_name=ff.CameraName.bottom_center))
+        ff.log(
+            "(front_center)  camera info:",
+            client.simGetCameraInfo(camera_name=ff.CameraName.front_center),
+        )
+        ff.log(
+            "(bottom_center) camera info:",
+            client.simGetCameraInfo(camera_name=ff.CameraName.bottom_center),
+        )
 
     if args.flush or (args.capture_dir and not args.debug):
         client.simFlushPersistentMarkers()

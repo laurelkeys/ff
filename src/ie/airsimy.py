@@ -455,7 +455,9 @@ class AirSimRecord:
         q_w: float, q_x: float, q_y: float, q_z: float,
         image_file: str,
     ):
-        """ Represents an item from AirSim's recording file (i.e. a row in `airsim_rec.txt`). """
+        """ Represents an item from AirSim's recording file (i.e. a row in `airsim_rec.txt`).
+            Reference: https://github.com/microsoft/AirSim/blob/master/Unreal/Plugins/AirSim/Source/PawnSimApi.cpp
+        """
         # assert os.path.isfile(image_file), image_file
         self.time_stamp = time_stamp
         self.image_file = image_file

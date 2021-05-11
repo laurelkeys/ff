@@ -5,16 +5,20 @@ import ff
 import airsim
 
 from ie import airsimy
-from ff.types import to_xyz_str
-from ie.airsimy import connect, quaternion_look_at
-from airsim.types import YawMode, Vector3r, Quaternionr, DrivetrainType
-from airsim.utils import to_quaternion
+from ds.rgba import Rgba
+from ff.types import to_xyz_str, to_xyz_tuple
+from ie.airsimy import AirSimImage, connect, pose_at_simulation_pause, quaternion_look_at
+from airsim.types import DrivetrainType, Pose, YawMode
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import parse_uavmvs, convert_uavmvs_to_airsim_position
+    from uavmvs_parse_traj import (
+        parse_uavmvs,
+        convert_uavmvs_to_airsim_pose,
+        convert_uavmvs_to_airsim_position,
+    )
 
     include(FF_PROJECT_ROOT, "scripts", "data_config")
     import data_config
@@ -34,6 +38,12 @@ def preflight(args: argparse.Namespace) -> None:
     assert ext in parse_uavmvs.keys(), f"Invalid trajectory extension: '{args.trajectory_path}'"
 
     args.trajectory = parse_uavmvs[ext](args.trajectory_path)
+    if args.verbose:
+        ff.log(f"The trajectory has {len(args.trajectory)} camera poses")
+
+    if args.capture_dir:
+        args.capture_dir = os.path.abspath(args.capture_dir)
+        assert os.path.isdir(args.capture_dir), args.capture_dir
 
     if args.env_name is not None:
         # the --launch option was passed
@@ -46,77 +56,100 @@ def preflight(args: argparse.Namespace) -> None:
 ###############################################################################
 
 
+# FIXME find a good way to pass this in via args
+LOOK_AT_TARGET = data_config.Ned.Cidadela_Statue
+# LOOK_AT_TARGET = data_config.Ned.Urban_Building
+CAPTURE_CAMERA = ff.CameraName.front_center
+
 # HACK fix after testing
 TEST_AIMING_AT_ROI = True
 center_of_roi = data_config.Ned.Cidadela_Statue
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
-    # exit(
-    #     "TODO update this file before using it again "
-    #     "(see changes made to cv_trace_uavmvs_trajectory.py)"
-    # )
-
     client.moveToZAsync(z=-10, velocity=2).join()  # XXX avoid colliding
     client.hoverAsync().join()
 
-    # NOTE (at least for now) don't worry about matching the camera rotation optimized
-    # by uavmvs, simply follow the generated viewpoint positions with the drone.
-    camera_positions = [
-        convert_uavmvs_to_airsim_position(
+    if args.flush or (args.capture_dir and not args.debug):
+        client.simFlushPersistentMarkers()
+
+    camera_poses = []
+    for camera in args.trajectory:
+        position = convert_uavmvs_to_airsim_position(
             camera.position, translation=args.offset, scaling=args.scale
         )
-        for camera in args.trajectory
-    ]
 
-    def print_record_line(kinematics):
-        # ref.: AirSim/Unreal/Plugins/AirSim/Source/PawnSimApi.cpp
-        pos_x, pos_y, pos_z = ff.to_xyz_tuple(kinematics.position)
-        q_x, q_y, q_z, q_w = ff.to_xyzw_tuple(kinematics.orientation)
-        print(pos_x, pos_y, pos_z, q_w, q_x, q_y, q_z, sep="\t")
+        # Compute the forward axis as the vector which points
+        # from the camera eye to the region of interest (ROI):
+        x_axis = LOOK_AT_TARGET - position
+        x_axis /= x_axis.get_length()  # normalize
 
-    print("POS_X\tPOS_Y\tPOS_Z\tQ_W\tQ_X\tQ_Y\tQ_Z")
-    for position in camera_positions:
+        z_axis = airsimy.vector_projected_onto_plane(airsimy.DOWN, plane_normal=x_axis)
+        z_axis /= z_axis.get_length()  # normalize
+
+        y_axis = z_axis.cross(x_axis)
+
+        orientation = airsimy.quaternion_that_rotates_axes_frame(
+            source_xyz_axes=airsimy.NED_AXES_FRAME,
+            target_xyz_axes=(x_axis, y_axis, z_axis),
+        )
+
+        camera_poses.append(Pose(position, orientation))
+
+    if args.debug:
+        client.simPlotPoints(
+            [pose.position for pose in camera_poses], Rgba.Blue, is_persistent=True
+        )
+
+    n_of_poses = len(camera_poses)
+    pad = len(str(n_of_poses))
+
+    record = []
+
+    for i, camera_pose in enumerate(camera_poses):
         client.moveToPositionAsync(
-            *ff.to_xyz_tuple(position),
+            *to_xyz_tuple(camera_pose.position),
             velocity=2,
             drivetrain=DrivetrainType.MaxDegreeOfFreedom,
             yaw_mode=YawMode(is_rate=False, yaw_or_rate=airsimy.YAW_N),
         ).join()
 
-        client.simPause(True)
-        kinematics = client.simGetGroundTruthKinematics()
-        camera_info = client.simGetCameraInfo(ff.CameraName.front_center)
-        client.simPause(False)
+        # FIXME AirSim isn't changing the pose!
+        with pose_at_simulation_pause(client) as actual_drone_pose:
+            fake_drone_pose = Pose(actual_drone_pose.position, camera_pose.orientation)
+            client.simSetVehiclePose(fake_drone_pose, ignore_collison=True)
 
-        print_record_line(kinematics)
+            if args.capture_dir and not args.debug:
+                name = os.path.join(
+                    args.capture_dir, f"{args.prefix}pose{args.suffix}_{i:0{pad}}.png"
+                )
+                airsim.write_png(name, AirSimImage.get_mono(client, CAPTURE_CAMERA))
 
-        if TEST_AIMING_AT_ROI:
-            body_to_roi = center_of_roi - kinematics.position
-            unit_body_to_roi = body_to_roi / body_to_roi.get_length()
-            ff.log_info(f"{to_xyz_str(body_to_roi)} (unit = {to_xyz_str(unit_body_to_roi)})")
+                pose_str = f"{i:{pad}} / {n_of_poses}"
+                position_str = to_xyz_str(camera_pose.position, show_hints=False)
+                ff.log(f"Saved image ({pose_str}) to '{name}' at {position_str}")
 
-            def plot_arrow(unit_vector, r, g, b, scale=1.2):
+                record.append(
+                    airsimy.AirSimRecord.make_line_string(
+                        camera_pose.position,
+                        camera_pose.orientation,
+                        time_stamp="0",  # HACK
+                        image_file=name,
+                    )
+                )
+            elif args.debug:
+                client.simPlotTransforms([camera_pose], scale=100, is_persistent=True)
                 client.simPlotArrows(
-                    [kinematics.position],
-                    [kinematics.position + unit_vector * scale],
-                    color_rgba=[r, g, b, 1.0],
-                    duration=5,
+                    [camera_pose.position], [LOOK_AT_TARGET], Rgba.White, thickness=2.0, duration=10
                 )
 
-            plot_arrow(Vector3r(1, 0, 0), 1, 0, 0)
-            plot_arrow(Vector3r(0, 1, 0), 0, 1, 0)
-            plot_arrow(Vector3r(0, 0, 1), 0, 0, 1)
-            plot_arrow(unit_body_to_roi, 1, 0, 1)
+            client.simSetVehiclePose(actual_drone_pose, ignore_collison=True)
 
-            pose = camera_info.pose
-            # x = pose.position.x_val
-            # y = pose.position.y_val
-            # z = pose.position.z_val
-            # pose.orientation = Quaternionr(x, y, z, 0)
-            pose.orientation = quaternion_look_at(source_point=pose.position, target_point=center_of_roi)
-            client.simSetCameraPose(ff.CameraName.front_center, pose)
-
+    if record:
+        print()
+        print(airsimy.AirSimRecord.make_header_string())
+        for line in record:
+            print(line)
 
 
 ###############################################################################
@@ -135,7 +168,9 @@ def main(args: argparse.Namespace) -> None:
     except KeyboardInterrupt:
         client.reset()  # avoid UE4 'fatal error' when exiting with Ctrl+C
     finally:
-        pass  # ff.log("Done")
+        ff.log("Done\n")
+        ff.log_warning(f"Used scale = {args.scale} and offset = {args.offset}")
+        ff.log_warning(f"Used CAPTURE_CAMERA = {CAPTURE_CAMERA}")
 
 
 ###############################################################################
@@ -151,14 +186,27 @@ def get_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("trajectory_path", type=str, help="Path to a .TRAJ, .CSV or .UTJ file")
 
+    parser.add_argument("--debug", action="store_true", help="Skip capturing images but plot poses")
+    parser.add_argument("--capture_dir", type=str, help="Folder where image captures will be saved")
+    parser.add_argument("--flush", action="store_true", help="Flush old plots")
+
+    parser.add_argument("--prefix", type=str, help="Prefix added to output image names", default="")
+    parser.add_argument("--suffix", type=str, help="Suffix added to output image names", default="")
+
     parser.add_argument(
         "--offset",
         type=float,
         nargs=3,
         metavar=("X", "Y", "Z"),
-        help="Offset added to all points  (e.g. --offset -55 11 1)",
+        help="Offset added to all points "
+        " (e.g. --offset 1.2375 -6.15 7.75)",  # data_config.Uavmvs.Cidadela_Statue_Offset
     )
-    parser.add_argument("--scale", type=float, help="Scale added to all points  (e.g. --scale 0.2)")
+    parser.add_argument(
+        "--scale",
+        type=float,
+        help="Scale added to all points "
+        " (e.g. --scale 0.168)",  # data_config.Uavmvs.Cidadela_Statue_Scale
+    )
 
     ff.add_arguments_to(parser)
     return parser
