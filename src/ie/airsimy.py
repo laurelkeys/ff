@@ -361,6 +361,14 @@ def quaternion_that_rotates_axes_frame(
     return rotation / length  # normalize
 
 
+def quaternion_that_rotates_orientation(
+    from_orientation: Quaternionr,
+    to_orientation: Quaternionr,
+) -> Quaternionr:
+    """ Returns the quaternion that rotates `from_orientation` into `to_orientation`. """
+    return to_orientation * from_orientation.inverse()
+
+
 def vector_projected_onto_vector(v: Vector3r, u: Vector3r) -> Vector3r:
     """ Returns the projection of `v` onto `u`. """
     return u * v.dot(u) / u.dot(u)
