@@ -72,7 +72,7 @@ center_of_roi = data_config.Ned.Cidadela_Statue
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
-    client.moveToZAsync(z=-10, velocity=2).join()  # XXX avoid colliding
+    client.moveToZAsync(z=-10, velocity=5).join()  # XXX avoid colliding
     client.hoverAsync().join()
 
     if args.flush or (args.capture_dir and not args.debug):
@@ -111,21 +111,6 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
     record = []
 
-    # p = Vector3r(0, 0, 0)
-    # q = Quaternionr(1, 0, 0, 0)
-
-    # client.simSetCameraPose(ff.CameraName.front_center, Pose(p, quaternion_that_rotates_orientation(client.simGetCameraInfo(ff.CameraName.front_center).pose.orientation, q)))
-    # client.simSetCameraPose(ff.CameraName.front_left, Pose(p, quaternion_that_rotates_orientation(client.simGetCameraInfo(ff.CameraName.front_left).pose.orientation, q)))
-    # client.simSetCameraPose(ff.CameraName.front_right, Pose(p, quaternion_that_rotates_orientation(client.simGetCameraInfo(ff.CameraName.front_right).pose.orientation, q)))
-    # client.simSetCameraPose(ff.CameraName.bottom_center, Pose(p, quaternion_that_rotates_orientation(client.simGetCameraInfo(ff.CameraName.bottom_center).pose.orientation, q)))
-    # client.simSetCameraPose(ff.CameraName.back_center, Pose(p, quaternion_that_rotates_orientation(client.simGetCameraInfo(ff.CameraName.back_center).pose.orientation, q)))
-
-    # client.simSetCameraPose(ff.CameraName.front_center, Pose(p, q))
-    # client.simSetCameraPose(ff.CameraName.front_left, Pose(p, q))
-    # client.simSetCameraPose(ff.CameraName.front_right, Pose(p, q))
-    # client.simSetCameraPose(ff.CameraName.bottom_center, Pose(p, q))
-    # client.simSetCameraPose(ff.CameraName.back_center, Pose(p, q))
-
     for i, camera_pose in enumerate(camera_poses):
         client.moveToPositionAsync(
             *to_xyz_tuple(camera_pose.position),
@@ -134,19 +119,20 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             yaw_mode=YawMode(is_rate=False, yaw_or_rate=airsimy.YAW_N),
         ).join()
 
-        # FIXME AirSim isn't changing the pose!
         with pose_at_simulation_pause(client) as actual_drone_pose:
-            ## fake_drone_pose = Pose(actual_drone_pose.position, camera_pose.orientation)
-            ## client.simSetVehiclePose(fake_drone_pose, ignore_collision=True)
-            client.simSetVehiclePose(Pose(Vector3r(), Quaternionr()), ignore_collision=True)
-
-            # actual_camera_orientation = client.simGetCameraInfo(CAPTURE_CAMERA).pose.orientation
-            # relative_position = Vector3r(0, 0, 0)
-            # relative_orientation = quaternion_that_rotates_orientation(
-            #     actual_camera_orientation, camera_pose.orientation
+            # actual_camera_pose = client.simGetCameraInfo(CAPTURE_CAMERA).pose
+            # fake_camera_pose = Pose(
+            #     # NOTE simSetCameraPose expects relative values
+            #     position_val=Vector3r(0, 0, 0),
+            #     orientation_val=quaternion_that_rotates_orientation(
+            #         actual_camera_pose.orientation, camera_pose.orientation
+            #     ),
             # )
+            # client.simSetCameraPose(CAPTURE_CAMERA, fake_camera_pose)
 
-            # client.simSetCameraPose(CAPTURE_CAMERA, Pose(relative_position, relative_orientation))
+            fake_drone_pose = Pose(actual_drone_pose.position, camera_pose.orientation)
+            client.simSetVehiclePose(fake_drone_pose, ignore_collision=True)
+            client.simContinueForFrames(1)  # NOTE without this, the pose won't change!
 
             if args.capture_dir and not args.debug:
                 name = os.path.join(
@@ -172,7 +158,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
                     [camera_pose.position], [LOOK_AT_TARGET], Rgba.White, thickness=2.0, duration=10
                 )
 
-            ## client.simSetVehiclePose(actual_drone_pose, ignore_collision=True)
+            client.simSetVehiclePose(actual_drone_pose, ignore_collision=True)
 
     if record:
         print()
