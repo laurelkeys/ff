@@ -7,23 +7,14 @@ import airsim
 from ie import airsimy
 from ds.rgba import Rgba
 from ff.types import to_xyz_str, to_xyz_tuple
-from ie.airsimy import (
-    AirSimImage,
-    connect,
-    pose_at_simulation_pause,
-    quaternion_that_rotates_orientation,
-)
-from airsim.types import DrivetrainType, Pose, Quaternionr, Vector3r, YawMode
+from ie.airsimy import AirSimImage, connect
+from airsim.types import Pose, YawMode, DrivetrainType
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import (
-        parse_uavmvs,
-        convert_uavmvs_to_airsim_pose,
-        convert_uavmvs_to_airsim_position,
-    )
+    from uavmvs_parse_traj import parse_uavmvs, convert_uavmvs_to_airsim_position
 
     include(FF_PROJECT_ROOT, "scripts", "data_config")
     import data_config
@@ -83,22 +74,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         position = convert_uavmvs_to_airsim_position(
             camera.position, translation=args.offset, scaling=args.scale
         )
-
-        # Compute the forward axis as the vector which points
-        # from the camera eye to the region of interest (ROI):
-        x_axis = LOOK_AT_TARGET - position
-        x_axis /= x_axis.get_length()  # normalize
-
-        z_axis = airsimy.vector_projected_onto_plane(airsimy.DOWN, plane_normal=x_axis)
-        z_axis /= z_axis.get_length()  # normalize
-
-        y_axis = z_axis.cross(x_axis)
-
-        orientation = airsimy.quaternion_that_rotates_axes_frame(
-            source_xyz_axes=airsimy.NED_AXES_FRAME,
-            target_xyz_axes=(x_axis, y_axis, z_axis),
-        )
-
+        orientation = airsimy.quaternion_orientation_from_eye_to_look_at(position, LOOK_AT_TARGET)
         camera_poses.append(Pose(position, orientation))
 
     if args.debug:
@@ -119,10 +95,18 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             yaw_mode=YawMode(is_rate=False, yaw_or_rate=airsimy.YAW_N),
         ).join()
 
-        with pose_at_simulation_pause(client) as actual_drone_pose:
-            fake_drone_pose = Pose(actual_drone_pose.position, camera_pose.orientation)
-            client.simSetVehiclePose(fake_drone_pose, ignore_collision=True)
-            client.simContinueForFrames(1)  # NOTE without this, the pose won't change!
+        with airsimy.pose_at_simulation_pause(client) as actual_drone_pose:
+            position = actual_drone_pose.position
+            fake_orientation = camera_pose.orientation
+
+            # NOTE when we pre-compute the viewpoint's camera orientation, we use the
+            # expected drone position, which (should be close, but) is not the actual
+            # drone position right now. Hence, we could also experiment with using:
+            # fake_orientation = quaternion_orientation_from_eye_to_look_at(position, LOOK_AT_TARGET)
+
+            fake_pose = Pose(position, fake_orientation)
+            client.simSetVehiclePose(fake_pose, ignore_collision=True)
+            client.simContinueForFrames(1)  # NOTE required to ensure the pose changes!
 
             if args.capture_dir and not args.debug:
                 name = os.path.join(

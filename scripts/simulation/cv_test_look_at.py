@@ -5,7 +5,7 @@ import airsim
 
 from ie import airsimy
 from ds.rgba import Rgba
-from ie.airsimy import connect, AirSimNedTransform
+from ie.airsimy import AirSimNedTransform, connect
 from airsim.types import Pose, Vector3r, Quaternionr
 
 try:

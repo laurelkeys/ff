@@ -282,17 +282,17 @@ def quaternion_from_rotation_axis_angle(axis: Vector3r, angle: float, is_degrees
     return Quaternionr(axis.x_val, axis.y_val, axis.z_val, w_val=np.cos(half_angle))
 
 
-def quaternion_look_at(source_point: Vector3r, target_point: Vector3r) -> Quaternionr:
-    """ Assuming you are looking at `FRONT` vector, what rotation you need to look at `target_point`?. """
-    # ref.: https://github.com/microsoft/AirSim/blob/master/AirLibUnitTests/QuaternionTest.hpp (lookAt)
-    to_vector = target_point - source_point
-    to_vector /= to_vector.get_length()  # normalize
-
-    axis = FRONT.cross(to_vector)
-    axis = UP if axis.get_length() == 0 else axis / axis.get_length()  # normalize
-
-    return quaternion_from_rotation_axis_angle(axis, angle=np.arccos(FRONT.dot(to_vector)))
-    # return quaternion_from_two_vectors(FRONT, to_vector)
+# def quaternion_look_at(source_point: Vector3r, target_point: Vector3r) -> Quaternionr:
+#     """ Assuming you are looking at `FRONT` vector, what rotation you need to look at `target_point`?. """
+#     # ref.: https://github.com/microsoft/AirSim/blob/master/AirLibUnitTests/QuaternionTest.hpp (lookAt)
+#     to_vector = target_point - source_point
+#     to_vector /= to_vector.get_length()  # normalize
+#
+#     axis = FRONT.cross(to_vector)
+#     axis = UP if axis.get_length() == 0 else axis / axis.get_length()  # normalize
+#
+#     return quaternion_from_rotation_axis_angle(axis, angle=np.arccos(FRONT.dot(to_vector)))
+#     # return quaternion_from_two_vectors(FRONT, to_vector)
 
 
 def quaternion_from_two_vectors(a: Vector3r, b: Vector3r) -> Quaternionr:
@@ -367,6 +367,28 @@ def quaternion_that_rotates_orientation(
 ) -> Quaternionr:
     """ Returns the quaternion that rotates `from_orientation` into `to_orientation`. """
     return to_orientation * from_orientation.inverse()
+
+
+def quaternion_orientation_from_eye_to_look_at(
+    eye_position: Vector3r, look_at_position: Vector3r
+) -> Quaternionr:
+    """ Returns the quaternion representing the orientation from `eye_position`
+        aiming at `look_at_position`, in AirSim's reference NED axes frame.
+    """
+    # Compute the forward axis as the vector which points
+    # from the camera eye to the region of interest (ROI):
+    x_axis = look_at_position - eye_position
+    x_axis /= x_axis.get_length()  # normalize
+
+    z_axis = vector_projected_onto_plane(DOWN, plane_normal=x_axis)
+    z_axis /= z_axis.get_length()  # normalize
+
+    y_axis = z_axis.cross(x_axis)
+
+    return quaternion_that_rotates_axes_frame(
+        source_xyz_axes=NED_AXES_FRAME,
+        target_xyz_axes=(x_axis, y_axis, z_axis),
+    )
 
 
 def vector_projected_onto_vector(v: Vector3r, u: Vector3r) -> Vector3r:
