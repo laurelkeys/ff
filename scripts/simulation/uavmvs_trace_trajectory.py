@@ -120,16 +120,6 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         ).join()
 
         with pose_at_simulation_pause(client) as actual_drone_pose:
-            # actual_camera_pose = client.simGetCameraInfo(CAPTURE_CAMERA).pose
-            # fake_camera_pose = Pose(
-            #     # NOTE simSetCameraPose expects relative values
-            #     position_val=Vector3r(0, 0, 0),
-            #     orientation_val=quaternion_that_rotates_orientation(
-            #         actual_camera_pose.orientation, camera_pose.orientation
-            #     ),
-            # )
-            # client.simSetCameraPose(CAPTURE_CAMERA, fake_camera_pose)
-
             fake_drone_pose = Pose(actual_drone_pose.position, camera_pose.orientation)
             client.simSetVehiclePose(fake_drone_pose, ignore_collision=True)
             client.simContinueForFrames(1)  # NOTE without this, the pose won't change!
