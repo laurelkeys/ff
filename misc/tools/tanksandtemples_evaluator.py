@@ -244,7 +244,7 @@ def trajectory_alignment(
 
     # NOTE this transformation takes source_traj to the same reference
     # frame as target_traj after being transformed by target_align XXX.
-    return registration.transformation  # source_align
+    return registration.transformation
 
 
 # ----------------------------------------------------------------------------
@@ -337,17 +337,18 @@ class TanksAndTemplesEvaluator:
         s = copy.deepcopy(source_pcd).transform(source_align)
         t = copy.deepcopy(target_pcd)
 
-        if target_crop_volume is not None:
-            orthogonal_axis_index = {"X": 0, "Y": 1, "Z": 2}[target_crop_volume.orthogonal_axis]
-            bounding_polygon = np.asarray(target_crop_volume.bounding_polygon)
-            min_bound, max_bound = bounding_polygon.min(axis=0), bounding_polygon.max(axis=0)
-            assert min_bound[orthogonal_axis_index] == max_bound[orthogonal_axis_index] == 0
-            min_bound[orthogonal_axis_index] = target_crop_volume.axis_min
-            max_bound[orthogonal_axis_index] = target_crop_volume.axis_max
-            aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
-            o3d.visualization.draw_geometries([s, t, aabb])
-        else:
-            o3d.visualization.draw_geometries([s, t])
+        if verbose:
+            if target_crop_volume is not None:
+                orthogonal_axis_index = {"X": 0, "Y": 1, "Z": 2}[target_crop_volume.orthogonal_axis]
+                bounding_polygon = np.asarray(target_crop_volume.bounding_polygon)
+                min_bound, max_bound = bounding_polygon.min(axis=0), bounding_polygon.max(axis=0)
+                assert min_bound[orthogonal_axis_index] == max_bound[orthogonal_axis_index] == 0
+                min_bound[orthogonal_axis_index] = target_crop_volume.axis_min
+                max_bound[orthogonal_axis_index] = target_crop_volume.axis_max
+                aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+                o3d.visualization.draw_geometries([s, t, aabb])
+            else:
+                o3d.visualization.draw_geometries([s, t])
 
         if target_crop_volume is not None:
             s = target_crop_volume.crop_point_cloud(s)
@@ -441,7 +442,11 @@ class TanksAndTemplesEvaluator:
         target_log_to_ply_align_txt_path=None,
         source_log_path=None,  # Camera positions in the same reference frame as source_ply_path
         target_log_path=None,  # Camera positions with (possibly) an arbitrary coordinate system
-        # If True, then the three steps of registration refinement are skipped.
+        # Transformation matrix used as a pre-alignment of source_ply_path to target_ply_path if
+        # source_log_path or target_log_path are None (otherwise, this is ignored).
+        source_ply_to_ply_align_txt_path=None,
+        # If True, then the three steps of registration refinement are skipped. The pre-alignment
+        # matrix is still applied if it is not None, though.
         skip_refinement=False,
         max_iteration=20,
         plot_stretch=5,
@@ -457,14 +462,22 @@ class TanksAndTemplesEvaluator:
             target_traj = Trajectory.read(target_log_path)
             target_traj_to_target_pcd_align = np.loadtxt(target_log_to_ply_align_txt_path)
 
-            # Compute a rough pre-alignment using the camera positions from .log trajectories.
-            source_traj_to_target_pcd_align = trajectory_alignment(
+            # Compute a rough pre-alignment using the camera positions from .log trajectories,
+            # since source_traj and source_pcd are assumed to have the same coordinate system.
+            source_pcd_to_target_pcd_align = trajectory_alignment(
                 source_traj, target_traj, target_traj_to_target_pcd_align
             )
 
-            source_align_0 = source_traj_to_target_pcd_align
+            source_align_0 = source_pcd_to_target_pcd_align
         else:
-            source_align_0 = np.identity(4)
+            assert source_log_path is None
+            assert target_log_path is None
+
+            if source_ply_to_ply_align_txt_path is not None:
+                source_pcd_to_target_pcd_align = np.loadtxt(source_ply_to_ply_align_txt_path)
+                source_align_0 = source_pcd_to_target_pcd_align
+            else:
+                source_align_0 = np.identity(4)
 
         if target_crop_json_path is not None:
             target_crop_volume = o3d.visualization.read_selection_polygon_volume(target_crop_json_path)
