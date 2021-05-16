@@ -84,7 +84,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         print("[ff] Teleporting to {}... ".format(coords_format).format(*xyz), end="", flush=True)
         pose = airsim.Pose()
         pose.position = airsim.Vector3r(*xyz)
-        client.simSetVehiclePose(pose, ignore_collison=True)
+        client.simSetVehiclePose(pose, ignore_collision=True)
         time.sleep(4)  # wait a few seconds after teleporting
     else:
         print("[ff] Moving to {}... ".format(coords_format).format(*xyz), end="", flush=True)

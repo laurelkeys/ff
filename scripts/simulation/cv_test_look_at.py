@@ -123,7 +123,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         )
         plot_pose(client, new_pose)  # NOTE this should be the same as the plot_xyz_axis above!
         if args.set:
-            client.simSetVehiclePose(new_pose, ignore_collison=True)
+            client.simSetVehiclePose(new_pose, ignore_collision=True)
 
 
 ###############################################################################

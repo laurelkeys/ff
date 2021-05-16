@@ -137,8 +137,8 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         # FIXME AirSim isn't changing the pose!
         with pose_at_simulation_pause(client) as actual_drone_pose:
             ## fake_drone_pose = Pose(actual_drone_pose.position, camera_pose.orientation)
-            ## client.simSetVehiclePose(fake_drone_pose, ignore_collison=True)
-            client.simSetVehiclePose(Pose(Vector3r(), Quaternionr()), ignore_collison=True)
+            ## client.simSetVehiclePose(fake_drone_pose, ignore_collision=True)
+            client.simSetVehiclePose(Pose(Vector3r(), Quaternionr()), ignore_collision=True)
 
             # actual_camera_orientation = client.simGetCameraInfo(CAPTURE_CAMERA).pose.orientation
             # relative_position = Vector3r(0, 0, 0)
@@ -172,7 +172,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
                     [camera_pose.position], [LOOK_AT_TARGET], Rgba.White, thickness=2.0, duration=10
                 )
 
-            ## client.simSetVehiclePose(actual_drone_pose, ignore_collison=True)
+            ## client.simSetVehiclePose(actual_drone_pose, ignore_collision=True)
 
     if record:
         print()

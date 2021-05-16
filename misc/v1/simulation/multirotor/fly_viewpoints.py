@@ -117,7 +117,7 @@ def _move_by_vehicle_poses(client: airsim.MultirotorClient, args: argparse.Names
     # NOTE check https://github.com/microsoft/AirSim/pull/2324
     for position, orientation in args.viewpoints:
         pose = airsim.Pose(airsim.Vector3r(*position), airsim.Quaternionr(*orientation))
-        client.simSetVehiclePose(pose, ignore_collison=True)
+        client.simSetVehiclePose(pose, ignore_collision=True)
         client.hoverAsync().join()
         time.sleep(2)
 

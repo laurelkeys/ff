@@ -100,7 +100,7 @@ def fly(client: MultirotorClient, args: argparse.Namespace) -> None:
     if args.teleport:
         ff.log(f"Teleporting to {ff.to_xyz_str(start_pos)}...")
         new_pose = Pose(start_pos, initial_pose.orientation)
-        Controller.teleport(client, to=new_pose, ignore_collison=True)
+        Controller.teleport(client, to=new_pose, ignore_collision=True)
     else:
         ff.log(f"Flying to {ff.to_xyz_str(start_pos)}...")
         client.moveToPositionAsync(*ff.to_xyz_tuple(start_pos), velocity=5).join()

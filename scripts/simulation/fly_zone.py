@@ -86,7 +86,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         # NOTE using `nanQuaternionr` for the orientation should work for `simSetVehiclePose`
         #      not to change it (which is called by `Controller.teleport`)... but it doesn't
         new_pose = Pose(start_pos, initial_pose.orientation)
-        Controller.teleport(client, to=new_pose, ignore_collison=True)
+        Controller.teleport(client, to=new_pose, ignore_collision=True)
     else:
         ff.log(f"Flying to {ff.to_xyz_str(start_pos)}...")
         client.moveToPositionAsync(*ff.to_xyz_tuple(start_pos), velocity=5, timeout_sec=12).join()

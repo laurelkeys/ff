@@ -46,9 +46,9 @@ class Controller:
     """ A (currently) blocking flight controller which abstracts the flying method. """
 
     @staticmethod
-    def teleport(client: airsim.MultirotorClient, to: Pose, ignore_collison: bool = True) -> None:
+    def teleport(client: airsim.MultirotorClient, to: Pose, ignore_collision: bool = True) -> None:
         # HACK see https://github.com/Microsoft/AirSim/issues/1618#issuecomment-689152817
-        client.simSetVehiclePose(to, ignore_collison)
+        client.simSetVehiclePose(to, ignore_collision)
         client.moveToPositionAsync(*ff.to_xyz_tuple(to.position), velocity=1)
 
     @staticmethod

@@ -121,7 +121,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     record = []
 
     for i, pose in enumerate(camera_poses):
-        client.simSetVehiclePose(pose, ignore_collison=True)
+        client.simSetVehiclePose(pose, ignore_collision=True)
 
         pose_str = f"{i:{pad}} / {n_of_poses}"
         position_str = to_xyz_str(pose.position, show_hints=False)
