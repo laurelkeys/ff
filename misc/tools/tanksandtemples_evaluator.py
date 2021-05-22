@@ -225,6 +225,7 @@ def trajectory_alignment(
         np.asarray([[index, index] for index in range(camera_poses_len)])
     )
 
+    # NOTE there's no random seed we can set for Open3D, so this might no be reproducible
     rr = o3d_registration.RANSACConvergenceCriteria()
     rr.max_iteration = 100000
     try:

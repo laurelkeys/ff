@@ -43,6 +43,7 @@ def reset(client: airsim.MultirotorClient) -> None:
 
 @contextmanager
 def pose_at_simulation_pause(client: airsim.MultirotorClient):
+    """ Pauses the AirSim simulation and returns the client's current pose. """
     client.simPause(is_paused=True)
     try:
         yield client.simGetVehiclePose()
