@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import argparse
 
@@ -38,6 +39,9 @@ LOOK_AT_TARGET = data_config.Ned.Cidadela_Statue
 
 CAPTURE_CAMERA = ff.CameraName.front_center
 # CAPTURE_CAMERA = ff.CameraName.bottom_center
+
+AIRSIM_RECORD_FILENAME = "uavmvs_airsim_rec.txt"
+# AIRSIM_RECORD_FILENAME = None
 
 IS_CV_MODE = SIM_MODE == ff.SimMode.ComputerVision
 CV_SLEEP_SEC = 2
@@ -88,50 +92,49 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         )
         orientation = quaternion_orientation_from_eye_to_look_at(position, LOOK_AT_TARGET)
         camera_poses.append(Pose(position, orientation))
+
     if args.debug:
         camera_positions = [pose.position for pose in camera_poses]
         client.simPlotPoints(camera_positions, Rgba.Blue, is_persistent=True)
-        client.simPlotLineStrip(camera_positions, Rgba.White, thickness=1.5, is_persistent=True)
-    camera_poses_len = len(camera_poses)
+        client.simPlotLineStrip(camera_positions, Rgba.Cyan, thickness=2.5, is_persistent=True)
 
     airsim_record = []
 
     def do_stuff_at_uavmvs_viewpoint(i, pose):
-        log_string = f"({i}/{camera_poses_len})"
+        nonlocal client, camera_poses, airsim_record
+        log_string = f"({i}/{len(camera_poses)})"
+        p, q = pose.position, pose.orientation
         if args.debug:
-            log_string += f" position = {to_xyz_str(pose.position)}"
+            log_string += f" position = {to_xyz_str(p)}"
             client.simPlotTransforms([pose], scale=100, is_persistent=True)
-            client.simPlotArrows(
-                [pose.position], [LOOK_AT_TARGET], Rgba.White, thickness=2.0, duration=10
-            )
+            # client.simPlotArrows([p], [LOOK_AT_TARGET], Rgba.White, thickness=3.0, duration=10)
         elif args.capture_dir:
-            path = f"{args.prefix}pose{args.suffix}_{i:0{len(str(camera_poses_len))}}.png"
+            path = f"{args.prefix}pose{args.suffix}_{i:0{len(str(len(camera_poses)))}}.png"
             path = os.path.join(args.capture_dir, path)
             airsim.write_png(path, AirSimImage.get_mono(client, CAPTURE_CAMERA))
             log_string += f' saved image to "{path}"'
-            record_line = AirSimRecord.make_line_string(
-                position, orientation, time_stamp=str(i), image_file=path
-            )
+            record_line = AirSimRecord.make_line_string(p, q, time_stamp=str(i), image_file=path)
             airsim_record.append(record_line)
         ff.log(log_string)
 
-    if not IS_CV_MODE:
-        client.moveToZAsync(z=-10, velocity=VELOCITY).join()  # XXX avoid colliding on take off
-        client.hoverAsync().join()
-
-    mean_position_error = 0.0
-    for i, camera_pose in enumerate(camera_poses):
-        if IS_CV_MODE:
+    if IS_CV_MODE:
+        for i, camera_pose in enumerate(camera_poses):
             client.simSetVehiclePose(camera_pose, ignore_collision=True)
             do_stuff_at_uavmvs_viewpoint(i, camera_pose)
             time.sleep(CV_SLEEP_SEC)
-        else:
+    else:
+        client.moveToZAsync(z=-10, velocity=VELOCITY).join()  # XXX avoid colliding on take off
+        client.hoverAsync().join()
+        mean_position_error = 0.0
+
+        for i, camera_pose in enumerate(camera_poses):
             client.moveToPositionAsync(
                 *to_xyz_tuple(camera_pose.position),
                 velocity=VELOCITY,
                 drivetrain=DrivetrainType.MaxDegreeOfFreedom,
                 yaw_mode=YawMode(is_rate=False, yaw_or_rate=YAW_N),
             ).join()
+
             with pose_at_simulation_pause(client) as real_pose:
                 fake_pose = Pose(real_pose.position, camera_pose.orientation)
                 client.simSetVehiclePose(fake_pose, ignore_collision=True)
@@ -148,14 +151,17 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
                 mean_position_error += position_error
                 ff.log_debug(f"{position_error = }")
 
-    if not IS_CV_MODE:
+        mean_position_error /= len(camera_poses)
         ff.log_debug(f"{mean_position_error = }")
 
     if airsim_record:
-        print()
-        print(AirSimRecord.make_header_string())
+        print_to_file = AIRSIM_RECORD_FILENAME is not None
+        file = open(AIRSIM_RECORD_FILENAME, "w") if print_to_file else None
+        print(AirSimRecord.make_header_string(), file=(file if print_to_file else sys.stdout))
         for line in airsim_record:
-            print(line)
+            print(line, file=(file if print_to_file else sys.stdout))
+        if print_to_file:
+            file.close()
 
 
 ###############################################################################
@@ -168,7 +174,7 @@ def main(args: argparse.Namespace) -> None:
         ff.print_airsim_path(airsim.__path__)
 
     preflight(args)  # setup
-    client = connect(ff.SimMode.ComputerVision)
+    client = connect(SIM_MODE)
     try:
         fly(client, args)  # do stuff
     except KeyboardInterrupt:
@@ -178,7 +184,7 @@ def main(args: argparse.Namespace) -> None:
         ff.log_info(f"Used scale = {args.scale} and offset = {args.offset}")
         ff.log_info(f"Used VELOCITY = {VELOCITY}")
         ff.log_info(f"Used SIM_MODE = {SIM_MODE}")
-        ff.log_info(f"Used LOOK_AT_TARGET = {LOOK_AT_TARGET}")
+        ff.log_info(f"Used LOOK_AT_TARGET = {to_xyz_str(LOOK_AT_TARGET)}")
         ff.log_info(f"Used CAPTURE_CAMERA = {CAPTURE_CAMERA}")
 
 
@@ -189,8 +195,8 @@ def main(args: argparse.Namespace) -> None:
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Fly to the positions of a trajectory generated by uavmvs"
-        ", but using different orientations at the viewpoints."
+        description="Trace a trajectory generated by uavmvs, "
+        "but using different orientations at the viewpoints."
         " Works in either Multirotor or ComputerVision mode."
     )
 
