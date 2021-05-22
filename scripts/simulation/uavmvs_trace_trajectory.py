@@ -162,6 +162,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             print(line, file=(file if print_to_file else sys.stdout))
         if print_to_file:
             file.close()
+            ff.log_warning(f'Saved AirSim record to "{AIRSIM_RECORD_FILENAME}"')
 
 
 ###############################################################################
