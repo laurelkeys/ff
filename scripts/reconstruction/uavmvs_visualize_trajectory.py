@@ -11,7 +11,7 @@ try:
     from include_in_path import FF_PROJECT_ROOT, include
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import TrajectoryCamera, TrajectoryCameraKind, parse_uavmvs
+    import uavmvs_parse_traj as uavmvs
 except:
     raise
 
@@ -26,7 +26,9 @@ BLACK = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
 WHITE = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]
 
 
-def coordinate_axes_line_set(axes_origins, axes_rotations=None, size=1.0, colors=None, frustum=False):
+def coordinate_axes_line_set(
+    axes_origins, axes_rotations=None, size=1.0, colors=None, frustum=False
+):
     points, lines = [], []
 
     # NOTE Open3D can't really handle rendering more than 50 meshes, so we merge
@@ -92,13 +94,15 @@ def coordinate_axes_line_set(axes_origins, axes_rotations=None, size=1.0, colors
 ###############################################################################
 
 
-def draw_trajectory(args: argparse.Namespace, trajectory: List[TrajectoryCamera]) -> None:
+def draw_trajectory(args: argparse.Namespace, trajectory: List[uavmvs.TrajectoryCamera]) -> None:
     skipped_any = False
     camera_positions = []
     camera_rotation_matrices = []
     for camera in trajectory:
         if not camera.spline_interpolated:  # XXX skips some TrajectoryCameraKind.Csv cameras
-            camera = camera.into(TrajectoryCameraKind.Traj)  # represents rotation as a 3x3 matrix
+            camera = camera.into(
+                uavmvs.TrajectoryCameraKind.Traj
+            )  # represents rotation as a 3x3 matrix
             camera_positions.append(camera.position)
             camera_rotation_matrices.append(camera.rotation)
         else:
@@ -164,9 +168,9 @@ def main(args: argparse.Namespace) -> None:
     for trajectory_path in args.trajectories:
         root, ext = os.path.splitext(trajectory_path)
         assert os.path.isfile(trajectory_path), trajectory_path
-        assert ext in parse_uavmvs.keys(), trajectory_path
+        assert ext in uavmvs.parse_uavmvs.keys(), trajectory_path
 
-        trajectory = parse_uavmvs[ext](trajectory_path)
+        trajectory = uavmvs.parse_uavmvs[ext](trajectory_path)
         if args.verbose:
             print(f"({len(trajectory)} cameras in trajectory '{os.path.basename(root)}{ext}')")
 

@@ -18,19 +18,21 @@ class SamplingMethod(Enum):
 
 
 def main(args: argparse.Namespace) -> None:
+    is_uniform_sampling = args.method == SamplingMethod.Uniform.value
+    assert is_uniform_sampling or args.method == SamplingMethod.Poisson.value
+
     if args.verbose:
         print(f"points_per_triangle = {args.points_per_triangle}")
-        if args.method == SamplingMethod.Poisson.value:
-            print(f"method = {args.method} (init_factor = {args.init_factor})")
-        else:
+        if is_uniform_sampling:
             print(f"method = {args.method}")
-        print()
+        else:
+            print(f"method = {args.method} (init_factor = {args.init_factor})")
 
     input_path = args.triangle_mesh
     assert os.path.isfile(input_path), f"Invalid input path: '{input_path}'"
     triangle_mesh = o3d.io.read_triangle_mesh(input_path)
 
-    print("Triangle mesh")
+    print("\nTriangle mesh")
     print(f"> {len(triangle_mesh.vertices)} vertices")
     print(f"> {len(triangle_mesh.triangles)} triangles")
     if args.view:
@@ -39,21 +41,18 @@ def main(args: argparse.Namespace) -> None:
     # Set the number of points to be sampled
     number_of_points = args.points_per_triangle * len(triangle_mesh.triangles)
 
-    if args.method == SamplingMethod.Uniform.value:
+    if is_uniform_sampling:
         point_cloud = triangle_mesh.sample_points_uniformly(number_of_points)
-    elif args.method == SamplingMethod.Poisson.value:
-        if args.verbose:
-            print("\nPerforming sample elimination for Poisson Disk Sampling..")
+    else:
         # NOTE `init_factor * number_of_points` is the number of points of an initial
         # uniformly sampled point cloud that will then be used for sample elimination
-        point_cloud = triangle_mesh.sample_points_poisson_disk(
-            number_of_points, init_factor=args.init_factor
-        )
-    else:
-        assert False, args.method
+        if args.verbose:
+            print("\nPerforming sample elimination for Poisson Disk Sampling...")
+        point_cloud = triangle_mesh.sample_points_poisson_disk(number_of_points, args.init_factor)
 
     print("\nPoint cloud")
-    print(f"> {len(point_cloud.points)} points")  # == number_of_points
+    print(f"> {len(point_cloud.points)} points")
+    assert len(point_cloud.points) == number_of_points
     if args.view:
         o3d.visualization.draw_geometries([triangle_mesh, point_cloud], mesh_show_wireframe=True)
         o3d.visualization.draw_geometries([point_cloud])

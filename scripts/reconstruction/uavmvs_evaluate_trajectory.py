@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import os
 import argparse
 
@@ -27,7 +25,7 @@ def main(airsim_log_path, uavmvs_out_path):
     airsim_traj = np.loadtxt(airsim_log_path, skiprows=1, usecols=(1, 2, 3, 4, 5, 6, 7))
 
     # XXX this code started as an inlining of `convert_meshroom_to_log`
-    # and `convert_airsim_to_log`, but addapted to uavmvs' file format:
+    # and `convert_airsim_to_log`, but adapted to uavmvs' file format:
     assert os.path.isfile(uavmvs_out_path), f"File not found: '{uavmvs_out_path}'"
     assert os.path.splitext(uavmvs_out_path)[1] in [".traj", ".csv"]
 

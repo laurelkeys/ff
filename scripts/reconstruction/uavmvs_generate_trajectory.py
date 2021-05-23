@@ -2,10 +2,11 @@ import os
 import argparse
 
 try:
-    from include_in_path import include, FF_PROJECT_ROOT
+    from include_in_path import FF_PROJECT_ROOT, include
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_make_traj")
     import uavmvs_make_traj as uavmvs
+
     from uavmvs_make_traj import Uavmvs
 except:
     raise
@@ -115,10 +116,7 @@ def print_params(args: argparse.Namespace) -> None:
 
 
 def set_makeTraj_params():
-    global PROXY_CLOUD_SAMPLES; global PROXY_MESH_MIN_D; global AIRSPACE_MIN_D
-    global OPTIMIZE_MIN_D; global OPTIMIZE_MAX_D; global OPTIMIZE_MAX_ITERS
-    global RESOLUTION; global FOCAL_LENGTH; global ASPECT_RATIO
-    global PLANAR_F; global PLANAR_S; global PLANAR_ALT; global PLANAR_ELEV
+    global PROXY_CLOUD_SAMPLES, PROXY_MESH_MIN_D, AIRSPACE_MIN_D, OPTIMIZE_MIN_D, OPTIMIZE_MAX_D, OPTIMIZE_MAX_ITERS, RESOLUTION, FOCAL_LENGTH, ASPECT_RATIO, PLANAR_F, PLANAR_S, PLANAR_ALT, PLANAR_ELEV
 
     PROXY_CLOUD_SAMPLES = 25
 
@@ -142,10 +140,7 @@ def set_makeTraj_params():
 
 
 def set_allDefault_params():
-    global PROXY_CLOUD_SAMPLES; global PROXY_MESH_MIN_D; global AIRSPACE_MIN_D
-    global OPTIMIZE_MIN_D; global OPTIMIZE_MAX_D; global OPTIMIZE_MAX_ITERS
-    global RESOLUTION; global FOCAL_LENGTH; global ASPECT_RATIO
-    global PLANAR_F; global PLANAR_S; global PLANAR_ALT; global PLANAR_ELEV
+    global PROXY_CLOUD_SAMPLES, PROXY_MESH_MIN_D, AIRSPACE_MIN_D, OPTIMIZE_MIN_D, OPTIMIZE_MAX_D, OPTIMIZE_MAX_ITERS, RESOLUTION, FOCAL_LENGTH, ASPECT_RATIO, PLANAR_F, PLANAR_S, PLANAR_ALT, PLANAR_ELEV
 
     PROXY_CLOUD_SAMPLES = 100
 

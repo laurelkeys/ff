@@ -35,7 +35,7 @@ except:
 def preflight(args: argparse.Namespace) -> None:
     assert os.path.isfile(args.ply_path), f"Invalid file path: '{args.ply_path}'"
 
-    # Parse the point cloud into a pandas dataframe and extract its points.
+    # Parse the point cloud into a pandas dataframe and extract its points
     ply_df = read_ply(args.ply_path)
     if args.verbose:
         ff.log(ply_df)
@@ -44,7 +44,7 @@ def preflight(args: argparse.Namespace) -> None:
     n_of_points, _ = args.points.shape
     print(f"The point cloud has {n_of_points} points.")
 
-    # NOTE avoid plotting all points for large clouds, since Unreal can't handle it.
+    # NOTE avoid plotting all points for large clouds, since Unreal can't handle it
     k = 0 if args.every_k is None else args.every_k
     while not k:
         try:
@@ -63,7 +63,7 @@ def preflight(args: argparse.Namespace) -> None:
         k = 0 if answer.lower().strip() in ["n", "no"] else k
     args.every_k = k
 
-    # Check if a uavmvs trajectory was passed in and parse it into points.
+    # Check if a uavmvs trajectory was passed in and parse it into points
     if args.trajectory_path is not None:
         _, ext = os.path.splitext(args.trajectory_path)
         assert os.path.isfile(args.trajectory_path), f"Invalid file path: '{args.trajectory_path}'"
@@ -167,7 +167,9 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         camera_poses, camera_positions = [], []
         for i, camera in enumerate(args.trajectory):
             if not camera.spline_interpolated:  # XXX
-                pose = convert_uavmvs_to_airsim_pose(camera=camera, translation=args.offset, scaling=args.scale)
+                pose = convert_uavmvs_to_airsim_pose(
+                    camera=camera, translation=args.offset, scaling=args.scale
+                )
                 # print(f"=== {i} ===")
                 # print(camera)
                 # print(pose)
@@ -215,16 +217,22 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--flush", action="store_true", help="Flush old plots")
     parser.add_argument("--edit", action="store_true", help="Enter edit mode")
 
+    parser.add_argument("--trajectory_path", type=str, help="Path to a .TRAJ, .CSV or .UTJ file")
+
     parser.add_argument(
         "--offset",
         type=float,
         nargs=3,
         metavar=("X", "Y", "Z"),
-        help="Offset added to all points  (e.g. --offset -55 11 1)",
+        help="Offset added to all points "
+        " (e.g. --offset 1.2375 -6.15 7.75)",  # data_config.Uavmvs.Cidadela_Statue_Offset
     )
-    parser.add_argument("--scale", type=float, help="Scale added to all points  (e.g. --scale 0.2)")
-
-    parser.add_argument("--trajectory_path", type=str, help="Path to a .TRAJ, .CSV or .UTJ file")
+    parser.add_argument(
+        "--scale",
+        type=float,
+        help="Scale added to all points "
+        " (e.g. --scale 0.168)",  # data_config.Uavmvs.Cidadela_Statue_Scale
+    )
 
     ff.add_arguments_to(parser)
     return parser
