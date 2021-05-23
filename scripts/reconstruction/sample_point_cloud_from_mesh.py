@@ -7,8 +7,9 @@ import open3d as o3d
 
 
 class SamplingMethod(Enum):
-    Uniform = "uniform"
-    Poisson = "poisson"
+    # http://www.open3d.org/docs/release/tutorial/geometry/mesh.html#Sampling
+    Uniform = "uniform"  # http://www.open3d.org/docs/release/python_api/open3d.geometry.TriangleMesh.html#open3d.geometry.TriangleMesh.sample_points_uniformly
+    Poisson = "poisson"  # http://www.open3d.org/docs/release/python_api/open3d.geometry.TriangleMesh.html#open3d.geometry.TriangleMesh.sample_points_poisson_disk
 
 
 ###############################################################################
@@ -43,11 +44,10 @@ def main(args: argparse.Namespace) -> None:
     elif args.method == SamplingMethod.Poisson.value:
         if args.verbose:
             print("\nPerforming sample elimination for Poisson Disk Sampling..")
+        # NOTE `init_factor * number_of_points` is the number of points of an initial
+        # uniformly sampled point cloud that will then be used for sample elimination
         point_cloud = triangle_mesh.sample_points_poisson_disk(
-            number_of_points,
-            init_factor=args.init_factor,
-            # FIXME `init_factor * number_of_points` is the number of points of an initial
-            # uniformly sampled point cloud, that will then be used for sample elimination
+            number_of_points, init_factor=args.init_factor
         )
     else:
         assert False, args.method
@@ -87,7 +87,6 @@ def get_parser() -> argparse.ArgumentParser:
         "--points_per_triangle",
         type=int,
         default=3,
-        # FIXME this is only accurate for uniform sample if we have similar-sized triangles
         help="Average number of points in the final point cloud per triangle in the mesh  (default: %(default)d)",
     )
     parser.add_argument(
@@ -101,8 +100,8 @@ def get_parser() -> argparse.ArgumentParser:
         "--init_factor",
         type=int,
         default=2,
-        help="Factor that multiplies the average number of points per triangle for an initial uniformly sampled"
-        " point cloud that is used for sample elimination when method='poisson'  (default: %(default)d)",
+        help="Factor by which the average number of points per triangle is multiplied to create an initial uniformly"
+        " sampled point cloud that is then used for sample elimination when method='poisson'  (default: %(default)d)",
     )
     parser.add_argument("--view", action="store_true", help="Visualize the mesh and point cloud")
     parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")
@@ -115,8 +114,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
-
-
-# http://www.open3d.org/docs/release/tutorial/geometry/mesh.html#Sampling
-# http://www.open3d.org/docs/release/python_api/open3d.geometry.TriangleMesh.html#open3d.geometry.TriangleMesh.sample_points_poisson_disk
-# http://www.open3d.org/docs/release/python_api/open3d.geometry.TriangleMesh.html#open3d.geometry.TriangleMesh.sample_points_uniformly
