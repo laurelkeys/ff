@@ -6,10 +6,6 @@ from enum import Enum
 import open3d as o3d
 
 
-def no_ext_basename(p):
-    return os.path.splitext(os.path.basename(p))[0]
-
-
 class SamplingMethod(Enum):
     Uniform = "uniform"
     Poisson = "poisson"
@@ -69,7 +65,9 @@ def main(args: argparse.Namespace) -> None:
         output_path = os.path.dirname(input_path)
     if not output_path.endswith(".ply"):
         assert os.path.isdir(output_path), f"Invalid output path: '{output_path}'"
-        output_path = os.path.join(output_path, f"{no_ext_basename(input_path)}_point_cloud.ply")
+        output_path = os.path.join(
+            output_path, f"{os.path.splitext(os.path.basename(input_path))[0]}_point_cloud.ply"
+        )
 
     o3d.io.write_point_cloud(output_path, point_cloud, write_ascii=True)
     print(f"\nSaved output to '{output_path}'")
@@ -104,7 +102,7 @@ def get_parser() -> argparse.ArgumentParser:
         type=int,
         default=2,
         help="Factor that multiplies the average number of points per triangle for an initial uniformly sampled"
-             " point cloud that is used for sample elimination when method='poisson'  (default: %(default)d)",
+        " point cloud that is used for sample elimination when method='poisson'  (default: %(default)d)",
     )
     parser.add_argument("--view", action="store_true", help="Visualize the mesh and point cloud")
     parser.add_argument("--verbose", "-v", action="store_true", help="Increase verbosity")
