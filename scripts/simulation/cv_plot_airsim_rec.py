@@ -30,27 +30,15 @@ def preflight(args: argparse.Namespace) -> None:
 
 
 def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
-    initial_pose = client.simGetVehiclePose()
-
-    if args.verbose:
-        ff.print_pose(initial_pose, airsim.to_eularian_angles)
-
     if args.flush:
         client.simFlushPersistentMarkers()
 
-    poses = [Pose(record.position, record.orientation) for record in args.recording.values()]
-
     if args.plot_points:
-        client.simPlotPoints(
-            [pose.position for pose in poses], Rgba(0, 0.651, 0.929), size=10, is_persistent=True
-        )
+        positions = [record.position for record in args.recording.values()]
+        client.simPlotPoints(positions, Rgba(0, 0.651, 0.929), size=10, is_persistent=True)
     else:
-        client.simPlotTransforms(
-            poses,
-            scale=10.0,
-            thickness=2.5,
-            is_persistent=True,
-        )
+        poses = [Pose(record.position, record.orientation) for record in args.recording.values()]
+        client.simPlotTransforms(poses, scale=10.0, thickness=2.5, is_persistent=True)
 
 
 ###############################################################################
