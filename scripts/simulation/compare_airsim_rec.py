@@ -33,3 +33,5 @@ if __name__ == "__main__":
     print(f"   std: {np.std(distance_error):.4f}")
     print(f"  mean: {np.mean(distance_error):.4f}")
     print(f"median: {np.median(distance_error):.4f}")
+    print(f"   MSE: {np.mean(np.square(distance_error)):.4f}")
+    print(f"  RMSE: {np.sqrt(np.mean(np.square(distance_error))):.4f}")
