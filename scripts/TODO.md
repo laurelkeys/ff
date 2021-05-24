@@ -1,9 +1,4 @@
 # To-do list
-- [ ] Automatically change `SimMode` for `cv_*.py` files (and also restore it)
-- [ ] Use longer (more descriptive) names for the files under `scripts/`
-  - [ ] Add `argparse` descriptions to every script
-- [ ] Only choose the first environment (when there's more than one possibility) if a flag `--choose` is passed
-  - [ ] Add an argument so that `$ ... --launch --choose 2` starts the second environment from the list
 - [ ] See https://github.com/harvard-edge/airlearning-rl/blob/master/game_handling/game_handler_class.py#L30
 - [ ] See https://github.com/harvard-edge/airlearning-rl/blob/master/misc/move_to_airsim/move.py
 - [ ] See https://github.com/microsoft/AirSim/issues/1677#issuecomment-469999696
@@ -18,3 +13,6 @@
 - [ ] See https://github.com/microsoft/AirSim/pull/3239/files
 - [ ] See https://github.com/microsoft/AirSim-Drone-Racing-VAE-Imitation/blob/master/racing_utils/geom_utils.py
 - [ ] Clarify https://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats vs http://redwood-data.org/indoor/fileformat.html
+- [ ] Automatically change `SimMode` for `cv_*.py` files (and also restore it)
+- [ ] Only choose the first environment (when there's more than one possibility) if a flag `--choose` is passed
+- [ ] Add an argument so that `$ ... --launch --choose 2` starts the second environment from the list

@@ -16,6 +16,8 @@ from airsim.types import Pose
 def preflight(args: argparse.Namespace) -> None:
     assert os.path.isfile(args.rec), f"Invalid file path: '{args.rec}'"
 
+    args.color = Rgba(*((0, 0.651, 0.929) if args.color is None else args.color))
+
     args.recording = AirSimRecord.dict_from(rec_file=args.rec)
 
     if args.env_name is not None:
@@ -33,12 +35,16 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush:
         client.simFlushPersistentMarkers()
 
-    if args.plot_points:
-        positions = [record.position for record in args.recording.values()]
-        client.simPlotPoints(positions, Rgba(0, 0.651, 0.929), size=10, is_persistent=True)
+    poses = [Pose(record.position, record.orientation) for record in args.recording.values()]
+    positions = [record.position for record in args.recording.values()]
+
+    if args.axes:
+        client.simPlotTransforms(poses, scale=100.0, thickness=2.5, is_persistent=True)
     else:
-        poses = [Pose(record.position, record.orientation) for record in args.recording.values()]
-        client.simPlotTransforms(poses, scale=10.0, thickness=2.5, is_persistent=True)
+        client.simPlotPoints(positions, args.color, size=10, is_persistent=True)
+
+    if args.lines:
+        client.simPlotLineStrip(positions, args.color, thickness=2.5, is_persistent=True)
 
 
 ###############################################################################
@@ -71,7 +77,9 @@ def get_parser() -> argparse.ArgumentParser:
     # NOTE this is AirSim's `Recording` output
     parser.add_argument("rec", type=str, help="Path to airsim_rec.txt")
     parser.add_argument("--flush", action="store_true", help="Flush old plots")
-    parser.add_argument("--plot_points", action="store_true", help="Show points instead of transforms")
+    parser.add_argument("--lines", action="store_true", help="Plot trajectory lines")
+    parser.add_argument("--axes", action="store_true", help="Plot transforms instead of points")
+    parser.add_argument("--color", "-rgb", nargs=3, type=float, help="Plot's RGB color")
 
     ff.add_arguments_to(parser)
     return parser

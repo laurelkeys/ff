@@ -40,9 +40,6 @@ LOOK_AT_TARGET = data_config.Ned.Cidadela_Statue
 CAPTURE_CAMERA = ff.CameraName.front_center
 # CAPTURE_CAMERA = ff.CameraName.bottom_center
 
-AIRSIM_RECORD_FILENAME = "uavmvs_airsim_rec.txt"
-# AIRSIM_RECORD_FILENAME = None
-
 IS_CV_MODE = SIM_MODE == ff.SimMode.ComputerVision
 CV_SLEEP_SEC = 2
 
@@ -155,14 +152,14 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         ff.log_debug(f"{mean_position_error = }")
 
     if airsim_record:
-        print_to_file = AIRSIM_RECORD_FILENAME is not None
-        file = open(AIRSIM_RECORD_FILENAME, "w") if print_to_file else None
+        print_to_file = args.record_path is not None
+        file = open(args.record_path, "w") if print_to_file else None
         print(AirSimRecord.make_header_string(), file=(file if print_to_file else sys.stdout))
         for line in airsim_record:
             print(line, file=(file if print_to_file else sys.stdout))
         if print_to_file:
             file.close()
-            ff.log_warning(f'Saved AirSim record to "{AIRSIM_RECORD_FILENAME}"')
+            ff.log_warning(f'Saved AirSim record to "{args.record_path}"')
 
 
 ###############################################################################
@@ -202,6 +199,7 @@ def get_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument("trajectory_path", type=str, help="Path to a .TRAJ, .CSV or .UTJ file")
+    parser.add_argument("--record_path", type=str, help="Path to save the recording .TXT file")
 
     parser.add_argument("--flush", action="store_true", help="Flush old plots")
     parser.add_argument("--debug", action="store_true", help="Skip capturing images but plot poses")
