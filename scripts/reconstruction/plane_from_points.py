@@ -71,7 +71,6 @@ def plane_from_points(points: np.ndarray, use_old_method: bool = False) -> Optio
 
 
 def test_plane_from_points() -> None:
-    import copy
     import open3d as o3d
 
     # As in the reference article this generates 50000 random points on the surface sphere.
@@ -135,7 +134,6 @@ def test_plane_from_points() -> None:
     o3d.visualization.draw_geometries(draw_list)
 
     del o3d
-    del copy
 
 
 if __name__ == "__main__":
