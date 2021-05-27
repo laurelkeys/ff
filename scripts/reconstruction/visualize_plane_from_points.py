@@ -89,13 +89,16 @@ if __name__ == "__main__":
     normal, d = planes[INDEX]
     n_indices = neighbors_indices[INDEX]
 
-    plane, plane_normal = create_plane_and_normal_line_set(point, normal, scale=0.5)
     neighbors, pcd1 = split_points_by_index(pcd1, neighbors_indices[INDEX])
-
     draw_list.append(pcd1)
     draw_list.append(neighbors.paint_uniform_color([1, 0, 0]))
 
+    plane, plane_normal = create_plane_and_normal_line_set(point, normal, scale=0.5)
     draw_list.append(plane.paint_uniform_color([1, 0, 0]))
     draw_list.append(plane_normal.paint_uniform_color([1, 0, 0]))
+
+    expected_plane, expected_plane_normal = create_plane_and_normal_line_set(point, point, scale=0.5)
+    draw_list.append(expected_plane.paint_uniform_color([0, 0, 1]))
+    draw_list.append(expected_plane_normal.paint_uniform_color([0, 0, 1]))
 
     o3d.visualization.draw_geometries(draw_list)
