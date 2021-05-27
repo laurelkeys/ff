@@ -1,60 +1,10 @@
 import os
 import argparse
-from typing import Optional
-
-import open3d as o3d
 
 import numpy as np
+import open3d as o3d
 
-
-def plane_from_points(points: np.ndarray) -> Optional[np.ndarray]:
-    """ Fits a plane to a collection of points. Returns None if the points do not span a plane.
-
-        Reference: https://www.ilikebigbits.com/2017_09_25_plane_from_points_2.html
-    """
-    assert points.ndim == 2 and points.shape[1] == 3
-    n, _ = points.shape
-    if n < 3:
-        return None
-
-    centroid = np.sum(points, axis=0) / n
-    xs, ys, zs = np.rollaxis(points - centroid, axis=1)
-
-    # Calculate full 3x3 covariance matrix, excluding symmetries
-    xx = np.sum(xs * xs, axis=0) / n
-    xy = np.sum(xs * ys, axis=0) / n
-    xz = np.sum(xs * zs, axis=0) / n
-    yy = np.sum(ys * ys, axis=0) / n
-    yz = np.sum(ys * zs, axis=0) / n
-    zz = np.sum(zs * zs, axis=0) / n
-
-    det_x = yy * zz - yz * yz
-    det_y = xx * zz - xz * xz
-    det_z = xx * yy - xy * xy
-
-    weighted_dir = np.zeros(3)
-
-    def add_to_weighted_dir(axis_dir, weight):
-        nonlocal weighted_dir
-        if np.dot(weighted_dir, axis_dir) < 0:
-            weighted_dir -= axis_dir * weight
-        else:
-            weighted_dir += axis_dir * weight
-
-    add_to_weighted_dir(np.array([det_x, xz * yz - xy * zz, xy * yz - xz * yy]), det_x * det_x)
-    add_to_weighted_dir(np.array([xz * yz - xy * zz, det_y, xy * xz - yz * xx]), det_y * det_y)
-    add_to_weighted_dir(np.array([xy * yz - xz * yy, xy * xz - yz * xx, det_z]), det_z * det_z)
-
-    norm = np.linalg.norm(weighted_dir)
-    if norm == 0:
-        return None
-
-    def plane_from_point_and_normal(point, normal):
-        d = -np.dot(normal, point)
-        a, b, c = normal
-        return np.array([a, b, c, d])
-
-    return plane_from_point_and_normal(centroid, weighted_dir / norm)
+from plane_from_points import plane_from_points
 
 
 def fit_plane_to_ply(
