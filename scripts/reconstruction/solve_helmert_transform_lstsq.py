@@ -38,6 +38,12 @@ def solve_helmert_lstsq(As, bs):
     return ([tx, ty, tz], s, [rx, ry, rz]), (xs, residuals, rank, singular)
 
 
+def compute_helmert_matrix(tx, ty, tz, s, rx, ry, rz):
+    t = np.array([tx, ty, tz]).reshape((3, 1))
+    R = np.array([[1, -rz, ry], [rz, 1, -rx], [-ry, rx, 1]])
+    return np.vstack((np.hstack((s * R, t)), [0, 0, 0, 1]))
+
+
 if __name__ == "__main__":
     xs_airsim = np.array(
         [
@@ -77,8 +83,19 @@ if __name__ == "__main__":
     print(f"{rank = }")  # rank of matrix As
     print(f"{singular = }")  # singular values of As
 
-    print(f"{[tx, ty, tz] = }")
-    print(f"{[rx, ry, rz] = }")
-    print(f"{s = }")
+    print(f"{[tx, ty, tz] = }")  # [-11.174689594235451, -17.173427747128173, -22.082146377245863]
+    print(f"{[rx, ry, rz] = }")  # [0.9088041769608071, -0.13435949734005437, -4.220948131978764]
+    print(f"{s = }")  # -7.385906801894286e-06
     S = 1 + (s * 10e6)
     print(f"{S = }")
+
+    matrix = compute_helmert_matrix(tx, ty, tz, s, rx, ry, rz)
+    print(f"{matrix = }")
+    # np.array(
+    #     [
+    #         [-7.38590680e-06, -3.11755295e-05,  9.92366725e-07, -1.11746896e+01],
+    #         [ 3.11755295e-05, -7.38590680e-06,  6.71234295e-06, -1.71734277e+01],
+    #         [-9.92366725e-07, -6.71234295e-06, -7.38590680e-06, -2.20821464e+01],
+    #         [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  1.00000000e+00],
+    #     ]
+    # )

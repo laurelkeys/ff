@@ -25,12 +25,13 @@ def plane_from_points(points: np.ndarray, use_old_method: bool = False) -> Optio
     xs, ys, zs = np.rollaxis(points - centroid, axis=1)
 
     # Calculate full 3x3 covariance matrix, excluding symmetries
-    xx = np.sum(xs * xs, axis=0) / n
-    xy = np.sum(xs * ys, axis=0) / n
-    xz = np.sum(xs * zs, axis=0) / n
-    yy = np.sum(ys * ys, axis=0) / n
-    yz = np.sum(ys * zs, axis=0) / n
-    zz = np.sum(zs * zs, axis=0) / n
+    # NOTE it is not necessary to divide by n since we normalize
+    xx = np.sum(xs * xs, axis=0)
+    xy = np.sum(xs * ys, axis=0)
+    xz = np.sum(xs * zs, axis=0)
+    yy = np.sum(ys * ys, axis=0)
+    yz = np.sum(ys * zs, axis=0)
+    zz = np.sum(zs * zs, axis=0)
 
     # cov = np.array([[xx, xy, xz], [xy, yy, yz], [xz, yz, zz]])
     # # w, v = np.linalg.eig(cov)
