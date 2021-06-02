@@ -44,6 +44,29 @@ def compute_helmert_matrix(tx, ty, tz, S, rx, ry, rz):
     return np.vstack((np.hstack((S * R, t)), [0, 0, 0, 1]))
 
 
+def print_helmert_solution(tx, ty, tz, S, rx, ry, rz):
+    print(f"{[tx, ty, tz] = }")
+    print(f"{[rx, ry, rz] = }")
+    print(f"{S = }")
+    s = (S - 1) * 1e-6  # ppm
+    print(f"{s = } = (S - 1) * 1e-6")
+
+
+def print_lstsq_solution(As, bs, xs, residuals, rank, singular):
+    print(f"{xs.shape = }, {As.shape = }, {bs.shape = }")
+    As, bs, xs = As.squeeze(), bs.squeeze(), xs.squeeze()
+    print(f"{xs.shape = }, {As.shape = }, {bs.shape = }")
+
+    print(f"{xs = }")
+    print(f"{As @ xs = }")
+    print(f"{bs = }")
+
+    # NOTE residuals is the squared Euclidean 2-norm for each column in `bs - As @ xs`
+    print(f"{residuals = }")  # sums of squared residuals
+    print(f"{rank = }")  # rank of matrix As
+    print(f"{singular = }")  # singular values of As
+
+
 if __name__ == "__main__":
     xs_airsim = np.array(
         [
@@ -67,28 +90,8 @@ if __name__ == "__main__":
     helmert_solution, lstsq_solution = solve_helmert_lstsq(As, bs)
     [tx, ty, tz], S, [rx, ry, rz] = helmert_solution
     xs, residuals, rank, singular = lstsq_solution
-
-    print(f"{xs.shape = }, {As.shape = }, {bs.shape = }")
-    xs = xs.squeeze()
-    As = As.squeeze()
-    bs = bs.squeeze()
-    print(f"{xs.shape = }, {As.shape = }, {bs.shape = }")
-
-    print(f"{xs = }")
-    print(f"{As @ xs = }")
-    print(f"{bs = }")
-
-    # NOTE residuals is the squared Euclidean 2-norm for each column in `bs - As @ xs`
-    print(f"{residuals = }")  # sums of squared residuals
-    print(f"{rank = }")  # rank of matrix As
-    print(f"{singular = }")  # singular values of As
-
-    print(f"{[tx, ty, tz] = }")  # [-11.174689594235451, -17.173427747128173, -22.082146377245863]
-    print(f"{[rx, ry, rz] = }")  # [0.9088041769608071, -0.13435949734005437, -4.220948131978764]
-    print(f"{S = }")  # -6.385906801894286
-
-    s = (S - 1) * 1e-6
-    print(f"{s = }")
-
     matrix = compute_helmert_matrix(tx, ty, tz, S, rx, ry, rz)
+
+    print_lstsq_solution(As, bs, xs, residuals, rank, singular)
+    print_helmert_solution(tx, ty, tz, S, rx, ry, rz)
     print(f"{matrix = }")

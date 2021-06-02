@@ -1,4 +1,5 @@
 import os
+import copy
 import argparse
 
 from collections import namedtuple
@@ -14,42 +15,17 @@ import open3dy as o3dy
 from solve_helmert_transform_lstsq import (
     compute_helmert_A_b,
     solve_helmert_lstsq,
+    print_lstsq_solution,
     compute_helmert_matrix,
+    print_helmert_solution,
 )
 
-
-def check_paths_are_valid(args):
-    assert os.path.isfile(args.meshroom_sfm), f"Invalid file path: '{args.meshroom_sfm}'"
-    assert os.path.isfile(args.airsim_rec), f"Invalid file path: '{args.airsim_rec}'"
-    if not args.meshroom_sfm.endswith(".sfm"):
-        if args.airsim_rec.endswith(".sfm"):
-            print("Swapping argument order based on file extensions\n")
-            args.meshroom_sfm, args.airsim_rec = args.airsim_rec, args.meshroom_sfm
-        else:
-            assert False, f"Expected sfm file as a .sfm: '{args.meshroom_sfm}'"
-    assert args.airsim_rec.endswith(".txt"), f"Expected rec file as a .txt: '{args.airsim_rec}'"
+###############################################################################
+## open3d settings ############################################################
+###############################################################################
 
 
-def print_helmert_solution(tx, ty, tz, S, rx, ry, rz):
-    print(f"{[tx, ty, tz] = }")
-    print(f"{[rx, ry, rz] = }")
-    print(f"{S = }")
-
-
-def print_lstsq_solution(As, bs, xs, residuals, rank, singular):
-    As, bs, xs = As.squeeze(), bs.squeeze(), xs.squeeze()
-    print(f"{xs.shape = }, {As.shape = }, {bs.shape = }")
-
-    print(f"{xs = }")
-    print(f"{As @ xs = }")
-    print(f"{bs = }")
-
-    print(f"{residuals = }")
-    print(f"{rank = }")
-    print(f"{singular = }")
-
-
-MAX_CORRESPONDENCE_DISTANCE = 0.5  # maximum correspondence points-pair distance
+MAX_CORRESPONDENCE_DISTANCE = 1.5  # maximum correspondence points-pair distance
 
 ICP_WITH_SCALING = True
 
@@ -80,9 +56,45 @@ def evaluate_registration(source, target, transformation=np.eye(4)):
     return Result(fitness, inlier_rmse, correspondence_set)
 
 
+def compute_points_pair_distances(source, target, transformation):
+    assert len(source.points) == len(target.points)
+
+    source = copy.deepcopy(source).transform(transformation)
+    # NOTE we could also avoid making a copy of the point cloud
+    # by doing [*p_source, _] = transformation @ [*p_source, 1]
+
+    distances = [
+        np.linalg.norm(p_source - p_target)
+        for p_source, p_target in zip(source.points, target.points)
+    ]
+
+    print(f"     N: {len(distances)}")
+    print(f"   min: {np.amin(distances):.4f}")
+    print(f"   max: {np.amax(distances):.4f}")
+    print(f"   std: {np.std(distances):.4f}")
+    print(f"  mean: {np.mean(distances):.4f}")
+    print(f"median: {np.median(distances):.4f}")
+    print(f"   MSE: {np.mean(np.square(distances)):.4f}")
+    print(f"  RMSE: {np.sqrt(np.mean(np.square(distances))):.4f}")
+
+    return distances
+
+
 ###############################################################################
 ## main #######################################################################
 ###############################################################################
+
+
+def check_paths_are_valid(args):
+    assert os.path.isfile(args.meshroom_sfm), f"Invalid file path: '{args.meshroom_sfm}'"
+    assert os.path.isfile(args.airsim_rec), f"Invalid file path: '{args.airsim_rec}'"
+    if not args.meshroom_sfm.endswith(".sfm"):
+        if args.airsim_rec.endswith(".sfm"):
+            print("Swapping argument order based on file extensions\n")
+            args.meshroom_sfm, args.airsim_rec = args.airsim_rec, args.meshroom_sfm
+        else:
+            assert False, f"Expected sfm file as a .sfm: '{args.meshroom_sfm}'"
+    assert args.airsim_rec.endswith(".txt"), f"Expected rec file as a .txt: '{args.airsim_rec}'"
 
 
 def main(args: argparse.Namespace) -> None:
@@ -127,7 +139,7 @@ def main(args: argparse.Namespace) -> None:
     pcd_meshroom = o3d.geometry.PointCloud(o3dy.v3d(np.asarray(meshroom_points)))
 
     #
-    # Helmert transformation
+    # Compute the Helmert matrix as an initial approximation
     #
 
     # TODO limit the number of points that are used in here (e.g. sample them with RANSAC)
@@ -145,8 +157,11 @@ def main(args: argparse.Namespace) -> None:
     # print_lstsq_solution(As, bs, xs, residuals, rank, singular)
     # print_helmert_solution(tx, ty, tz, S, rx, ry, rz)
 
+    # XXX can we use the computed distances to set better parameters for ICP registration?
+    # distances = compute_points_pair_distances(pcd_meshroom, pcd_airsim, align_meshroom_to_airsim)
+
     #
-    # Iterative Closest Point (ICP)
+    # Refine the transformatin matrix with Iterative Closest Point (ICP)
     #
 
     icp_registration = o3dy.registration.registration_icp(
@@ -160,8 +175,6 @@ def main(args: argparse.Namespace) -> None:
 
     align_meshroom_to_airsim_icp = icp_registration.transformation
 
-    print(f"{icp_registration = }")
-
     #
     # Evaluate registration results
     #
@@ -170,16 +183,26 @@ def main(args: argparse.Namespace) -> None:
     helmert_evaluation = evaluate_registration(pcd_meshroom, pcd_airsim, align_meshroom_to_airsim)
     icp_evaluation = evaluate_registration(pcd_meshroom, pcd_airsim, align_meshroom_to_airsim_icp)
 
-    print(f"{initial_evaluation = }")
-    print(f"{helmert_evaluation = }")
-    print(f"{icp_evaluation = }")
+    # print(f"\n{initial_evaluation = }")
+    # print(f"\n{helmert_evaluation = }")
+    # print(f"\n{icp_evaluation = }")
+
+    print(
+        f"\nNumber of correspondences out of {len(pcd_airsim.points)} points"
+        f" (with {MAX_CORRESPONDENCE_DISTANCE} maximum points-pair distance)"
+    )
+    print(f"- Initial: {len(initial_evaluation.correspondence_set)}")
+    print(f"- Helmert: {len(helmert_evaluation.correspondence_set)}")
+    print(f"- Helmert + ICP: {len(icp_evaluation.correspondence_set)}")
+    print(f"  - Fitness: {icp_evaluation.fitness:.4f} ({(100 * icp_evaluation.fitness):.2f}%)")
+    print(f"  - Inlier RMSE: {icp_evaluation.inlier_rmse:.4f}")
 
     #
-    # Save source -> target alignment transformation matrix
+    # Save "source to target" alignment transformation matrix
     #
 
     # np.savetxt("align_meshroom_to_airsim.txt", align_meshroom_to_airsim)  # XXX
-    # np.savetxt("align_meshroom_to_airsim_icp.txt", align_meshroom_to_airsim_icp)  # XXX
+    np.savetxt("align_meshroom_to_airsim_icp.txt", align_meshroom_to_airsim_icp)  # XXX
 
 
 ###############################################################################
