@@ -1,4 +1,5 @@
 import os
+import copy
 import argparse
 
 from typing import Optional
@@ -14,13 +15,17 @@ def visualize_alignment(source_path: str, target_path: str, matrix_path: Optiona
     source_pcd = o3d.io.read_point_cloud(source_path)  # parsed from Meshroom's cameras.sfm
     target_pcd = o3d.io.read_point_cloud(target_path)  # parsed from AirSim's airsim_rec.txt
 
-    # http://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html
     def draw_source_aligned_to_target(source, target, transformation):
-        source_tmp = source.copy()
+        """ Visualize a target point cloud (in cyan) and a source point cloud
+            (in yellow), transformed with a source -> target alignment matrix.
+
+            http://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html
+        """
+        source_tmp = copy.deepcopy(source)
+        target_tmp = copy.deepcopy(target)
+
         source_tmp.paint_uniform_color([1, 0.706, 0])  # yellow
         source_tmp.transform(transformation)
-
-        target_tmp = target.copy()
         target_tmp.paint_uniform_color([0, 0.651, 0.929])  # cyan
 
         o3d.visualization.draw_geometries([source_tmp, target_tmp])

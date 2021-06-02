@@ -51,6 +51,9 @@ class MeshroomParser:
             self.width = width
             self.height = height
 
+        def __repr__(self) -> str:
+            return f"View(pose_id={self.pose_id}, path={self.path}, width={self.width}, height={self.height})"
+
         @staticmethod
         def extract_from(views_dict):
             """ Returns a `(view_id, pose_id, path, width, height)` tuple. """
@@ -87,7 +90,7 @@ class MeshroomParser:
 # TODO group View and Pose into this single class (and possibly remove them)
 # https://github.com/alicevision/meshroom/blob/develop/meshroom/ui/reconstruction.py#L1100
 # https://github.com/alicevision/meshroom/blob/develop/meshroom/ui/reconstruction.py#L169
-class MeshroomViewpoint:
+class MeshroomViewPose:
     """ Wraps the attributes of an input image (and its camera) in the context of a reconstruction. """
 
     def __init__(

@@ -32,16 +32,16 @@ def solve_helmert_lstsq(As, bs):
 
     [x0, x1, x2, x3, x4, x5, x6] = xs.reshape((7,))  # [tx ty tz S S*rx S*ry S*rz]
     [tx, ty, tz] = [x0, x1, x2]  # dispacements in meters
-    s = (x3 - 1) * 1e-6  # S = 1 + (s * 10e6), with s in ppm
+    # NOTE S = 1 + (s * 10e6), with s in ppm: s = (x3 - 1) * 1e-6
     [rx, ry, rz] = [x4 / x3, x5 / x3, x6 / x3]  # angles in radians
 
-    return ([tx, ty, tz], s, [rx, ry, rz]), (xs, residuals, rank, singular)
+    return ([tx, ty, tz], x3, [rx, ry, rz]), (xs, residuals, rank, singular)
 
 
-def compute_helmert_matrix(tx, ty, tz, s, rx, ry, rz):
+def compute_helmert_matrix(tx, ty, tz, S, rx, ry, rz):
     t = np.array([tx, ty, tz]).reshape((3, 1))
     R = np.array([[1, -rz, ry], [rz, 1, -rx], [-ry, rx, 1]])
-    return np.vstack((np.hstack((s * R, t)), [0, 0, 0, 1]))
+    return np.vstack((np.hstack((S * R, t)), [0, 0, 0, 1]))
 
 
 if __name__ == "__main__":
@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
     As, bs = compute_helmert_A_b(xs_source=xs_meshroom, xs_target=xs_airsim)
     helmert_solution, lstsq_solution = solve_helmert_lstsq(As, bs)
-    [tx, ty, tz], s, [rx, ry, rz] = helmert_solution
+    [tx, ty, tz], S, [rx, ry, rz] = helmert_solution
     xs, residuals, rank, singular = lstsq_solution
 
     print(f"{xs.shape = }, {As.shape = }, {bs.shape = }")
@@ -85,17 +85,10 @@ if __name__ == "__main__":
 
     print(f"{[tx, ty, tz] = }")  # [-11.174689594235451, -17.173427747128173, -22.082146377245863]
     print(f"{[rx, ry, rz] = }")  # [0.9088041769608071, -0.13435949734005437, -4.220948131978764]
-    print(f"{s = }")  # -7.385906801894286e-06
-    S = 1 + (s * 10e6)
-    print(f"{S = }")
+    print(f"{S = }")  # -6.385906801894286
 
-    matrix = compute_helmert_matrix(tx, ty, tz, s, rx, ry, rz)
+    s = (S - 1) * 1e-6
+    print(f"{s = }")
+
+    matrix = compute_helmert_matrix(tx, ty, tz, S, rx, ry, rz)
     print(f"{matrix = }")
-    # np.array(
-    #     [
-    #         [-7.38590680e-06, -3.11755295e-05,  9.92366725e-07, -1.11746896e+01],
-    #         [ 3.11755295e-05, -7.38590680e-06,  6.71234295e-06, -1.71734277e+01],
-    #         [-9.92366725e-07, -6.71234295e-06, -7.38590680e-06, -2.20821464e+01],
-    #         [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  1.00000000e+00],
-    #     ]
-    # )

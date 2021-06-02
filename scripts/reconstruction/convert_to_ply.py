@@ -2,6 +2,8 @@ import os
 import json
 import argparse
 
+from typing import List
+
 import numpy as np
 import open3d as o3d
 
@@ -35,7 +37,7 @@ def convert_to_ply(input, output, np_points_from_lines_fn):
     return pcd, output
 
 
-def np_points_from_airsim_rec(lines: str) -> np.ndarray:
+def np_points_from_airsim_rec(lines: List[str]) -> np.ndarray:
     def np_pos_from(line: str) -> np.ndarray:
         _, pos_x, pos_y, pos_z, *_ = line.rstrip("\n").split("\t")
         return np.fromiter(map(float, [pos_x, pos_y, pos_z]), dtype=float)
@@ -44,7 +46,7 @@ def np_points_from_airsim_rec(lines: str) -> np.ndarray:
     return np.array([np_pos_from(line) for line in lines[1:]], dtype=float)
 
 
-def np_points_from_cameras_sfm(lines: str) -> np.ndarray:
+def np_points_from_cameras_sfm(lines: List[str]) -> np.ndarray:
     def np_pos_from(pose: dict) -> np.ndarray:
         center = pose["pose"]["transform"]["center"]
         return np.fromiter(map(float, center), dtype=float)

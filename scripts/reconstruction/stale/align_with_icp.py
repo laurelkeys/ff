@@ -13,7 +13,6 @@ MESHROOM_TO_AIRSIM_CORRESPONDENCES = (
 )
 
 
-# XXX @volatile used in geometry_alignment.py
 def draw_registration_result(source, target, transformation):
     """ Visualize a target point cloud (in cyan) and a source point cloud
         (in yellow), transformed with an alignment transformation matrix.

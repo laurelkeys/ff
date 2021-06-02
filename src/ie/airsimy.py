@@ -495,6 +495,9 @@ class AirSimRecord:
         self.position = Vector3r(pos_x, pos_y, pos_z)
         self.orientation = Quaternionr(q_x, q_y, q_z, q_w)
 
+    def __repr__(self) -> str:
+        return f"AirSimRecord(time_stamp={self.time_stamp}, image_file={self.image_file}, position={self.position}, orientation={self.orientation})"
+
     @staticmethod
     def _parse(
         time_stamp: str,
