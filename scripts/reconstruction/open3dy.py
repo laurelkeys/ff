@@ -10,6 +10,16 @@ import open3d as o3d
 ###############################################################################
 
 
+try:
+    registration = o3d.registration
+except AttributeError:
+    registration = o3d.pipelines.registration
+
+
+###############################################################################
+###############################################################################
+
+
 v2d = o3d.utility.Vector2dVector  # (n, 2) float64 numpy array -> Open3D format
 v3d = o3d.utility.Vector3dVector  # (n, 3) float64 numpy array -> Open3D format
 
@@ -38,10 +48,7 @@ def plane_from_point_and_normal(point: np.ndarray, normal: np.ndarray) -> np.nda
 
 
 def plane_from_points(points: np.ndarray, use_old_method: bool = False) -> Optional[np.ndarray]:
-    """ Fits a plane to a collection of points. Returns None if the points do not span a plane.
-
-        Reference: https://www.ilikebigbits.com/2017_09_25_plane_from_points_2.html
-    """
+    """ Fits a plane to a collection of points. Returns None if the points do not span a plane. """
     assert points.ndim == 2 and points.shape[1] == 3
     n, _ = points.shape
     if n < 3:
@@ -71,6 +78,7 @@ def plane_from_points(points: np.ndarray, use_old_method: bool = False) -> Optio
     det_z = xx * yy - xy * xy
 
     if use_old_method:
+        # https://www.ilikebigbits.com/2015_03_04_plane_from_points.html
         normal = (
             np.array([det_x, xz * yz - xy * zz, xy * yz - xz * yy])
             if det_x > det_y and det_x > det_z
@@ -79,6 +87,7 @@ def plane_from_points(points: np.ndarray, use_old_method: bool = False) -> Optio
             else np.array([xy * yz - xz * yy, xy * xz - yz * xx, det_z])
         )
     else:
+        # https://www.ilikebigbits.com/2017_09_25_plane_from_points_2.html
         x_axis_dir = np.array([det_x, xz * yz - xy * zz, xy * yz - xz * yy])
         y_axis_dir = np.array([xz * yz - xy * zz, det_y, xy * xz - yz * xx])
         z_axis_dir = np.array([xy * yz - xz * yy, xy * xz - yz * xx, det_z])
@@ -104,8 +113,10 @@ def plane_from_points(points: np.ndarray, use_old_method: bool = False) -> Optio
 
 
 def create_unit_sphere_point_cloud(n, point_fn=None, color_fn=None, eps=0.0001):
-    if point_fn is None: point_fn = lambda point: point
-    if color_fn is None: color_fn = lambda point: [0, 0, 0]
+    if point_fn is None:
+        point_fn = lambda point: point
+    if color_fn is None:
+        color_fn = lambda point: [0, 0, 0]
 
     points = []
     colors = []
