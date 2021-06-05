@@ -15,19 +15,21 @@ import open3dy as o3dy
 from solve_helmert_transform_lstsq import (
     compute_helmert_A_b,
     solve_helmert_lstsq,
-    print_lstsq_solution,
     compute_helmert_matrix,
-    print_helmert_solution,
 )
 
 ###############################################################################
-## open3d settings ############################################################
+## open3d-related #############################################################
 ###############################################################################
 
 
+RANSAC_N = 4  # number of correspondences used to fit RANSAC
+
 MAX_CORRESPONDENCE_DISTANCE = 1.5  # maximum correspondence points-pair distance
 
-ICP_WITH_SCALING = True
+ESTIMATION_METHOD = o3dy.registration.TransformationEstimationPointToPoint(with_scaling=True)
+
+RANSAC_CRITERIA = o3dy.RANSACConvergenceCriteria(max_iteration=1000)
 
 ICP_CRITERIA = o3dy.registration.ICPConvergenceCriteria(
     # ICP stops if the relative change (difference) of fitness or inliner RMSE scores hit
@@ -56,28 +58,25 @@ def evaluate_registration(source, target, transformation=np.eye(4)):
     return Result(fitness, inlier_rmse, correspondence_set)
 
 
+def apply_transformation_to_points(transformation, points):
+    array_of_points = np.asarray(points)
+    n, d = array_of_points.shape
+    assert transformation.shape == (4, 4) and d == 3
+    array_of_homogeneous_points = np.hstack((array_of_points, np.ones((n, 1))))
+    transformed_points = np.einsum("ij,nj->ni", transformation, array_of_homogeneous_points)
+    return transformed_points[:, :3]  # remove the 1 added for points' homogenous coordinates
+
+
+# TODO can we use this to improve the ICP registration parameters?
 def compute_points_pair_distances(source, target, transformation):
     assert len(source.points) == len(target.points)
-
     source = copy.deepcopy(source).transform(transformation)
     # NOTE we could also avoid making a copy of the point cloud
     # by doing [*p_source, _] = transformation @ [*p_source, 1]
-
-    distances = [
+    return [
         np.linalg.norm(p_source - p_target)
         for p_source, p_target in zip(source.points, target.points)
     ]
-
-    print(f"     N: {len(distances)}")
-    print(f"   min: {np.amin(distances):.4f}")
-    print(f"   max: {np.amax(distances):.4f}")
-    print(f"   std: {np.std(distances):.4f}")
-    print(f"  mean: {np.mean(distances):.4f}")
-    print(f"median: {np.median(distances):.4f}")
-    print(f"   MSE: {np.mean(np.square(distances)):.4f}")
-    print(f"  RMSE: {np.sqrt(np.mean(np.square(distances))):.4f}")
-
-    return distances
 
 
 ###############################################################################
@@ -85,20 +84,7 @@ def compute_points_pair_distances(source, target, transformation):
 ###############################################################################
 
 
-def check_paths_are_valid(args):
-    assert os.path.isfile(args.meshroom_sfm), f"Invalid file path: '{args.meshroom_sfm}'"
-    assert os.path.isfile(args.airsim_rec), f"Invalid file path: '{args.airsim_rec}'"
-    if not args.meshroom_sfm.endswith(".sfm"):
-        if args.airsim_rec.endswith(".sfm"):
-            print("Swapping argument order based on file extensions\n")
-            args.meshroom_sfm, args.airsim_rec = args.airsim_rec, args.meshroom_sfm
-        else:
-            assert False, f"Expected sfm file as a .sfm: '{args.meshroom_sfm}'"
-    assert args.airsim_rec.endswith(".txt"), f"Expected rec file as a .txt: '{args.airsim_rec}'"
-
-
 def main(args: argparse.Namespace) -> None:
-    check_paths_are_valid(args)
     airsim_records = AirSimRecord.dict_from(args.airsim_rec)
     meshroom_views, meshroom_poses = MeshroomParser.extract_views_and_poses(
         *MeshroomParser.parse_cameras(args.meshroom_sfm)
@@ -106,59 +92,59 @@ def main(args: argparse.Namespace) -> None:
 
     # NOTE do *not* assume that the points we read from Meshroom's cameras.sfm
     # come in the same order as AirSim's *rec.txt, they *must* be paired based
-    # on the image filenames: views[id]["path"] <-> ImageFile (NOTE ignore dir)
+    # on the image filenames: views[id]["path"] <-> ImageFile
     def path_matches_image_file(meshroom_path, airsim_image_file):
         meshroom_name = os.path.basename(meshroom_path)
         airsim_name = os.path.basename(airsim_image_file)
         return meshroom_name.endswith(airsim_name)
-        # return meshroom_name == airsim_name
 
-    record_view_pose_triples = []
+    record_view_pose_matches = []
     for image_file, record in airsim_records.items():
-        view_pose_matches = [
+        [(view, pose)] = [
             (view, meshroom_poses[view.pose_id])
             for view in meshroom_views.values()
             if path_matches_image_file(view.path, image_file)
         ]
-        assert len(view_pose_matches) == 1, f"'{image_file}'': {view_pose_matches}"
-        [(view, pose)] = view_pose_matches
-        record_view_pose_triples.append((record, view, pose))
+        record_view_pose_matches.append((record, view, pose))
 
     # print(f"{airsim_records = }")
     # print(f"{meshroom_views = }")
     # print(f"{meshroom_poses = }")
-    # print(f"{record_view_pose_triples = }")
+    # print(f"{record_view_pose_matches = }")
 
     airsim_points, meshroom_points = zip(
-        *[
-            (record.position.to_numpy_array(), np.array(pose.center, dtype=np.float32))
-            for record, _, pose in record_view_pose_triples
-        ]
+        *[(r.position.to_numpy_array(), np.array(p.center)) for r, _, p in record_view_pose_matches]
     )
-    pcd_airsim = o3d.geometry.PointCloud(o3dy.v3d(np.asarray(airsim_points)))
-    pcd_meshroom = o3d.geometry.PointCloud(o3dy.v3d(np.asarray(meshroom_points)))
+    pcd_airsim = o3d.geometry.PointCloud(o3dy.v3d(np.asarray(airsim_points)))  # target
+    pcd_meshroom = o3d.geometry.PointCloud(o3dy.v3d(np.asarray(meshroom_points)))  # source
+    index_correspondences = o3dy.v2i(np.array([[i, i] for i in range(len(pcd_airsim.points))]))
 
     #
-    # Compute the Helmert matrix as an initial approximation
+    # Apply RANSAC global registration based on point correspondences
     #
 
-    # TODO limit the number of points that are used in here (e.g. sample them with RANSAC)
+    ransac_registration = o3dy.registration.registration_ransac_based_on_correspondence(
+        pcd_meshroom,
+        pcd_airsim,
+        index_correspondences,
+        MAX_CORRESPONDENCE_DISTANCE,
+        ESTIMATION_METHOD,
+        RANSAC_N,
+        criteria=RANSAC_CRITERIA,
+    )
+    ransac_transformation = ransac_registration.transformation
+
+    #
+    # Compute the Helmert matrix as a second approximation (after RANSAC)
+    # NOTE we could sample a subset of points if this starts getting slow
+    #
+
     As, bs = compute_helmert_A_b(
-        xs_source=np.asarray(pcd_meshroom.points), xs_target=np.asarray(pcd_airsim.points)
+        xs_source=apply_transformation_to_points(ransac_transformation, pcd_meshroom.points),
+        xs_target=pcd_airsim.points,
     )
-
     helmert_solution, lstsq_solution = solve_helmert_lstsq(As, bs)
-    [tx, ty, tz], S, [rx, ry, rz] = helmert_solution
-    xs, residuals, rank, singular = lstsq_solution
-
-    align_meshroom_to_airsim = compute_helmert_matrix(tx, ty, tz, S, rx, ry, rz)
-
-    # print(f"{align_meshroom_to_airsim = }")
-    # print_lstsq_solution(As, bs, xs, residuals, rank, singular)
-    # print_helmert_solution(tx, ty, tz, S, rx, ry, rz)
-
-    # XXX can we use the computed distances to set better parameters for ICP registration?
-    # distances = compute_points_pair_distances(pcd_meshroom, pcd_airsim, align_meshroom_to_airsim)
+    helmert_transformation = compute_helmert_matrix(*helmert_solution) @ ransac_transformation
 
     #
     # Refine the transformatin matrix with Iterative Closest Point (ICP)
@@ -168,41 +154,51 @@ def main(args: argparse.Namespace) -> None:
         pcd_meshroom,
         pcd_airsim,
         MAX_CORRESPONDENCE_DISTANCE,
-        align_meshroom_to_airsim,
-        o3dy.registration.TransformationEstimationPointToPoint(with_scaling=ICP_WITH_SCALING),
+        helmert_transformation,
+        ESTIMATION_METHOD,
         ICP_CRITERIA,
     )
-
-    align_meshroom_to_airsim_icp = icp_registration.transformation
+    icp_transformation = icp_registration.transformation
 
     #
     # Evaluate registration results
     #
 
-    initial_evaluation = evaluate_registration(pcd_meshroom, pcd_airsim)
-    helmert_evaluation = evaluate_registration(pcd_meshroom, pcd_airsim, align_meshroom_to_airsim)
-    icp_evaluation = evaluate_registration(pcd_meshroom, pcd_airsim, align_meshroom_to_airsim_icp)
-
-    # print(f"\n{initial_evaluation = }")
-    # print(f"\n{helmert_evaluation = }")
-    # print(f"\n{icp_evaluation = }")
+    init_eval = evaluate_registration(pcd_meshroom, pcd_airsim)
+    ransac_eval = evaluate_registration(pcd_meshroom, pcd_airsim, ransac_transformation)
+    helmert_eval = evaluate_registration(pcd_meshroom, pcd_airsim, helmert_transformation)
+    icp_eval = evaluate_registration(pcd_meshroom, pcd_airsim, icp_transformation)
 
     print(
-        f"\nNumber of correspondences out of {len(pcd_airsim.points)} points"
-        f" (with {MAX_CORRESPONDENCE_DISTANCE} maximum points-pair distance)"
+        "\nInlier RMSE, Fitness, and Number of Correspondences (with "
+        f"{MAX_CORRESPONDENCE_DISTANCE} maximum points-pair distance)"
     )
-    print(f"- Initial: {len(initial_evaluation.correspondence_set)}")
-    print(f"- Helmert: {len(helmert_evaluation.correspondence_set)}")
-    print(f"- Helmert + ICP: {len(icp_evaluation.correspondence_set)}")
-    print(f"  - Fitness: {icp_evaluation.fitness:.4f} ({(100 * icp_evaluation.fitness):.2f}%)")
-    print(f"  - Inlier RMSE: {icp_evaluation.inlier_rmse:.4f}")
+    # fmt: off
+    print(f"- Initial: {init_eval.inlier_rmse:.4f} ( {(100 * init_eval.fitness):.2f}% =  {len(init_eval.correspondence_set)} out of {len(pcd_airsim.points)} points)")
+    print(f"+ RANSAC:  {ransac_eval.inlier_rmse:.4f} ({(100 * ransac_eval.fitness):.2f}% = {len(ransac_eval.correspondence_set)} out of {len(pcd_airsim.points)} points)")
+    print(f"+ Helmert: {helmert_eval.inlier_rmse:.4f} ({(100 * helmert_eval.fitness):.2f}% = {len(helmert_eval.correspondence_set)} out of {len(pcd_airsim.points)} points)")
+    print(f"+ ICP:     {icp_eval.inlier_rmse:.4f} ({(100 * icp_eval.fitness):.2f}% = {len(icp_eval.correspondence_set)} out of {len(pcd_airsim.points)} points)")
+    # fmt: on
 
     #
-    # Save "source to target" alignment transformation matrix
+    # Save final "source to target" alignment transformation matrix
     #
 
-    # np.savetxt("align_meshroom_to_airsim.txt", align_meshroom_to_airsim)  # XXX
-    np.savetxt("align_meshroom_to_airsim_icp.txt", align_meshroom_to_airsim_icp)  # XXX
+    np.savetxt(
+        "align_meshroom_to_airsim.txt",
+        icp_transformation,
+        header="\n".join(
+            [
+                f"airsim_rec = {os.path.abspath(args.airsim_rec)}",
+                f"meshroom_sfm = {os.path.abspath(args.meshroom_sfm)}",
+                f"{RANSAC_N = }",
+                f"{MAX_CORRESPONDENCE_DISTANCE = }",
+                f"{ESTIMATION_METHOD = }",
+                f"{RANSAC_CRITERIA = }",
+                f"{ICP_CRITERIA = }",
+            ]
+        ),
+    )
 
 
 ###############################################################################
@@ -227,5 +223,15 @@ def get_parser() -> argparse.ArgumentParser:
 if __name__ == "__main__":
     parser = get_parser()
     args = parser.parse_args()
+
+    assert os.path.isfile(args.meshroom_sfm), f"Invalid file path: '{args.meshroom_sfm}'"
+    assert os.path.isfile(args.airsim_rec), f"Invalid file path: '{args.airsim_rec}'"
+    if not args.meshroom_sfm.endswith(".sfm"):
+        if args.airsim_rec.endswith(".sfm"):
+            print("Swapping argument order based on file extensions\n")
+            args.meshroom_sfm, args.airsim_rec = args.airsim_rec, args.meshroom_sfm
+        else:
+            assert False, f"Expected sfm file as a .sfm: '{args.meshroom_sfm}'"
+    assert args.airsim_rec.endswith(".txt"), f"Expected rec file as a .txt: '{args.airsim_rec}'"
 
     main(args)

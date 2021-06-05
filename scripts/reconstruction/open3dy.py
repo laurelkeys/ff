@@ -12,8 +12,21 @@ import open3d as o3d
 
 try:
     registration = o3d.registration
-except AttributeError:
+except AttributeError:  # NOTE changed from 0.10.0 to 0.11.0
     registration = o3d.pipelines.registration
+
+
+def RANSACConvergenceCriteria(max_iteration=None, max_validation=1000, confidence=0.999):
+    try:
+        return registration.RANSACConvergenceCriteria(
+            max_iteration=1000 if max_iteration is None else max_iteration,
+            max_validation=max_validation,
+        )
+    except TypeError:  # NOTE changed from 0.11.1 to 0.12.0
+        return registration.RANSACConvergenceCriteria(
+            max_iteration=100000 if max_iteration is None else max_iteration,
+            confidence=confidence,
+        )
 
 
 ###############################################################################

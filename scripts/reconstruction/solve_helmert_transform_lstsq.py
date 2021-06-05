@@ -30,12 +30,11 @@ def solve_helmert_lstsq(As, bs):
     n, k = xs.shape  # least-squares solution
     assert M == m and N == n and K == k  # As @ xs = bs
 
-    [x0, x1, x2, x3, x4, x5, x6] = xs.reshape((7,))  # [tx ty tz S S*rx S*ry S*rz]
-    [tx, ty, tz] = [x0, x1, x2]  # dispacements in meters
-    # NOTE S = 1 + (s * 10e6), with s in ppm: s = (x3 - 1) * 1e-6
-    [rx, ry, rz] = [x4 / x3, x5 / x3, x6 / x3]  # angles in radians
+    [tx, ty, tz, S, Srx, Sry, Srz] = xs.reshape((7,))
+    # NOTE S = 1 + (s * 10e6), with s in ppm: s = (S - 1) * 1e-6
+    [rx, ry, rz] = [Srx / S, Sry / S, Srz / S]  # angles in radians
 
-    return ([tx, ty, tz], x3, [rx, ry, rz]), (xs, residuals, rank, singular)
+    return (tx, ty, tz, S, rx, ry, rz), (xs, residuals, rank, singular)
 
 
 def compute_helmert_matrix(tx, ty, tz, S, rx, ry, rz):
@@ -88,7 +87,7 @@ if __name__ == "__main__":
 
     As, bs = compute_helmert_A_b(xs_source=xs_meshroom, xs_target=xs_airsim)
     helmert_solution, lstsq_solution = solve_helmert_lstsq(As, bs)
-    [tx, ty, tz], S, [rx, ry, rz] = helmert_solution
+    tx, ty, tz, S, rx, ry, rz = helmert_solution
     xs, residuals, rank, singular = lstsq_solution
     matrix = compute_helmert_matrix(tx, ty, tz, S, rx, ry, rz)
 
