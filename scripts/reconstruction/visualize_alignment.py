@@ -50,7 +50,7 @@ if __name__ == "__main__":
     parser.add_argument("source_path", type=str, help="Path to the source point cloud PLY file")
     parser.add_argument("target_path", type=str, help="Path to the target point cloud PLY file")
     parser.add_argument(
-        "--source_to_target_align_path", type=str, help="Path to the alignment matrix TXT file"
+        "--source_to_target_path", "-s2t", type=str, help="Path to a alignment matrix TXT file"
     )
     args = parser.parse_args()
-    visualize_alignment(args.source_path, args.target_path, args.source_to_target_align_path)
+    visualize_alignment(args.source_path, args.target_path, args.source_to_target_path)

@@ -1,0 +1,14 @@
+{
+    "scene_name": "angel",
+    "output_folder": "angel_v1_initial_$",
+    "dtau_threshold": 0.5,
+    "source_ply_path": "v1_initial/$/meshroom/cache/StructureFromMotion/sfm.ply",
+    "target_ply_path": "target.ply",
+    "target_crop_json_path": "v1_initial/crop.json",
+    "target_log_to_ply_align_txt_path": null,
+    "source_log_path": null,
+    "target_log_path": null,
+    "source_ply_to_ply_align_txt_path": "v1_initial/$/align.txt",
+    "skip_refinement": false,
+    "plot_stretch": 5
+}

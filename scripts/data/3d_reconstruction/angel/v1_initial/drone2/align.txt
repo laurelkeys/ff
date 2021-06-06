@@ -1,0 +1,20 @@
+# 
+# Inlier RMSE, Fitness, and Number of Correspondences (with 1.5 maximum points-pair distance)
+# - Initial: 0.0000 ( 0.00% =  0 out of 33 points)
+# + RANSAC:  0.0664 (100.00% = 33 out of 33 points)
+# + Helmert: 0.0644 (100.00% = 33 out of 33 points)
+# + ICP:     0.0644 (100.00% = 33 out of 33 points)
+# 
+# airsim_rec = C:\Users\laurel\dev\ff\scripts\data\3d_reconstruction\angel\v1_initial\drone2\rec.txt
+# meshroom_sfm = C:\Users\laurel\dev\ff\scripts\data\3d_reconstruction\angel\v1_initial\drone2\meshroom\cache\StructureFromMotion\cameras.sfm
+# 
+# RANSAC_N = 4
+# MAX_CORRESPONDENCE_DISTANCE = 1.5
+# ESTIMATION_METHOD = registration::TransformationEstimationPointToPoint with scaling.
+# RANSAC_CRITERIA = registration::RANSACConvergenceCriteria class with max_iteration=1000, and max_validation=1000
+# ICP_CRITERIA = registration::ICPConvergenceCriteria class with relative_fitness=1.000000e-06, relative_rmse=1.000000e-06, and max_iteration=30
+# 
+-1.656766933028730904e+01 -3.308867844845635631e+01 1.984578103624917134e+01 -2.173807426892155092e+01
+3.784111888284604674e+01 -9.717068179715202092e+00 1.538937412752380141e+01 -2.600281344110065618e+01
+-7.534339402757152193e+00 2.395667689477558682e+01 3.365285988081677715e+01 -4.394760159895096052e+01
+0.000000000000000000e+00 0.000000000000000000e+00 0.000000000000000000e+00 1.000000000000000000e+00
