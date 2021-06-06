@@ -2,7 +2,7 @@ import sys
 import json
 import argparse
 
-from os.path import join, abspath, dirname, isfile
+from os.path import join, abspath, dirname, isfile, exists
 
 try:
     FF_PROJECT_ROOT = abspath(join(abspath(__file__), "..", "..", "..", ".."))
@@ -18,7 +18,7 @@ try:
 except:
     raise
 
-DEBUG = True  # HACK
+DEBUG = False  # HACK
 
 SCENE_NAME = None
 OUTPUT_FOLDER = None
@@ -34,6 +34,7 @@ SKIP_REFINEMENT = False
 
 # Crop volume in the same reference frame as target_ply_path (optional).
 TARGET_CROP_JSON_PATH = None
+USE_TARGET_AABB_TO_CROP = (TARGET_CROP_JSON_PATH is None) and False
 
 # Camera positions used for computing a rough pre-alignment matrix from source_ply_path
 # to target_ply_path (optional). It is assumed that source_log_path's coordinate system
@@ -52,7 +53,7 @@ TARGET_LOG_TO_PLY_ALIGN_TXT_PATH = None
 SOURCE_PLY_TO_PLY_ALIGN_TXT_PATH = None
 
 
-def update_run_args(run_args, dollar_replace=None):
+def update_run_args(run_args, json_path, dollar_replace=None):
     if dollar_replace is None:
         for arg in run_args.values():
             assert "$" not in arg, f"found $ in '{arg}' but --replace was not used"
@@ -73,31 +74,42 @@ def update_run_args(run_args, dollar_replace=None):
     global PLOT_STRETCH
     global SKIP_REFINEMENT
     global TARGET_CROP_JSON_PATH
+    global USE_TARGET_AABB_TO_CROP
     global TARGET_LOG_TO_PLY_ALIGN_TXT_PATH
     global SOURCE_LOG_PATH
     global TARGET_LOG_PATH
     global SOURCE_PLY_TO_PLY_ALIGN_TXT_PATH
 
+    def abspath_if(path):
+        if path is None:
+            return path
+        if exists(path):
+            return abspath(path)
+        path = abspath(join(dirname(json_path), path))
+        assert exists(path), path
+        return path
+
     SCENE_NAME = run_args["scene_name"]
-    OUTPUT_FOLDER = run_args["output_folder"]
-    SOURCE_PLY_PATH = run_args["source_ply_path"]
-    TARGET_PLY_PATH = run_args["target_ply_path"]
+    OUTPUT_FOLDER = abspath_if(run_args["output_folder"])
+    SOURCE_PLY_PATH = abspath_if(run_args["source_ply_path"])
+    TARGET_PLY_PATH = abspath_if(run_args["target_ply_path"])
 
     DTAU_THRESHOLD = run_args.get("dtau_threshold", DTAU_THRESHOLD)
     PLOT_STRETCH = run_args.get("plot_stretch", PLOT_STRETCH)
 
     SKIP_REFINEMENT = run_args.get("skip_refinement", SKIP_REFINEMENT)
 
-    TARGET_CROP_JSON_PATH = run_args.get("target_crop_json_path", TARGET_CROP_JSON_PATH)
+    TARGET_CROP_JSON_PATH = abspath_if(run_args.get("target_crop_json_path", TARGET_CROP_JSON_PATH))
+    USE_TARGET_AABB_TO_CROP = run_args.get("use_target_aabb_to_crop", USE_TARGET_AABB_TO_CROP)
 
-    SOURCE_LOG_PATH = run_args.get("source_log_path", SOURCE_LOG_PATH)
-    TARGET_LOG_PATH = run_args.get("target_log_path", TARGET_LOG_PATH)
-    TARGET_LOG_TO_PLY_ALIGN_TXT_PATH = run_args.get(
-        "target_log_to_ply_align_txt_path", TARGET_LOG_TO_PLY_ALIGN_TXT_PATH
+    SOURCE_LOG_PATH = abspath_if(run_args.get("source_log_path", SOURCE_LOG_PATH))
+    TARGET_LOG_PATH = abspath_if(run_args.get("target_log_path", TARGET_LOG_PATH))
+    TARGET_LOG_TO_PLY_ALIGN_TXT_PATH = abspath_if(
+        run_args.get("target_log_to_ply_align_txt_path", TARGET_LOG_TO_PLY_ALIGN_TXT_PATH)
     )
 
-    SOURCE_PLY_TO_PLY_ALIGN_TXT_PATH = run_args.get(
-        "source_ply_to_ply_align_txt_path", SOURCE_PLY_TO_PLY_ALIGN_TXT_PATH
+    SOURCE_PLY_TO_PLY_ALIGN_TXT_PATH = abspath_if(
+        run_args.get("source_ply_to_ply_align_txt_path", SOURCE_PLY_TO_PLY_ALIGN_TXT_PATH)
     )
 
 
@@ -106,7 +118,7 @@ def main(args):
         run_args = json.load(f)
         if args.verbose:
             print(json.dumps(run_args, indent=2))
-        update_run_args(run_args, args.replace)
+        update_run_args(run_args, abspath(args.json_path), args.replace)
 
     assert SCENE_NAME is not None
     assert OUTPUT_FOLDER is not None
@@ -122,6 +134,7 @@ def main(args):
         print(f"{PLOT_STRETCH = }")
         print(f"{SKIP_REFINEMENT = }")
         print(f"{TARGET_CROP_JSON_PATH = }")
+        print(f"{USE_TARGET_AABB_TO_CROP = }")
         print(f"{SOURCE_LOG_PATH = }")
         print(f"{TARGET_LOG_PATH = }")
         print(f"{TARGET_LOG_TO_PLY_ALIGN_TXT_PATH = }")
@@ -139,6 +152,9 @@ def main(args):
         # Axis-aligned bounding box in the ground-truth reference frame, used
         # to select the region of interest from the dense point clouds (.ply).
         target_crop_json_path=TARGET_CROP_JSON_PATH,
+        # If target_crop_json_path is None, the AABB of the target point cloud can
+        # be computed and used to crop the source point cloud (ignored if not None).
+        use_target_aabb_to_crop=USE_TARGET_AABB_TO_CROP,
         # Transformation matrix that takes the (possibly arbitrary) reference frame
         # of target_log_path to the same coordinate system as target_ply_path.
         target_log_to_ply_align_txt_path=TARGET_LOG_TO_PLY_ALIGN_TXT_PATH,
@@ -156,7 +172,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description=f"Automate the setup running misc/tools/tanksandtemples_evaluator.py"
+        description=f"Automate the setup for running misc/tools/tanksandtemples_evaluator.py"
     )
 
     parser.add_argument("json_path", type=str, help="run args")
@@ -178,6 +194,7 @@ if __name__ == "__main__":
 #     "source_ply_path": null,
 #     "target_ply_path": null,
 #     "target_crop_json_path": null,
+#     "use_target_aabb_to_crop": false,
 #     "target_log_to_ply_align_txt_path": null,
 #     "source_log_path": null,
 #     "target_log_path": null,
