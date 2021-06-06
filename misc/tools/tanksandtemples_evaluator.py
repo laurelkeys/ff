@@ -105,11 +105,18 @@ class Trajectory:
 # ----------------------------------------------------------------------------
 
 
-def crop_pcd(pcd, crop_volume, transformation=None):
+def cropped_pcd(pcd, crop_volume, transformation=None):
     pcd_copy = copy.deepcopy(pcd)
     if transformation is not None:
         pcd_copy.transform(transformation)
-    return pcd_copy if crop_volume is None else crop_volume.crop_point_cloud(pcd_copy)
+
+    if crop_volume is None:
+        return pcd_copy
+    if isinstance(crop_volume, o3d.geometry.AxisAlignedBoundingBox):
+        return pcd_copy.crop(crop_volume)
+    else:
+        assert isinstance(crop_volume, o3d.visualization.SelectionPolygonVolume)
+        return crop_volume.crop_point_cloud(pcd_copy)
 
 
 def uniform_downsample(pcd, max_points):
@@ -144,8 +151,8 @@ def uniform_registration(
 
     # NOTE source_align takes source_pcd to the same coordinate system as target_pcd,
     # hence why we use target_crop_volume for both (since it is in the target frame).
-    source_pcd = crop_pcd(source_pcd, target_crop_volume, source_align)
-    target_pcd = crop_pcd(target_pcd, target_crop_volume)
+    source_pcd = cropped_pcd(source_pcd, target_crop_volume, source_align)
+    target_pcd = cropped_pcd(target_pcd, target_crop_volume)
 
     registration = o3d_registration.registration_icp(
         source=uniform_downsample(source_pcd, max_points),
@@ -178,8 +185,8 @@ def voxel_registration(
 
     # NOTE source_align takes source_pcd to the same coordinate system as target_pcd,
     # hence why we use target_crop_volume for both (since it is in the target frame).
-    source_pcd = crop_pcd(source_pcd, target_crop_volume, source_align)
-    target_pcd = crop_pcd(target_pcd, target_crop_volume)
+    source_pcd = cropped_pcd(source_pcd, target_crop_volume, source_align)
+    target_pcd = cropped_pcd(target_pcd, target_crop_volume)
 
     registration = o3d_registration.registration_icp(
         source=voxel_downsample(source_pcd, voxel_size),
@@ -340,20 +347,24 @@ class TanksAndTemplesEvaluator:
 
         if verbose:
             if target_crop_volume is not None:
-                orthogonal_axis_index = {"X": 0, "Y": 1, "Z": 2}[target_crop_volume.orthogonal_axis]
-                bounding_polygon = np.asarray(target_crop_volume.bounding_polygon)
-                min_bound, max_bound = bounding_polygon.min(axis=0), bounding_polygon.max(axis=0)
-                assert min_bound[orthogonal_axis_index] == max_bound[orthogonal_axis_index] == 0
-                min_bound[orthogonal_axis_index] = target_crop_volume.axis_min
-                max_bound[orthogonal_axis_index] = target_crop_volume.axis_max
-                aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+                if isinstance(target_crop_volume, o3d.visualization.SelectionPolygonVolume):
+                    orthogonal_axis_index = {"X": 0, "Y": 1, "Z": 2}[target_crop_volume.orthogonal_axis]
+                    bounding_polygon = np.asarray(target_crop_volume.bounding_polygon)
+                    min_bound, max_bound = bounding_polygon.min(axis=0), bounding_polygon.max(axis=0)
+                    assert min_bound[orthogonal_axis_index] == max_bound[orthogonal_axis_index] == 0
+                    min_bound[orthogonal_axis_index] = target_crop_volume.axis_min
+                    max_bound[orthogonal_axis_index] = target_crop_volume.axis_max
+                    aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+                else:
+                    assert isinstance(target_crop_volume, o3d.geometry.AxisAlignedBoundingBox)
+                    aabb = target_crop_volume
                 o3d.visualization.draw_geometries([s, t, aabb])
             else:
                 o3d.visualization.draw_geometries([s, t])
 
         if target_crop_volume is not None:
-            s = target_crop_volume.crop_point_cloud(s)
-            t = target_crop_volume.crop_point_cloud(t)
+            s = cropped_pcd(s, target_crop_volume)
+            t = cropped_pcd(t, target_crop_volume)
         s = s.voxel_down_sample(voxel_size)
         t = t.voxel_down_sample(voxel_size)
         s.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=20))
@@ -438,6 +449,9 @@ class TanksAndTemplesEvaluator:
         # Axis-aligned bounding box in the ground-truth reference frame, used
         # to select the region of interest from the dense point clouds (.ply).
         target_crop_json_path=None,
+        # If target_crop_json_path is None, the AABB of the target point cloud can
+        # be computed and used to crop the source point cloud (ignored if not None).
+        use_target_aabb_to_crop=False,
         # Transformation matrix that takes the (possibly arbitrary) reference frame
         # of target_log_path to the same coordinate system as target_ply_path.
         target_log_to_ply_align_txt_path=None,
@@ -483,6 +497,8 @@ class TanksAndTemplesEvaluator:
         if target_crop_json_path is not None:
             target_crop_volume = o3d.visualization.read_selection_polygon_volume(target_crop_json_path)
             assert np.asarray(target_crop_volume.bounding_polygon).shape == (4, 3)
+        elif use_target_aabb_to_crop:
+            target_crop_volume = target_pcd.get_axis_aligned_bounding_box()
         else:
             target_crop_volume = None
 
