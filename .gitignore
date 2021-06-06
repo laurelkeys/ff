@@ -5,6 +5,9 @@
 # temp files
 **/~*
 
+# batch files
+*.bat
+
 # python
 **/__pycache__/
 **/.pytest_cache/

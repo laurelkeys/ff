@@ -1,4 +1,5 @@
 import os
+import sys
 import copy
 import argparse
 
@@ -169,33 +170,39 @@ def main(args: argparse.Namespace) -> None:
     helmert_eval = evaluate_registration(pcd_meshroom, pcd_airsim, helmert_transformation)
     icp_eval = evaluate_registration(pcd_meshroom, pcd_airsim, icp_transformation)
 
-    print(
-        "\nInlier RMSE, Fitness, and Number of Correspondences (with "
-        f"{MAX_CORRESPONDENCE_DISTANCE} maximum points-pair distance)"
-    )
-    # fmt: off
-    print(f"- Initial: {init_eval.inlier_rmse:.4f} ( {(100 * init_eval.fitness):.2f}% =  {len(init_eval.correspondence_set)} out of {len(pcd_airsim.points)} points)")
-    print(f"+ RANSAC:  {ransac_eval.inlier_rmse:.4f} ({(100 * ransac_eval.fitness):.2f}% = {len(ransac_eval.correspondence_set)} out of {len(pcd_airsim.points)} points)")
-    print(f"+ Helmert: {helmert_eval.inlier_rmse:.4f} ({(100 * helmert_eval.fitness):.2f}% = {len(helmert_eval.correspondence_set)} out of {len(pcd_airsim.points)} points)")
-    print(f"+ ICP:     {icp_eval.inlier_rmse:.4f} ({(100 * icp_eval.fitness):.2f}% = {len(icp_eval.correspondence_set)} out of {len(pcd_airsim.points)} points)")
-    # fmt: on
+    results_string = [
+        (
+            "\nInlier RMSE, Fitness, and Number of Correspondences (with "
+            f"{MAX_CORRESPONDENCE_DISTANCE} maximum points-pair distance)"
+        ),
+        f"- Initial: {init_eval.inlier_rmse:.4f} ( {(100 * init_eval.fitness):.2f}% =  {len(init_eval.correspondence_set)} out of {len(pcd_airsim.points)} points)",
+        f"+ RANSAC:  {ransac_eval.inlier_rmse:.4f} ({(100 * ransac_eval.fitness):.2f}% = {len(ransac_eval.correspondence_set)} out of {len(pcd_airsim.points)} points)",
+        f"+ Helmert: {helmert_eval.inlier_rmse:.4f} ({(100 * helmert_eval.fitness):.2f}% = {len(helmert_eval.correspondence_set)} out of {len(pcd_airsim.points)} points)",
+        f"+ ICP:     {icp_eval.inlier_rmse:.4f} ({(100 * icp_eval.fitness):.2f}% = {len(icp_eval.correspondence_set)} out of {len(pcd_airsim.points)} points)",
+    ]
+
+    print(*results_string, sep="\n")
 
     #
     # Save final "source to target" alignment transformation matrix
     #
 
     np.savetxt(
-        "align_meshroom_to_airsim.txt",
+        "align_meshroom_to_airsim.txt" if args.output is None else args.output,
         icp_transformation,
         header="\n".join(
+            results_string +
             [
+                "",
                 f"airsim_rec = {os.path.abspath(args.airsim_rec)}",
                 f"meshroom_sfm = {os.path.abspath(args.meshroom_sfm)}",
+                "",
                 f"{RANSAC_N = }",
                 f"{MAX_CORRESPONDENCE_DISTANCE = }",
                 f"{ESTIMATION_METHOD = }",
                 f"{RANSAC_CRITERIA = }",
                 f"{ICP_CRITERIA = }",
+                "",
             ]
         ),
     )
@@ -216,6 +223,7 @@ def get_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("meshroom_sfm", type=str, help="Path to Meshroom .sfm file (source)")
     parser.add_argument("airsim_rec", type=str, help="Path to AirSim .txt file (target)")
+    parser.add_argument("--output", type=str, help="Path to output NumPy matrix .txt")
 
     return parser
 

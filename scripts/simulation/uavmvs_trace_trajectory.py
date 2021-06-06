@@ -133,16 +133,16 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             ).join()
 
             with pose_at_simulation_pause(client) as real_pose:
-                fake_pose = Pose(real_pose.position, camera_pose.orientation)
-                client.simSetVehiclePose(fake_pose, ignore_collision=True)
-                client.simContinueForFrames(1)  # NOTE ensures pose change
-                do_stuff_at_uavmvs_viewpoint(i, fake_pose)
-                client.simSetVehiclePose(real_pose, ignore_collision=True)
-
                 # NOTE when we pre-compute the viewpoint's camera orientation, we use the
                 # expected drone position, which (should be close, but) is not the actual
                 # drone position. Hence, we could experiment with using fake orientation:
                 # quaternion_orientation_from_eye_to_look_at(real_pose.position, LOOK_AT_TARGET)
+                fake_pose = Pose(real_pose.position, camera_pose.orientation)
+
+                client.simSetVehiclePose(fake_pose, ignore_collision=True)
+                client.simContinueForFrames(1)  # NOTE ensures pose change
+                do_stuff_at_uavmvs_viewpoint(i, fake_pose)
+                client.simSetVehiclePose(real_pose, ignore_collision=True)
 
                 position_error = real_pose.position.distance_to(camera_pose.position)
                 mean_position_error += position_error
@@ -200,6 +200,7 @@ def get_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("trajectory_path", type=str, help="Path to a .TRAJ, .CSV or .UTJ file")
     parser.add_argument("--record_path", type=str, help="Path to save the recording .TXT file")
+    parser.add_argument("--norecord_path", type=str, help="Suppress the effect of --record_path (no-op)")
 
     parser.add_argument("--flush", action="store_true", help="Flush old plots")
     parser.add_argument("--debug", action="store_true", help="Skip capturing images but plot poses")
