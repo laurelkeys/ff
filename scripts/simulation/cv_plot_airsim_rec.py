@@ -6,7 +6,7 @@ import numpy as np
 import airsim
 
 from ds.rgba import Rgba
-from ie.airsimy import AirSimRecord, connect
+from ie.airsimy import AirSimRecord, AirSimNedTransform, connect
 from airsim.types import Pose, Vector3r
 
 ###############################################################################
@@ -57,6 +57,14 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.lines:
         client.simPlotLineStrip(positions, args.color, thickness=2.5, is_persistent=True)
 
+    if args.aim:
+        line_list = []
+        for pose in poses:
+            line_list.append(pose.position)
+            x_axis, _, _ = AirSimNedTransform.local_axes_frame(pose)
+            line_list.append(pose.position + x_axis * 100)
+        client.simPlotLineList(line_list, args.color, thickness=2.5, is_persistent=True)
+
 
 ###############################################################################
 ## main #######################################################################
@@ -90,8 +98,14 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--flush", action="store_true", help="Flush old plots")
     parser.add_argument("--lines", action="store_true", help="Plot trajectory lines")
     parser.add_argument("--axes", action="store_true", help="Plot transforms instead of points")
+    parser.add_argument("--aim", action="store_true", help="Plot lines from eye to look target")
     parser.add_argument("--color", "-rgb", nargs=3, type=float, help="Plot's RGB color")
-    parser.add_argument("--transformation", "-align", type=str, help="Path to a 4x4 transformation matrix file to be loaded with numpy")
+    parser.add_argument(
+        "--transformation",
+        "-align",
+        type=str,
+        help="Path to a 4x4 transformation matrix file to be loaded with numpy",
+    )
 
     ff.add_arguments_to(parser)
     return parser
