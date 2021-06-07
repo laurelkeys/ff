@@ -2,7 +2,10 @@ import sys
 import json
 import argparse
 
-from os.path import join, abspath, dirname, isfile, exists
+from os.path import join, exists, isfile, abspath, dirname
+
+import numpy as np
+import open3d as o3d
 
 try:
     FF_PROJECT_ROOT = abspath(join(abspath(__file__), "..", "..", "..", ".."))
@@ -14,11 +17,13 @@ try:
         sys.path.append(dirname(absolute_path))
 
     include(FF_PROJECT_ROOT, "misc", "tools", "tanksandtemples_evaluator")
-    from tanksandtemples_evaluator import TanksAndTemplesEvaluator
+    from tanksandtemples_evaluator import TanksAndTemplesEvaluator, print_evaluation_result
 except:
     raise
 
+VERBOSE = True
 DEBUG = False  # HACK
+FLIP_TARGET_PLY_YZ = True  # HACK to avoid re-generating point clouds sampled from UE4
 
 SCENE_NAME = None
 OUTPUT_FOLDER = None
@@ -82,6 +87,7 @@ def update_run_args(run_args, json_path, dollar_replace=None):
     global SOURCE_LOG_PATH
     global TARGET_LOG_PATH
     global SOURCE_PLY_TO_PLY_ALIGN_TXT_PATH
+    global FLIP_TARGET_PLY_YZ
 
     def abspath_if(path):
         if path is None:
@@ -115,12 +121,32 @@ def update_run_args(run_args, json_path, dollar_replace=None):
         run_args.get("source_ply_to_ply_align_txt_path", SOURCE_PLY_TO_PLY_ALIGN_TXT_PATH)
     )
 
+    FLIP_TARGET_PLY_YZ = run_args.get("flip_target_ply_yz", SOURCE_PLY_TO_PLY_ALIGN_TXT_PATH)
+
+
+def print_run_args():
+    print(f"{SCENE_NAME = }")
+    print(f"{OUTPUT_FOLDER = }")
+    print(f"{SOURCE_PLY_PATH = }")
+    print(f"{TARGET_PLY_PATH = }")
+    print(f"{DTAU_THRESHOLD = }")
+    print(f"{PLOT_STRETCH = }")
+    print(f"{SKIP_REFINEMENT = }")
+    print(f"{TARGET_CROP_JSON_PATH = }")
+    print(f"{USE_TARGET_AABB_TO_CROP = }")
+    print(f"{SOURCE_LOG_PATH = }")
+    print(f"{TARGET_LOG_PATH = }")
+    print(f"{TARGET_LOG_TO_PLY_ALIGN_TXT_PATH = }")
+    print(f"{SOURCE_PLY_TO_PLY_ALIGN_TXT_PATH = }")
+    print(f"{FLIP_TARGET_PLY_YZ = }")
+
 
 def main(args):
     with open(args.json_path, "r") as f:
         run_args = json.load(f)
+        json_string = json.dumps(run_args, indent=2)
         if args.verbose:
-            print(json.dumps(run_args, indent=2))
+            print(json_string)
         update_run_args(run_args, abspath(args.json_path), args.replace)
 
     assert SCENE_NAME is not None
@@ -129,24 +155,27 @@ def main(args):
     assert TARGET_PLY_PATH is not None
 
     if args.verbose:
-        print(f"{SCENE_NAME = }")
-        print(f"{OUTPUT_FOLDER = }")
-        print(f"{SOURCE_PLY_PATH = }")
-        print(f"{TARGET_PLY_PATH = }")
-        print(f"{DTAU_THRESHOLD = }")
-        print(f"{PLOT_STRETCH = }")
-        print(f"{SKIP_REFINEMENT = }")
-        print(f"{TARGET_CROP_JSON_PATH = }")
-        print(f"{USE_TARGET_AABB_TO_CROP = }")
-        print(f"{SOURCE_LOG_PATH = }")
-        print(f"{TARGET_LOG_PATH = }")
-        print(f"{TARGET_LOG_TO_PLY_ALIGN_TXT_PATH = }")
-        print(f"{SOURCE_PLY_TO_PLY_ALIGN_TXT_PATH = }")
+        print_run_args()
 
     if DEBUG:
         return
 
-    TanksAndTemplesEvaluator.evaluate_reconstruction(
+    def flip_target_ply_yz_fn(ply_pcd, is_source_ply):
+        if not is_source_ply:
+            print("NOTE: flipping Y and Z values of the target point cloud!")
+            ply_pcd_points = np.asarray(ply_pcd.points)
+            ply_pcd_points[:, [1, 2]] *= -1
+            ply_pcd.points = o3d.utility.Vector3dVector(ply_pcd_points)
+
+    [
+        precision,
+        recall,
+        fscore,
+        edges_source,
+        cum_source,
+        edges_target,
+        cum_target,
+    ] = TanksAndTemplesEvaluator.evaluate_reconstruction(
         scene_name=SCENE_NAME,
         output_folder=OUTPUT_FOLDER,
         dtau_threshold=DTAU_THRESHOLD,
@@ -170,7 +199,36 @@ def main(args):
         # matrix is still applied if it is not None, though.
         skip_refinement=SKIP_REFINEMENT,
         plot_stretch=PLOT_STRETCH,
+        verbose=VERBOSE,
+        # Function that can be applied to the source and target point clouds after they're parsed
+        # with Open3D. Must have parameters ply_pcd: o3d.geometry.PointCloud, is_source_ply: bool
+        ply_transform_fn=flip_target_ply_yz_fn,
     )
+
+    print_evaluation_result(SCENE_NAME, DTAU_THRESHOLD, precision, recall, fscore)
+
+    TanksAndTemplesEvaluator.plot_graph(
+        scene_name=SCENE_NAME,
+        fscore=fscore,
+        threshold=DTAU_THRESHOLD,
+        edges_source=edges_source,
+        cum_source=cum_source,
+        edges_target=edges_target,
+        cum_target=cum_target,
+        plot_stretch=PLOT_STRETCH,
+        output_folder=OUTPUT_FOLDER,
+        show_figure=False,
+    )
+
+    sys.stdout = open(join(OUTPUT_FOLDER, "run_evaluation_tool.log"), "w")
+    print()
+    print_evaluation_result(SCENE_NAME, DTAU_THRESHOLD, precision, recall, fscore)
+    print()
+    print(json_string)
+    print()
+    print_run_args()
+    print()
+    sys.stdout.close()
 
 
 if __name__ == "__main__":
@@ -203,5 +261,6 @@ if __name__ == "__main__":
 #     "target_log_path": null,
 #     "source_ply_to_ply_align_txt_path": null,
 #     "skip_refinement": false,
-#     "plot_stretch": 5
+#     "plot_stretch": 5,
+#     "flip_target_ply_yz": true
 # }

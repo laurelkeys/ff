@@ -359,6 +359,7 @@ class TanksAndTemplesEvaluator:
                     assert isinstance(target_crop_volume, o3d.geometry.AxisAlignedBoundingBox)
                     aabb = target_crop_volume
                 o3d.visualization.draw_geometries([s, t, aabb])
+                o3d.visualization.draw_geometries([cropped_pcd(s, aabb), cropped_pcd(t, aabb), aabb])
             else:
                 o3d.visualization.draw_geometries([s, t])
 
@@ -466,9 +467,16 @@ class TanksAndTemplesEvaluator:
         max_iteration=20,
         plot_stretch=5,
         verbose=True,
+        # Function that can be applied to the source and target point clouds after they're parsed
+        # with Open3D. Must have parameters ply_pcd: o3d.geometry.PointCloud, is_source_ply: bool
+        ply_transform_fn=None,
     ):
         source_pcd = o3d.io.read_point_cloud(source_ply_path)
         target_pcd = o3d.io.read_point_cloud(target_ply_path)
+
+        if ply_transform_fn is not None:
+            ply_transform_fn(ply_pcd=source_pcd, is_source_ply=True)
+            ply_transform_fn(ply_pcd=target_pcd, is_source_ply=False)
 
         if target_log_to_ply_align_txt_path is not None:
             assert source_log_path is not None  # "source" (the same as in `source_ply_path`)
@@ -556,6 +564,17 @@ class TanksAndTemplesEvaluator:
 # ----------------------------------------------------------------------------
 
 
+def print_evaluation_result(scene, dTau, precision, recall, fscore):
+    print("==============================")
+    print("evaluation result : %s" % scene)
+    print("==============================")
+    print("distance tau : %.3f" % dTau)
+    print("precision : %.4f" % precision)
+    print("recall : %.4f" % recall)
+    print("f-score : %.4f" % fscore)
+    print("==============================")
+
+
 def run_evaluation(dataset_dir, traj_path, ply_path, out_dir, dTau=None):
     scene = os.path.basename(os.path.normpath(dataset_dir))
 
@@ -618,14 +637,7 @@ def run_evaluation(dataset_dir, traj_path, ply_path, out_dir, dTau=None):
         verbose=os.getenv("VERBOSE", None) is not None,
     )
 
-    print("==============================")
-    print("evaluation result : %s" % scene)
-    print("==============================")
-    print("distance tau : %.3f" % dTau)
-    print("precision : %.4f" % precision)
-    print("recall : %.4f" % recall)
-    print("f-score : %.4f" % fscore)
-    print("==============================")
+    print_evaluation_result(scene, dTau, precision, recall, fscore)
 
     TanksAndTemplesEvaluator.plot_graph(
         scene,
