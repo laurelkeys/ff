@@ -56,7 +56,10 @@ SOURCE_PLY_TO_PLY_ALIGN_TXT_PATH = None
 def update_run_args(run_args, json_path, dollar_replace=None):
     if dollar_replace is None:
         for arg in run_args.values():
-            assert "$" not in arg, f"found $ in '{arg}' but --replace was not used"
+            try:
+                assert "$" not in arg, f"found $ in '{arg}' but --replace was not used"
+            except TypeError:
+                pass
     else:
         for key in run_args.keys():
             value = run_args[key]

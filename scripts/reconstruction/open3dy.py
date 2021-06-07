@@ -1,5 +1,7 @@
 # TODO move this to ie/
 
+import copy
+
 from typing import Optional
 
 import numpy as np
@@ -172,6 +174,39 @@ def create_plane_and_normal_line_set(point, normal, scale=1.0, plane_subdivision
         plane = plane.scale(scale, center=point)
         plane_normal = plane_normal.scale(scale, center=point)
     return plane, plane_normal
+
+
+###############################################################################
+###############################################################################
+
+
+def draw_source_aligned_to_target(source, target, transformation, source2=None, target2=None):
+    """ Visualize a target point cloud (in cyan) and a source point cloud
+        (in yellow), transformed with a source -> target alignment matrix.
+
+        http://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html
+    """
+    source_tmp = copy.deepcopy(source)
+    target_tmp = copy.deepcopy(target)
+
+    source_tmp.paint_uniform_color([1, 0.706, 0])  # yellow
+    source_tmp.transform(transformation)
+    target_tmp.paint_uniform_color([0, 0.651, 0.929])  # cyan
+
+    draw_list = [source_tmp, target_tmp]
+
+    if source2 is not None:
+        source2_tmp = copy.deepcopy(source2)
+        source2_tmp.paint_uniform_color([1, 0.706, 0])  # yellow
+        source2_tmp.transform(transformation)
+        draw_list.append(source2_tmp)
+
+    if target2 is not None:
+        target2_tmp = copy.deepcopy(target2)
+        target2_tmp.paint_uniform_color([0, 0.651, 0.929])  # cyan
+        draw_list.append(target2_tmp)
+
+    o3d.visualization.draw_geometries(draw_list)
 
 
 ###############################################################################
