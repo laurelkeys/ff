@@ -12,12 +12,13 @@ ALICEVISION = '/'.join(["D:", "dev", "Meshroom", "Meshroom-2021.1.0", "aliceVisi
 
 SCENE_NAME = "angel"
 
-RECONSTRUCTION = "v1_initial"
-# RECONSTRUCTION = "v1_shortened"
+# RECONSTRUCTION = "v1_initial"
+RECONSTRUCTION = "v1_shortened"
 
 # SIM_MODE = "cv"
 # SIM_MODE = "drone"
-SIM_MODE = "drone2"
+# SIM_MODE = "drone2"
+SIM_MODE = "cv0"
 
 IMAGES_FOLDER = '/'.join([HERE, SCENE_NAME, RECONSTRUCTION, SIM_MODE, "images"])
 OUTPUT_FOLDER = '/'.join([HERE, SCENE_NAME, RECONSTRUCTION, SIM_MODE, "meshroom"])

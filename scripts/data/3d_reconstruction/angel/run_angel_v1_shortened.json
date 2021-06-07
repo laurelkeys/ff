@@ -1,14 +1,16 @@
 {
     "scene_name": "angel",
-    "output_folder": "angel_v1_shortened_$",
+    "output_folder": "v1_shortened/$/eval",
     "dtau_threshold": 0.5,
     "source_ply_path": "v1_shortened/$/meshroom/cache/StructureFromMotion/sfm.ply",
-    "target_ply_path": "target.ply",
-    "target_crop_json_path": "v1_shortened/crop.json",
+    "target_ply_path": "target_airsim.ply",
+    "target_crop_json_path": null,
+    "use_target_aabb_to_crop": true,
     "target_log_to_ply_align_txt_path": null,
     "source_log_path": null,
     "target_log_path": null,
     "source_ply_to_ply_align_txt_path": "v1_shortened/$/align.txt",
-    "skip_refinement": false,
-    "plot_stretch": 5
+    "skip_refinement": true,
+    "plot_stretch": 5,
+    "flip_target_ply_yz": true
 }

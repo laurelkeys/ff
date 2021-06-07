@@ -14,8 +14,9 @@ if __name__ == "__main__":
     for reconstruction in RECONSTRUCTIONS:
         subfolder = join(folder, reconstruction)
         os.makedirs(subfolder, exist_ok=True)
-        for sim_mode in ["cv", "drone"]:  # , "drone2"]:
+        for sim_mode in ["cv", "drone" , "drone2", "cv0"]:
             os.makedirs(join(subfolder, sim_mode), exist_ok=True)
+            os.makedirs(join(subfolder, sim_mode, "eval"), exist_ok=True)
             os.makedirs(join(subfolder, sim_mode, "images"), exist_ok=True)
             os.makedirs(join(subfolder, sim_mode, "meshroom"), exist_ok=True)
         # open(join(folder, f"run_{ROOT_SCENE_NAME}_{reconstruction}.json"), "w+")

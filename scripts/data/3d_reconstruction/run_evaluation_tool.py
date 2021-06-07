@@ -121,7 +121,7 @@ def update_run_args(run_args, json_path, dollar_replace=None):
         run_args.get("source_ply_to_ply_align_txt_path", SOURCE_PLY_TO_PLY_ALIGN_TXT_PATH)
     )
 
-    FLIP_TARGET_PLY_YZ = run_args.get("flip_target_ply_yz", SOURCE_PLY_TO_PLY_ALIGN_TXT_PATH)
+    FLIP_TARGET_PLY_YZ = run_args.get("flip_target_ply_yz", FLIP_TARGET_PLY_YZ)
 
 
 def print_run_args():

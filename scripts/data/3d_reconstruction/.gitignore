@@ -1,5 +1,7 @@
 # temporarily, until things get a little better organized
 notes.txt
 tmp/
+**/eval/
 **/meshroom/cache/
+*.log
 !*.py

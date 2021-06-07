@@ -31,8 +31,8 @@ except:
 
 VELOCITY = 5
 
-SIM_MODE = ff.SimMode.Multirotor
-# SIM_MODE = ff.SimMode.ComputerVision
+# SIM_MODE = ff.SimMode.Multirotor
+SIM_MODE = ff.SimMode.ComputerVision
 
 LOOK_AT_TARGET = data_config.Ned.Cidadela_Statue
 # LOOK_AT_TARGET = data_config.Ned.Urban_Building
@@ -41,7 +41,7 @@ CAPTURE_CAMERA = ff.CameraName.front_center
 # CAPTURE_CAMERA = ff.CameraName.bottom_center
 
 IS_CV_MODE = SIM_MODE == ff.SimMode.ComputerVision
-CV_SLEEP_SEC = 2
+CV_SLEEP_SEC = 0.5
 
 ###############################################################################
 ## preflight (called before connecting) #######################################
@@ -159,7 +159,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             print(line, file=(file if print_to_file else sys.stdout))
         if print_to_file:
             file.close()
-            ff.log_warning(f'Saved AirSim record to "{args.record_path}"')
+            ff.log_info(f'Saved AirSim record to "{args.record_path}"')
 
 
 ###############################################################################
