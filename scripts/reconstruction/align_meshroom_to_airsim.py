@@ -1,5 +1,4 @@
 import os
-import sys
 import copy
 import argparse
 
@@ -191,8 +190,8 @@ def main(args: argparse.Namespace) -> None:
         "align_meshroom_to_airsim.txt" if args.output is None else args.output,
         icp_transformation,
         header="\n".join(
-            results_string +
-            [
+            results_string
+            + [
                 "",
                 f"airsim_rec = {os.path.abspath(args.airsim_rec)}",
                 f"meshroom_sfm = {os.path.abspath(args.meshroom_sfm)}",
