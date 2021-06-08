@@ -14,7 +14,7 @@ if __name__ == "__main__":
         input_ply_df = read_ply(args.input_path)
         assert "mesh" not in input_ply_df
 
-        comments = f"Generated with transform_ply.py from {args.input_path}"
+        comments = f"Generated with save_transformed_ply.py from {args.input_path}"
 
         tx, ty, tz = [0, 0, 0] if args.offset is None else args.offset
         s = 1.0 if args.scale is None else args.scale
