@@ -73,20 +73,13 @@ def plane_from_points(points: np.ndarray, use_old_method: bool = False) -> Optio
     xs, ys, zs = np.rollaxis(points - centroid, axis=1)
 
     # Calculate full 3x3 covariance matrix, excluding symmetries
-    # NOTE it is not necessary to divide by n since we normalize
+    # NOTE it is not necessary to divide by n as we normalize it
     xx = np.sum(xs * xs, axis=0)
     xy = np.sum(xs * ys, axis=0)
     xz = np.sum(xs * zs, axis=0)
     yy = np.sum(ys * ys, axis=0)
     yz = np.sum(ys * zs, axis=0)
     zz = np.sum(zs * zs, axis=0)
-
-    # cov = np.array([[xx, xy, xz], [xy, yy, yz], [xz, yz, zz]])
-    # # w, v = np.linalg.eig(cov)
-    # # return v[np.argmin(w)]
-    # w, v = np.linalg.eigh(cov)
-    # # assert np.argmin(w) == 0
-    # return v[0]
 
     det_x = yy * zz - yz * yz
     det_y = xx * zz - xz * xz
@@ -181,10 +174,10 @@ def create_plane_and_normal_line_set(point, normal, scale=1.0, plane_subdivision
 
 
 def draw_source_aligned_to_target(source, target, transformation, source2=None, target2=None):
-    """ Visualize a target point cloud (in cyan) and a source point cloud
-        (in yellow), transformed with a source -> target alignment matrix.
+    """Visualize a target point cloud (in cyan) and a source point cloud
+    (in yellow), transformed with a source -> target alignment matrix.
 
-        http://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html
+    http://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html
     """
     source_tmp = copy.deepcopy(source)
     target_tmp = copy.deepcopy(target)

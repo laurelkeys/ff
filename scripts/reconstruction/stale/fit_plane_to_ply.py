@@ -3,8 +3,7 @@ import argparse
 
 import numpy as np
 import open3d as o3d
-
-from plane_from_points import plane_from_points
+import ie.open3dy as o3dy
 
 
 def fit_plane_to_ply(
@@ -28,7 +27,7 @@ def fit_plane_to_ply(
     inlier_cloud.paint_uniform_color([1, 0, 0])
     outlier_cloud = pcd.select_by_index(inliers, invert=True)
 
-    a, b, c, d = plane_from_points(np.asarray(inlier_cloud.points))
+    a, b, c, d = o3dy.plane_from_points(np.asarray(inlier_cloud.points))
     print(f"Computed plane equation: {a:.4f}x + {b:.4f}y + {c:.4f}z + {d:.4f} = 0")
 
     o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])

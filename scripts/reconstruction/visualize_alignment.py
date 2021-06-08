@@ -6,7 +6,7 @@ from typing import Optional
 import numpy as np
 import open3d as o3d
 
-from open3dy import draw_source_aligned_to_target
+from ie.open3dy import draw_source_aligned_to_target
 
 
 def visualize_alignment(source_path: str, target_path: str, matrix_path: Optional[str]) -> None:

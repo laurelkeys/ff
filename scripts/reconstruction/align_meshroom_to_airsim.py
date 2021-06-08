@@ -6,11 +6,10 @@ from collections import namedtuple
 
 import numpy as np
 import open3d as o3d
+import ie.open3dy as o3dy
 
 from ie.airsimy import AirSimRecord
 from ie.meshroomy import MeshroomParser
-
-import open3dy as o3dy
 
 from solve_helmert_transform_lstsq import (
     compute_helmert_A_b,
