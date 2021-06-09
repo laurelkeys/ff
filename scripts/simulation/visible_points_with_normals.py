@@ -7,9 +7,6 @@ KNN_RADIUS = None
 FAST_NORMAL_COMPUTATION = True
 SPHERICAL_PROJECTION_RADIUS = 1  # FIXME
 
-# NOTE since this function is called during flight (i.e. from scripts that interact with AirSim)
-# it can't "leak" Open3D imports, since the airsim and open3d packages have conflicts in msgpack.
-
 
 def visible_points_with_normals(
     camera_position_xyz: np.ndarray,
@@ -64,3 +61,18 @@ def visible_points_with_normals(
     del o3d
 
     return visible_points, visible_normals
+
+
+if __name__ == "__main__":
+    import ff
+    import airsim
+    import ie.airsimy as airsimy
+
+    client = airsimy.connect(ff.SimMode.ComputerVision)
+    # client = airsimy.connect(ff.SimMode.Multirotor)
+
+    client.reset()
+
+    del airsimy
+    del airsim
+    del ff

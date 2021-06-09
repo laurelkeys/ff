@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "airenv\\Scripts\\python.exe",
+    "python.pythonPath": "venv\\Scripts\\python.exe",
 
     "python.autoComplete.addBrackets": false,
     "python.autoComplete.showAdvancedMembers": true,

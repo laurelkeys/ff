@@ -2,6 +2,9 @@
 **/.vscode/*
 !.vscode/settings.json
 
+# virtual env
+venv/*
+
 # temp files
 **/~*
 
