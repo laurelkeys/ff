@@ -2,7 +2,6 @@ import numpy as np
 import open3d as o3d
 
 if __name__ == "__main__":
-
     def debug_color(unit_vector):
         return (unit_vector + 1) * 0.5
 

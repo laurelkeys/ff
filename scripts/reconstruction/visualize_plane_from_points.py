@@ -1,10 +1,9 @@
 import numpy as np
 import open3d as o3d
 
-from plane_from_points import plane_from_points
+from ie.open3dy import plane_from_points
 
 if __name__ == "__main__":
-
     def debug_color(unit_vector):
         return (unit_vector + 1) * 0.5
 
@@ -97,7 +96,9 @@ if __name__ == "__main__":
     draw_list.append(plane.paint_uniform_color([1, 0, 0]))
     draw_list.append(plane_normal.paint_uniform_color([1, 0, 0]))
 
-    expected_plane, expected_plane_normal = create_plane_and_normal_line_set(point, point, scale=0.75)
+    expected_plane, expected_plane_normal = create_plane_and_normal_line_set(
+        point, point, scale=0.75
+    )
     draw_list.append(expected_plane.paint_uniform_color([0, 0, 1]))
     draw_list.append(expected_plane_normal.paint_uniform_color([0, 0, 1]))
 
