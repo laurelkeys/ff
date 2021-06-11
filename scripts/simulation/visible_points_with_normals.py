@@ -46,6 +46,7 @@ def visible_points_with_normals(
     if spherical_projection_radius is None:
         # FIXME this is a bad value guess for noisy point clouds
         spherical_projection_radius = closest_point_distance
+        spherical_projection_radius *= 30  # FIXME
 
     import open3d as o3d
     import ie.open3dy as o3dy
@@ -87,10 +88,19 @@ if __name__ == "__main__":
     import open3d as o3d
     import ie.airsimy as airsimy
 
+    MAX_POINTS = 50_000
+
     pcd = o3d.io.read_point_cloud(sys.argv[1], print_progress=True)
-    pcd = pcd.uniform_down_sample(every_k_points=100)
-    # print(len(pcd.points))
-    # exit()
+    print(f"Point cloud has {len(pcd.points)} points")
+
+    if len(pcd.points) > MAX_POINTS:
+        k = int(np.ceil(len(pcd.points) / MAX_POINTS))
+        pcd = pcd.uniform_down_sample(every_k_points=k)
+        print(f"Downsampled to {len(pcd.points)} points")
+
+    pcd_points = np.asarray(pcd.points)
+    pcd_points[:, 1] *= -1
+    pcd_points[:, 2] *= -1
 
     try:
         align_pcd_to_airsim = np.loadtxt(sys.argv[2])
@@ -103,21 +113,29 @@ if __name__ == "__main__":
     # client = airsimy.connect(ff.SimMode.Multirotor)
     # pose = client.simGetCameraInfo(ff.CameraName.front_center).pose
 
+    client.simFlushPersistentMarkers()
+
     print(f"{pose = }")
     print(f"{pcd = }")
     print(f"{align_pcd_to_airsim = }")
 
+    client.simPlotPoints([airsim.Vector3r(*p) for p in pcd_points], [1, 0, 0, 1], 3, -1, True)
+
     visible = visible_points_with_normals(
         pose.position.to_numpy_array(),
-        np.asarray(pcd.points),
+        pcd_points,
         align_pcd_to_airsim,
         spherical_projection_radius=None,
     )
 
     print(f"{visible = }")
+    visible_points = [airsim.Vector3r(*p) for p in visible.points]
+    visible_normals = [airsim.Vector3r(*(p + n)) for p, n in zip(visible.points, visible.normals)]
+    client.simPlotPoints(visible_points, [0, 0, 1, 1], 6, -1, True)
+    client.simPlotArrows(visible_points, visible_normals, [0, 1, 0, 1], 2, 100, -1, True)
 
     # TODO plot everything inside AirSim
 
-    client.reset()
+    # client.reset()
 
     del sys, ff, np, airsim, o3d, airsimy
