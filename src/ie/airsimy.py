@@ -200,7 +200,6 @@ class AirSimNedTransform:
         return x_axis, y_axis, z_axis
 
 
-
 ###############################################################################
 ###############################################################################
 
@@ -425,6 +424,13 @@ def vector_rotated_by_quaternion_reversed(v: Vector3r, q: Quaternionr) -> Vector
     return vector_rotated_by_quaternion(v, q.inverse())
 
 
+def point_to_plane_distance(p: Vector3r, n: Vector3r, d: float):
+    """ Returns the distance from a point `p` to a plane with normal `n`
+        and distance `d` from the coordinate system's origin (along `n`).
+    """
+    return p.dot(n) - d
+
+
 if False:
     # ref.: https://docs.unrealengine.com/en-US/API/Runtime/Core/Math/FRotator/index.html
     #
@@ -472,6 +478,41 @@ if False:
         # NOTE calling airsim.to_quaternion(pitch, roll, yaw) is equivalent to
         # passing this return to AirSimNedTransform.quaternion_from_uu_to_ned.
         return Quaternionr(x, y, z, w_val=w)
+
+
+###############################################################################
+###############################################################################
+
+if False:
+    def plot_frustum(
+        client,
+        pose: Pose,
+        fov_degrees: float,  # horizontal
+        aspect_ratio: float,
+        near_dist: float = 1.0,
+        far_dist: float = 100.0,
+    ):
+        # ref.: http://davidlively.com/programming/graphics/frustum-calculation-and-culling-hopefully-demystified/
+        half_vertical_fov = 0.5 * np.deg2rad(fov_degrees) / aspect_ratio
+        half_height = np.tan(half_vertical_fov) * near_dist
+        half_width = half_height * aspect_ratio
+
+        def normalized(vector):
+            return vector / np.linalg.norm(vector)
+
+        # viewport corners at z = 1
+        top_left = np.array([-half_width, half_height, 1])
+        top_right = np.array([half_width, half_height, 1])
+        bottom_left = np.array([-half_width, -half_height, 1])
+        bottom_right = np.array([half_width, -half_height, 1])
+
+        # frustum plane normals
+        top = normalized(np.cross(top_left , top_right))
+        right = normalized(np.cross(top_right, bottom_right))
+        bottom = normalized(np.cross(bottom_right, bottom_left))
+        left = normalized(np.cross(bottom_left, top_left))
+        near = np.array([0, 0, 1])
+        far = np.array([0, 0, -1])
 
 
 ###############################################################################

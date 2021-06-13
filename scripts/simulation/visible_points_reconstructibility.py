@@ -72,6 +72,10 @@ def heuristic(
 ) -> Tuple[np.ndarray, np.ndarray]:
     """ Returns the total reconstructibility of all surface samples
         and the summation of redundancy degree r(v) of each view v.
+
+        Note: if visibility_matrix[i, j] is True then the i-th view
+        sees the j-th sample, otherwise it doesn't (i.e. the sample
+        is estimated to be hidden/occluded from this view position).
     """
     assert sample_positions.shape[0] == sample_normals.shape[0]
     assert sample_positions.shape[1] == sample_normals.shape[1] == view_positions.shape[1] == (3,)
@@ -89,7 +93,6 @@ def heuristic(
             )
         ]
     )
-    assert reconstructibility.shape == (s_count,)
 
     redundancy_degree = np.array(
         [
@@ -97,10 +100,75 @@ def heuristic(
             for samples_that_this_view_sees in visibility_matrix
         ]
     )
-    assert redundancy_degree.shape == (v_count,)
 
-    return reconstructibility.sum(), redundancy_degree.sum()
+    assert redundancy_degree.shape == (v_count,)
+    assert reconstructibility.shape == (s_count,)
+
+    return reconstructibility, redundancy_degree
+    # return reconstructibility.sum(), redundancy_degree.sum()
 
 
 if __name__ == "__main__":
-    pass
+    import sys
+
+    import airsim
+    import open3d as o3d
+
+    import ff
+    import ie.airsimy as airsimy
+    import ie.open3dy as o3dy
+
+    from visible_points_with_normals import visible_points_with_normals
+
+    MAX_POINTS = 10_000
+
+    pcd = o3d.io.read_point_cloud(sys.argv[1], print_progress=True)
+    print(f"Point cloud has {len(pcd.points)} points")
+
+    if len(pcd.points) > MAX_POINTS:
+        k = int(np.ceil(len(pcd.points) / MAX_POINTS))
+        pcd = pcd.uniform_down_sample(every_k_points=k)
+        print(f"Downsampled to {len(pcd.points)} points")
+
+    pcd_points = np.asarray(pcd.points)  # XXX flipping Y and Z coordinates
+    pcd_points[:, 1] *= -1
+    pcd_points[:, 2] *= -1
+
+    try:
+        align_pcd_to_airsim = np.loadtxt(sys.argv[2])
+    except IndexError:
+        align_pcd_to_airsim = None
+
+    client = airsimy.connect(ff.SimMode.ComputerVision)
+    # client = airsimy.connect(ff.SimMode.Multirotor)
+    client.simFlushPersistentMarkers()
+
+    client.simPlotPoints([airsim.Vector3r(*p) for p in pcd_points], [1, 0, 0, 1], 3, -1, True)
+
+    camera_positions = []
+
+    def add_current_camera_position():
+        camera = client.simGetCameraInfo(ff.CameraName.front_center)
+        camera_position = camera.pose.position.to_numpy_array()
+        camera_positions.append(camera_position)
+        print(f"FOV = {camera.fov} degrees")
+        print(f"Projection matrix = {camera.proj_mat}")
+        print(f"Orientation (XYZW) = {camera.pose.orientation.to_numpy_array()}")
+
+    for _ in range(2):
+        input()
+        add_current_camera_position()
+
+    print(f"{camera_positions = }")
+
+    for camera_position in camera_positions:
+        visible = visible_points_with_normals(
+            camera_position,
+            pcd_points,
+            align_pcd_to_airsim,
+            spherical_projection_radius_factor=100.0,
+        )
+
+        print(f"{visible.points_indices_in_original_pcd = }")
+
+    del sys, airsim, o3d, ff, airsimy, o3dy
