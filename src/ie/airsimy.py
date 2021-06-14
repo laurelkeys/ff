@@ -14,7 +14,7 @@ from airsim.types import Pose, Vector3r, Quaternionr
 ###############################################################################
 
 
-def connect(sim_mode: str) -> airsim.MultirotorClient:
+def connect(sim_mode: str):
     """ Returns a (Multirotor or ComputerVision) client connected to AirSim. """
     assert sim_mode in [ff.SimMode.Multirotor, ff.SimMode.ComputerVision], sim_mode
 
@@ -27,10 +27,10 @@ def connect(sim_mode: str) -> airsim.MultirotorClient:
         client = airsim.VehicleClient()
         client.confirmConnection()
 
-    return cast(airsim.MultirotorClient, client)
+    return client
 
 
-def reset(client: airsim.MultirotorClient) -> None:
+def reset(client) -> None:
     """ Resets a client connected to AirSim and re-enables API control. """
     client.reset()
     client.enableApiControl(True)
@@ -42,7 +42,7 @@ def reset(client: airsim.MultirotorClient) -> None:
 
 
 @contextmanager
-def pose_at_simulation_pause(client: airsim.MultirotorClient):
+def pose_at_simulation_pause(client):
     """ Pauses the AirSim simulation and returns the client's current pose. """
     client.simPause(is_paused=True)
     try:
@@ -483,36 +483,67 @@ if False:
 ###############################################################################
 ###############################################################################
 
-if False:
-    def plot_frustum(
-        client,
-        pose: Pose,
-        fov_degrees: float,  # horizontal
-        aspect_ratio: float,
-        near_dist: float = 1.0,
-        far_dist: float = 100.0,
-    ):
-        # ref.: http://davidlively.com/programming/graphics/frustum-calculation-and-culling-hopefully-demystified/
-        half_vertical_fov = 0.5 * np.deg2rad(fov_degrees) / aspect_ratio
-        half_height = np.tan(half_vertical_fov) * near_dist
-        half_width = half_height * aspect_ratio
 
-        def normalized(vector):
-            return vector / np.linalg.norm(vector)
+def viewport_corner_vectors(pose: Pose, hfov_degrees: float, aspect_ratio: float):
+    front_axis, right_axis, up_axis = AirSimNedTransform.local_axes_frame(pose)
 
-        # viewport corners at z = 1
-        top_left = np.array([-half_width, half_height, 1])
-        top_right = np.array([half_width, half_height, 1])
-        bottom_left = np.array([-half_width, -half_height, 1])
-        bottom_right = np.array([half_width, -half_height, 1])
+    front_axis = (front_axis / front_axis.get_length()).to_numpy_array()
+    right_axis = (right_axis / right_axis.get_length()).to_numpy_array()
+    up_axis = (up_axis / up_axis.get_length()).to_numpy_array()
 
-        # frustum plane normals
-        top = normalized(np.cross(top_left , top_right))
-        right = normalized(np.cross(top_right, bottom_right))
-        bottom = normalized(np.cross(bottom_right, bottom_left))
-        left = normalized(np.cross(bottom_left, top_left))
-        near = np.array([0, 0, 1])
-        far = np.array([0, 0, -1])
+    half_hfov = 0.5 * np.deg2rad(hfov_degrees)
+    half_vfov = half_hfov / aspect_ratio
+    hcos, hsin = np.cos(half_hfov), np.sin(half_hfov)
+    vcos, vsin = np.cos(half_vfov), np.sin(half_vfov)
+
+    # ref.: https://steve.hollasch.net/cgindex/math/rotvec.html
+
+    up_matrix = np.array([
+        [0, up_axis[2], -up_axis[1]],
+        [-up_axis[2], 0, up_axis[0]],
+        [up_axis[1], -up_axis[0], 0],
+    ])
+    right_matrix = np.array([
+        [0, right_axis[2], -right_axis[1]],
+        [-right_axis[2], 0, right_axis[0]],
+        [right_axis[1], -right_axis[0], 0],
+    ])
+
+    right_matrix1 = vsin * right_matrix
+    right_matrix2 = (1 - vcos) * right_matrix @ right_matrix
+
+    up_matrix1 = hsin * up_matrix
+    up_matrix2 = (1 - hcos) * up_matrix @ up_matrix
+
+    eye_to_top = front_axis @ (np.eye(3) + right_matrix1 + right_matrix2)
+    eye_to_top_left = eye_to_top @ (np.eye(3) - up_matrix1 + up_matrix2)
+    eye_to_top_right = eye_to_top @ (np.eye(3) + up_matrix1 + up_matrix2)
+
+    eye_to_bottom = front_axis @ (np.eye(3) - right_matrix1 + right_matrix2)
+    eye_to_bottom_left = eye_to_bottom @ (np.eye(3) - up_matrix1 + up_matrix2)
+    eye_to_bottom_right = eye_to_bottom @ (np.eye(3) + up_matrix1 + up_matrix2)
+
+    # eye = pose.position.to_numpy_array()
+
+    # # viewport corners
+    # top_left = Vector3r(*(eye + eye_to_top_left))
+    # top_right = Vector3r(*(eye + eye_to_top_right))
+    # bottom_left = Vector3r(*(eye + eye_to_bottom_left))
+    # bottom_right = Vector3r(*(eye + eye_to_bottom_right))
+
+    # def cross_norm(v1, v2):
+    #     v1_cross_v2 = np.cross(v1, v2)
+    #     return v1_cross_v2 / np.linalg.norm(v1_cross_v2)
+
+    # # frustum plane normals
+    # top = cross_norm(eye_to_top_left, eye_to_top_right)
+    # right = cross_norm(eye_to_top_right, eye_to_bottom_right)
+    # bottom = cross_norm(eye_to_bottom_right, eye_to_bottom_left)
+    # left = cross_norm(eye_to_bottom_left, eye_to_top_left)
+    # near = np.array([0, 0, 1])
+    # far = np.array([0, 0, -1])
+
+    return eye_to_top_left, eye_to_top_right, eye_to_bottom_left, eye_to_bottom_right
 
 
 ###############################################################################

@@ -128,56 +128,21 @@ if __name__ == "__main__":
     print(f"Projection matrix = {camera.proj_mat}")
     print(f"Orientation (XYZW) = {camera.pose.orientation.to_numpy_array()}")
 
-    # TODO remove pcd_points that are outside the camera's view frustum by using these values:
-    front_axis, right_axis, up_axis = airsimy.AirSimNedTransform.local_axes_frame(camera.pose)
+    # TODO remove pcd_points that are outside of the camera's view frustum / viewport
+    tl, tr, bl, br = airsimy.viewport_corner_vectors(camera.pose, camera.fov, aspect_ratio=16 / 9)
+    top_left = Vector3r(*(camera_position + tl * 2))
+    top_right = Vector3r(*(camera_position + tr * 2))
+    bottom_left = Vector3r(*(camera_position + bl * 2))
+    bottom_right = Vector3r(*(camera_position + br * 2))
 
-    front_axis = (front_axis / front_axis.get_length()).to_numpy_array()
-    right_axis = (right_axis / right_axis.get_length()).to_numpy_array()
-    up_axis = (up_axis / up_axis.get_length()).to_numpy_array()
+    viewport_line_points = [
+        camera.pose.position, top_left, camera.pose.position, top_right,
+        camera.pose.position, bottom_left, camera.pose.position, bottom_right,
+        top_left, top_right, top_right, bottom_right, bottom_right, bottom_left, bottom_left, top_left,
+    ]
 
-    aspect_ratio = 16 / 9
-    half_hfov = 0.5 * np.deg2rad(camera.fov)
-    half_vfov = half_hfov / aspect_ratio
-    ch, sh = np.cos(half_hfov), np.sin(half_hfov)
-    cv, sv = np.cos(half_vfov), np.sin(half_vfov)
-
-    # ref.: https://steve.hollasch.net/cgindex/math/rotvec.html
-    def make_matrix(axis):
-        x, y, z = axis
-        return np.array([[0, z, -y], [-z, 0, x], [y, -x, 0]])
-
-    right_matrix = make_matrix(right_axis)
-    view_to_top = front_axis @ (np.eye(3) + sv * right_matrix + (1 - cv) * right_matrix @ right_matrix)
-
-    up_matrix = make_matrix(up_axis)
-    view_to_right = front_axis @ (np.eye(3) + sh * up_matrix + (1 - ch) * up_matrix @ up_matrix)
-
-    view_to_bottom = -view_to_top + 2 * np.dot(view_to_top, front_axis) * front_axis
-    view_to_left = -view_to_right + 2 * np.dot(view_to_right, front_axis) * front_axis
-
-    top_left = Vector3r(*((view_to_top + view_to_left) * 0.5 + camera_position))
-    top_right = Vector3r(*((view_to_top + view_to_right) * 0.5 + camera_position))
-    bottom_left = Vector3r(*((view_to_bottom + view_to_left) * 0.5 + camera_position))
-    bottom_right = Vector3r(*((view_to_bottom + view_to_right) * 0.5 + camera_position))
-
-    client.simPlotLineList(
-        [
-            camera.pose.position, top_left,
-            camera.pose.position, top_right,
-            camera.pose.position, bottom_left,
-            camera.pose.position, bottom_right,
-            top_left, top_right,
-            top_right, bottom_right,
-            bottom_right, bottom_left,
-            bottom_left, top_left,
-        ],
-        [1, 1, 1, 1],
-        5,
-        -1,
-        True,
-    )
-
-    client.simPlotTransforms([camera.pose], 100, 5, -1, True)
+    client.simPlotLineList(viewport_line_points, [1, 1, 1, 1], 3, -1, True)
+    client.simPlotTransforms([camera.pose], 200, 3, -1, True)
     client.simPlotPoints([airsim.Vector3r(*p) for p in pcd_points], [1, 0, 0, 1], 3, -1, True)
 
     visible = visible_points_with_normals(
