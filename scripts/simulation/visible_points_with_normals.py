@@ -126,17 +126,35 @@ if __name__ == "__main__":
     print(f"Projection matrix = {camera.proj_mat.matrix}")
     print(f"Orientation (XYZW) = {camera.pose.orientation.to_numpy_array()}")
 
-    # TODO remove pcd_points that are outside of the camera's view frustum / viewport
-    tl, tr, bl, br = airsimy.viewport_corner_vectors(camera.pose, camera.fov, aspect_ratio=16 / 9)
-    viewport_points = airsimy.viewport_points_for_line_plot(camera.pose, camera.fov, aspect_ratio=16 / 9)
+    aspect_ratio = 16 / 9  # NOTE check that this matches AirSim's settings.json
+
+    # Remove pcd_points that are outside of the camera's view frustum / viewport
+    tl, tr, bl, br = airsimy.viewport_vectors(camera.pose, camera.fov, aspect_ratio)
+    viewport_points = airsimy.frustum_plot_list_from_viewport_vectors(camera.pose, tl, tr, bl, br)
+    top, left, right, bottom = airsimy.frustum_plane_normals_from_viewport_vectors(tl, tr, bl, br)
+
+    in_frustum_mask = o3dy.points_above_planes_mask(
+        pcd_points,
+        np.array(
+            [
+                o3dy.plane_from_point_and_normal(camera_position, top),
+                o3dy.plane_from_point_and_normal(camera_position, left),
+                o3dy.plane_from_point_and_normal(camera_position, right),
+                o3dy.plane_from_point_and_normal(camera_position, bottom),
+            ]
+        ),
+    )
+
+    pcd_points_in_frustum = pcd_points[in_frustum_mask]
 
     client.simPlotLineList(viewport_points, [1, 1, 1, 1], 3, -1, True)
     client.simPlotTransforms([camera.pose], 200, 3, -1, True)
-    client.simPlotPoints([airsim.Vector3r(*p) for p in pcd_points], [1, 0, 0, 1], 3, -1, True)
+    client.simPlotPoints([airsim.Vector3r(*p) for p in pcd_points[~in_frustum_mask]], [1, 1, 1, 1], 3, -1, True)
+    client.simPlotPoints([airsim.Vector3r(*p) for p in pcd_points_in_frustum], [1, 0, 0, 1], 3, -1, True)
 
     visible = visible_points_with_normals(
         camera_position,
-        pcd_points,
+        pcd_points_in_frustum,  # pcd_points,
         align_pcd_to_airsim,
         spherical_projection_radius_factor=100.0,
     )

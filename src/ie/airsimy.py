@@ -484,7 +484,9 @@ if False:
 ###############################################################################
 
 
-def viewport_corner_vectors(pose: Pose, hfov_degrees: float, aspect_ratio: float):
+def viewport_vectors(
+    pose: Pose, hfov_degrees: float, aspect_ratio: float
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     front_axis, right_axis, up_axis = AirSimNedTransform.local_axes_frame(pose)
 
     front_axis = (front_axis / front_axis.get_length()).to_numpy_array()
@@ -498,16 +500,20 @@ def viewport_corner_vectors(pose: Pose, hfov_degrees: float, aspect_ratio: float
 
     # ref.: https://steve.hollasch.net/cgindex/math/rotvec.html
 
-    up_matrix = np.array([
-        [0, up_axis[2], -up_axis[1]],
-        [-up_axis[2], 0, up_axis[0]],
-        [up_axis[1], -up_axis[0], 0],
-    ])
-    right_matrix = np.array([
-        [0, right_axis[2], -right_axis[1]],
-        [-right_axis[2], 0, right_axis[0]],
-        [right_axis[1], -right_axis[0], 0],
-    ])
+    up_matrix = np.array(
+        [
+            [0, up_axis[2], -up_axis[1]],
+            [-up_axis[2], 0, up_axis[0]],
+            [up_axis[1], -up_axis[0], 0],
+        ]
+    )
+    right_matrix = np.array(
+        [
+            [0, right_axis[2], -right_axis[1]],
+            [-right_axis[2], 0, right_axis[0]],
+            [right_axis[1], -right_axis[0], 0],
+        ]
+    )
 
     right_matrix1 = vsin * right_matrix
     right_matrix2 = (1 - vcos) * right_matrix @ right_matrix
@@ -546,20 +552,50 @@ def viewport_corner_vectors(pose: Pose, hfov_degrees: float, aspect_ratio: float
     return eye_to_top_left, eye_to_top_right, eye_to_bottom_left, eye_to_bottom_right
 
 
-def viewport_points_for_line_plot(
-    pose: Pose, hfov_degrees: float, aspect_ratio: float, scale: float = 2.0
+def frustum_plot_list_from_viewport_vectors(
+    pose: Pose,
+    eye_to_top_left: np.ndarray,
+    eye_to_top_right: np.ndarray,
+    eye_to_bottom_left: np.ndarray,
+    eye_to_bottom_right: np.ndarray,
+    scale: float = 2.0
 ) -> List[Vector3r]:
-    tl, tr, bl, br = viewport_corner_vectors(pose, hfov_degrees, aspect_ratio)
-    view = pose.position
-    view_to_tl = view + Vector3r(*(tl * scale))  # top left
-    view_to_tr = view + Vector3r(*(tr * scale))  # top right
-    view_to_bl = view + Vector3r(*(bl * scale))  # bottom left
-    view_to_br = view + Vector3r(*(br * scale))  # bottom right
-    return (
-        [view, view_to_tl, view, view_to_tr, view, view_to_bl, view, view_to_br]
-        + [view_to_tl, view_to_tr, view_to_tr, view_to_br]
-        + [view_to_br, view_to_bl, view_to_bl, view_to_tl]
-    )
+    eye = pose.position
+
+    top_left = eye + Vector3r(*(eye_to_top_left * scale))
+    top_right = eye + Vector3r(*(eye_to_top_right * scale))
+    bottom_left = eye + Vector3r(*(eye_to_bottom_left * scale))
+    bottom_right = eye + Vector3r(*(eye_to_bottom_right * scale))
+
+    return [
+        eye, top_left,
+        eye, top_right,
+        eye, bottom_left,
+        eye, bottom_right,
+
+        top_left, top_right,
+        top_right, bottom_right,
+        bottom_right, bottom_left,
+        bottom_left, top_left,
+    ]
+
+
+def frustum_plane_normals_from_viewport_vectors(
+    eye_to_top_left: np.ndarray,
+    eye_to_top_right: np.ndarray,
+    eye_to_bottom_left: np.ndarray,
+    eye_to_bottom_right: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def cross_norm(v1, v2):
+        v1_cross_v2 = np.cross(v1, v2)
+        return v1_cross_v2 / np.linalg.norm(v1_cross_v2)
+
+    top = cross_norm(eye_to_top_left, eye_to_top_right)
+    left = cross_norm(eye_to_bottom_left, eye_to_top_left)
+    right = cross_norm(eye_to_top_right, eye_to_bottom_right)
+    bottom = cross_norm(eye_to_bottom_right, eye_to_bottom_left)
+
+    return top, left, right, bottom
 
 
 ###############################################################################

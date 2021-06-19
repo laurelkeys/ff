@@ -116,7 +116,7 @@ def plane_from_points(points: np.ndarray, use_old_method: bool = False) -> Optio
     return plane_from_point_and_normal(centroid, normal / norm)
 
 
-def points_above_planes_mask(planes: np.ndarray, points: np.ndarray) -> np.ndarray:
+def points_above_planes_mask(points: np.ndarray, planes: np.ndarray) -> np.ndarray:
     if planes.ndim == 1:
         planes = planes.reshape((1, -1))
 
@@ -174,7 +174,7 @@ def create_plane_triangle_mesh(point, normal, eps=0.01):
 
 def create_plane_and_normal_line_set(point, normal, scale=1.0, plane_subdivisions=3, eps=0.01):
     plane = o3d.geometry.LineSet.create_from_triangle_mesh(
-        create_plane_triangle_mesh(point, normal).subdivide_midpoint(plane_subdivisions)
+        create_plane_triangle_mesh(point, normal, eps).subdivide_midpoint(plane_subdivisions)
     )
     plane_normal = o3d.geometry.LineSet(
         points=v3d([point, point + normal / np.linalg.norm(normal)]),
