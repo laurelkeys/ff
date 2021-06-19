@@ -2,8 +2,6 @@ from typing import Optional, NamedTuple
 
 import numpy as np
 
-from airsim.types import Vector3r
-
 KNN_MAX = 24
 KNN_RADIUS = None
 FAST_NORMAL_COMPUTATION = True
@@ -130,18 +128,9 @@ if __name__ == "__main__":
 
     # TODO remove pcd_points that are outside of the camera's view frustum / viewport
     tl, tr, bl, br = airsimy.viewport_corner_vectors(camera.pose, camera.fov, aspect_ratio=16 / 9)
-    top_left = Vector3r(*(camera_position + tl * 2))
-    top_right = Vector3r(*(camera_position + tr * 2))
-    bottom_left = Vector3r(*(camera_position + bl * 2))
-    bottom_right = Vector3r(*(camera_position + br * 2))
+    viewport_points = airsimy.viewport_points_for_line_plot(camera.pose, camera.fov, aspect_ratio=16 / 9)
 
-    viewport_line_points = [
-        camera.pose.position, top_left, camera.pose.position, top_right,
-        camera.pose.position, bottom_left, camera.pose.position, bottom_right,
-        top_left, top_right, top_right, bottom_right, bottom_right, bottom_left, bottom_left, top_left,
-    ]
-
-    client.simPlotLineList(viewport_line_points, [1, 1, 1, 1], 3, -1, True)
+    client.simPlotLineList(viewport_points, [1, 1, 1, 1], 3, -1, True)
     client.simPlotTransforms([camera.pose], 200, 3, -1, True)
     client.simPlotPoints([airsim.Vector3r(*p) for p in pcd_points], [1, 0, 0, 1], 3, -1, True)
 

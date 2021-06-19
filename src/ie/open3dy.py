@@ -56,14 +56,14 @@ def split_points_by_index(pcd, index_list):
 
 
 def plane_from_point_and_normal(point: np.ndarray, normal: np.ndarray) -> np.ndarray:
-    """ Returns `[a, b, c, d]`, such that `normal == [a, b, c]` and `normal.dot(point) + d == 0`. """
+    """Returns `[a, b, c, d]`, such that `normal == [a, b, c]` and `normal.dot(point) + d == 0`."""
     a, b, c = normal
     d = -np.dot(normal, point)
     return np.array([a, b, c, d])
 
 
 def plane_from_points(points: np.ndarray, use_old_method: bool = False) -> Optional[np.ndarray]:
-    """ Fits a plane to a collection of points. Returns None if the points do not span a plane. """
+    """Fits a plane to a collection of points. Returns None if the points do not span a plane."""
     assert points.ndim == 2 and points.shape[1] == 3
     n, _ = points.shape
     if n < 3:
@@ -114,6 +114,23 @@ def plane_from_points(points: np.ndarray, use_old_method: bool = False) -> Optio
         return None
 
     return plane_from_point_and_normal(centroid, normal / norm)
+
+
+def points_above_planes_mask(planes: np.ndarray, points: np.ndarray) -> np.ndarray:
+    if planes.ndim == 1:
+        planes = planes.reshape((1, -1))
+
+    n, _ = points.shape
+    assert points.shape[1] == 3  # [x, y, z]
+    assert planes.shape[1] == 4  # [a, b, c, d]
+    points = np.hstack((points, np.ones((n, 1))))  # [x, y, z] -> [x, y, z, 1]
+
+    above_planes_mask = np.logical_and.reduce(
+        list(np.einsum("j,ij->i", plane, points) > 0 for plane in planes)
+    )
+
+    return above_planes_mask
+    # return points[above_planes_mask][:, :3]  # [x, y, z] -> [x, y, z, 1]
 
 
 ###############################################################################

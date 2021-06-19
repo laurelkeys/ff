@@ -546,6 +546,22 @@ def viewport_corner_vectors(pose: Pose, hfov_degrees: float, aspect_ratio: float
     return eye_to_top_left, eye_to_top_right, eye_to_bottom_left, eye_to_bottom_right
 
 
+def viewport_points_for_line_plot(
+    pose: Pose, hfov_degrees: float, aspect_ratio: float, scale: float = 2.0
+) -> List[Vector3r]:
+    tl, tr, bl, br = viewport_corner_vectors(pose, hfov_degrees, aspect_ratio)
+    view = pose.position
+    view_to_tl = view + Vector3r(*(tl * scale))  # top left
+    view_to_tr = view + Vector3r(*(tr * scale))  # top right
+    view_to_bl = view + Vector3r(*(bl * scale))  # bottom left
+    view_to_br = view + Vector3r(*(br * scale))  # bottom right
+    return (
+        [view, view_to_tl, view, view_to_tr, view, view_to_bl, view, view_to_br]
+        + [view_to_tl, view_to_tr, view_to_tr, view_to_br]
+        + [view_to_br, view_to_bl, view_to_bl, view_to_tl]
+    )
+
+
 ###############################################################################
 ###############################################################################
 
