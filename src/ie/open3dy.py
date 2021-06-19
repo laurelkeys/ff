@@ -129,8 +129,9 @@ def points_above_planes_mask(points: np.ndarray, planes: np.ndarray) -> np.ndarr
         list(np.einsum("j,ij->i", plane, points) > 0 for plane in planes)
     )
 
+    # points = points[above_planes_mask][:, :3]  # [x, y, z] -> [x, y, z, 1]
+
     return above_planes_mask
-    # return points[above_planes_mask][:, :3]  # [x, y, z] -> [x, y, z, 1]
 
 
 ###############################################################################

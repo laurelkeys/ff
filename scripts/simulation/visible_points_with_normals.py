@@ -165,11 +165,4 @@ if __name__ == "__main__":
     client.simPlotPoints(visible_points, [0, 0, 1, 1], 6, -1, True)
     client.simPlotArrows(visible_points, visible_normals, [0, 1, 0, 1], 2, 100, -1, True)
 
-    # pcd.orient_normals_towards_camera_location(pose.position.to_numpy_array())
-    # visible_pcd, not_visible_pcd = o3dy.split_points_by_index(pcd, visible.points_indices_in_original_pcd)
-    # visible_pcd.paint_uniform_color([0, 0, 1])
-    # not_visible_pcd.paint_uniform_color([1, 0, 0])
-    # o3d.visualization.draw_geometries([visible_pcd])
-    # o3d.visualization.draw_geometries([visible_pcd, not_visible_pcd])
-
     del sys, argparse, airsim, o3d, ff, airsimy, o3dy

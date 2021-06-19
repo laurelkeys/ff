@@ -105,7 +105,6 @@ def heuristic(
     assert reconstructibility.shape == (s_count,)
 
     return reconstructibility, redundancy_degree
-    # return reconstructibility.sum(), redundancy_degree.sum()
 
 
 if __name__ == "__main__":
@@ -182,30 +181,6 @@ if __name__ == "__main__":
     print("total reconstructibility:", reconstructibility.sum())
     print("sum of redundancy degree:", redundancy_degree.sum())
 
-    # camera_positions = []
-
-    # def add_current_camera_position():
-    #     camera = client.simGetCameraInfo(ff.CameraName.front_center)
-    #     camera_position = camera.pose.position.to_numpy_array()
-    #     camera_positions.append(camera_position)
-    #     print(f"FOV = {camera.fov} degrees")
-    #     print(f"Projection matrix = {camera.proj_mat.matrix}")
-    #     print(f"Orientation (XYZW) = {camera.pose.orientation.to_numpy_array()}")
-
-    # for _ in range(2):
-    #     input()
-    #     add_current_camera_position()
-
-    # print(f"{camera_positions = }")
-
-    # for camera_position in camera_positions:
-    #     visible = visible_points_with_normals(
-    #         camera_position,
-    #         pcd_points,
-    #         align_pcd_to_airsim,
-    #         spherical_projection_radius_factor=100.0,
-    #     )
-
-    #     print(f"{visible.points_indices_in_original_pcd = }")
+    # TODO ...
 
     del sys, argparse, airsim, o3d, ff, airsimy, o3dy

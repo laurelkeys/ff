@@ -529,26 +529,6 @@ def viewport_vectors(
     eye_to_bottom_left = eye_to_bottom @ (np.eye(3) - up_matrix1 + up_matrix2)
     eye_to_bottom_right = eye_to_bottom @ (np.eye(3) + up_matrix1 + up_matrix2)
 
-    # eye = pose.position.to_numpy_array()
-
-    # # viewport corners
-    # top_left = Vector3r(*(eye + eye_to_top_left))
-    # top_right = Vector3r(*(eye + eye_to_top_right))
-    # bottom_left = Vector3r(*(eye + eye_to_bottom_left))
-    # bottom_right = Vector3r(*(eye + eye_to_bottom_right))
-
-    # def cross_norm(v1, v2):
-    #     v1_cross_v2 = np.cross(v1, v2)
-    #     return v1_cross_v2 / np.linalg.norm(v1_cross_v2)
-
-    # # frustum plane normals
-    # top = cross_norm(eye_to_top_left, eye_to_top_right)
-    # right = cross_norm(eye_to_top_right, eye_to_bottom_right)
-    # bottom = cross_norm(eye_to_bottom_right, eye_to_bottom_left)
-    # left = cross_norm(eye_to_bottom_left, eye_to_top_left)
-    # near = np.array([0, 0, 1])
-    # far = np.array([0, 0, -1])
-
     return eye_to_top_left, eye_to_top_right, eye_to_bottom_left, eye_to_bottom_right
 
 
