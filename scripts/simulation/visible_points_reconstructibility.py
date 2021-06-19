@@ -33,7 +33,7 @@ def q(s: np.ndarray, n: np.ndarray, v1: np.ndarray, v2: np.ndarray) -> float:
         reconstructibility of a sample point at position `s` with normal `n`.
     """
     assert s.shape == v1.shape == v2.shape == n.shape == (3,)
-    assert np.linalg.norm(n) == 1.0
+    assert np.isclose(np.linalg.norm(n), 1.0)
 
     sv1, sv2 = (v1 - s), (v2 - s)
     norm_sv1 = np.linalg.norm(sv1)
@@ -78,7 +78,7 @@ def heuristic(
         is estimated to be hidden/occluded from this view position).
     """
     assert sample_positions.shape[0] == sample_normals.shape[0]
-    assert sample_positions.shape[1] == sample_normals.shape[1] == view_positions.shape[1] == (3,)
+    assert sample_positions.shape[1] == sample_normals.shape[1] == view_positions.shape[1] == 3
 
     v_count = view_positions.shape[0]
     s_count = sample_positions.shape[0]
@@ -110,6 +110,7 @@ def heuristic(
 
 if __name__ == "__main__":
     import sys
+    import argparse
 
     import airsim
     import open3d as o3d
@@ -120,13 +121,18 @@ if __name__ == "__main__":
 
     from visible_points_with_normals import visible_points_with_normals
 
-    MAX_POINTS = 10_000
+    parser = argparse.ArgumentParser()
+    parser.add_argument("pcd_path", type=str)
+    parser.add_argument("rec_path", type=str)
+    parser.add_argument("--align_path", type=str)
+    parser.add_argument("--max_points", type=int, default=10_000)
+    args = parser.parse_args()
 
-    pcd = o3d.io.read_point_cloud(sys.argv[1], print_progress=True)
+    pcd = o3d.io.read_point_cloud(args.pcd_path, print_progress=True)
     print(f"Point cloud has {len(pcd.points)} points")
 
-    if len(pcd.points) > MAX_POINTS:
-        k = int(np.ceil(len(pcd.points) / MAX_POINTS))
+    if len(pcd.points) > args.max_points:
+        k = int(np.ceil(len(pcd.points) / args.max_points))
         pcd = pcd.uniform_down_sample(every_k_points=k)
         print(f"Downsampled to {len(pcd.points)} points")
 
@@ -134,41 +140,72 @@ if __name__ == "__main__":
     pcd_points[:, 1] *= -1
     pcd_points[:, 2] *= -1
 
-    try:
-        align_pcd_to_airsim = np.loadtxt(sys.argv[2])
-    except IndexError:
+    if args.align_path is not None:
+        align_pcd_to_airsim = np.loadtxt(args.align_path)
+    else:
         align_pcd_to_airsim = None
+
+    view_poses = [
+        airsim.Pose(rec.position, rec.orientation)
+        for rec in airsimy.AirSimRecord.list_from(args.rec_path)
+    ]
 
     client = airsimy.connect(ff.SimMode.ComputerVision)
     # client = airsimy.connect(ff.SimMode.Multirotor)
     client.simFlushPersistentMarkers()
 
     client.simPlotPoints([airsim.Vector3r(*p) for p in pcd_points], [1, 0, 0, 1], 3, -1, True)
+    client.simPlotTransforms(view_poses, 200, 3, -1, True)  # TODO plot view frustum
 
-    camera_positions = []
+    # ref.: https://stackoverflow.com/a/60291167
+    visibility_matrix = np.array(
+        [
+            np.array(
+                np.isin(
+                    np.arange(len(pcd_points)),
+                    visible_points_with_normals(
+                        view.position.to_numpy_array(), pcd_points, align_pcd_to_airsim
+                    ).points_indices_in_original_pcd,
+                )
+            )
+            for view in view_poses
+        ]
+    )
+    assert visibility_matrix.shape == (len(view_poses), len(pcd_points))
 
-    def add_current_camera_position():
-        camera = client.simGetCameraInfo(ff.CameraName.front_center)
-        camera_position = camera.pose.position.to_numpy_array()
-        camera_positions.append(camera_position)
-        print(f"FOV = {camera.fov} degrees")
-        print(f"Projection matrix = {camera.proj_mat}")
-        print(f"Orientation (XYZW) = {camera.pose.orientation.to_numpy_array()}")
+    pcd.orient_normals_towards_camera_location(view_poses[0].position.to_numpy_array())  # FIXME flip y and z
 
-    for _ in range(2):
-        input()
-        add_current_camera_position()
+    view_positions = np.array([view.position.to_numpy_array() for view in view_poses])
 
-    print(f"{camera_positions = }")
+    reconstructibility, redundancy_degree = heuristic(pcd_points, np.asarray(pcd.normals), view_positions, visibility_matrix)
 
-    for camera_position in camera_positions:
-        visible = visible_points_with_normals(
-            camera_position,
-            pcd_points,
-            align_pcd_to_airsim,
-            spherical_projection_radius_factor=100.0,
-        )
+    print("total reconstructibility:", reconstructibility.sum())
+    print("sum of redundancy degree:", redundancy_degree.sum())
 
-        print(f"{visible.points_indices_in_original_pcd = }")
+    # camera_positions = []
 
-    del sys, airsim, o3d, ff, airsimy, o3dy
+    # def add_current_camera_position():
+    #     camera = client.simGetCameraInfo(ff.CameraName.front_center)
+    #     camera_position = camera.pose.position.to_numpy_array()
+    #     camera_positions.append(camera_position)
+    #     print(f"FOV = {camera.fov} degrees")
+    #     print(f"Projection matrix = {camera.proj_mat.matrix}")
+    #     print(f"Orientation (XYZW) = {camera.pose.orientation.to_numpy_array()}")
+
+    # for _ in range(2):
+    #     input()
+    #     add_current_camera_position()
+
+    # print(f"{camera_positions = }")
+
+    # for camera_position in camera_positions:
+    #     visible = visible_points_with_normals(
+    #         camera_position,
+    #         pcd_points,
+    #         align_pcd_to_airsim,
+    #         spherical_projection_radius_factor=100.0,
+    #     )
+
+    #     print(f"{visible.points_indices_in_original_pcd = }")
+
+    del sys, argparse, airsim, o3d, ff, airsimy, o3dy

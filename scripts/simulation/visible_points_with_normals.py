@@ -80,8 +80,8 @@ def visible_points_with_normals(
 
 if __name__ == "__main__":
     import sys
-
     import argparse
+
     import airsim
     import open3d as o3d
 
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     camera_position = camera.pose.position.to_numpy_array()
 
     print(f"FOV = {camera.fov} degrees")
-    print(f"Projection matrix = {camera.proj_mat}")
+    print(f"Projection matrix = {camera.proj_mat.matrix}")
     print(f"Orientation (XYZW) = {camera.pose.orientation.to_numpy_array()}")
 
     # TODO remove pcd_points that are outside of the camera's view frustum / viewport
@@ -165,4 +165,4 @@ if __name__ == "__main__":
     # o3d.visualization.draw_geometries([visible_pcd])
     # o3d.visualization.draw_geometries([visible_pcd, not_visible_pcd])
 
-    del sys, airsim, o3d, ff, airsimy, o3dy
+    del sys, argparse, airsim, o3d, ff, airsimy, o3dy
