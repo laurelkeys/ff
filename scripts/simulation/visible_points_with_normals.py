@@ -154,7 +154,7 @@ if __name__ == "__main__":
 
     visible = visible_points_with_normals(
         camera_position,
-        pcd_points_in_frustum,  # pcd_points,
+        pcd_points_in_frustum,
         align_pcd_to_airsim,
         spherical_projection_radius_factor=100.0,
     )

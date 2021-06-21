@@ -8,7 +8,7 @@ ALPHA1 = np.pi / 16.0
 K3 = 8.0
 ALPHA3 = np.pi / 4.0
 
-D_GSD = 1.0  # FIXME the GSD value changes based on the reconstruction
+D_GSD = 99.9  # FIXME the GSD value changes based on the reconstruction
 D_MAX = 2.0 * D_GSD
 
 
@@ -96,6 +96,7 @@ def heuristic(
 
     redundancy_degree = np.array(
         [
+            # np.min(reconstructibility[samples_that_this_view_sees][reconstructibility[samples_that_this_view_sees] != 0.0])
             np.min(reconstructibility[samples_that_this_view_sees])
             for samples_that_this_view_sees in visibility_matrix
         ]
@@ -153,8 +154,16 @@ if __name__ == "__main__":
     # client = airsimy.connect(ff.SimMode.Multirotor)
     client.simFlushPersistentMarkers()
 
-    client.simPlotPoints([airsim.Vector3r(*p) for p in pcd_points], [1, 0, 0, 1], 3, -1, True)
-    client.simPlotTransforms(view_poses, 200, 3, -1, True)  # TODO plot view frustum
+    client.simPlotPoints([airsim.Vector3r(*p) for p in pcd_points], [1, 1, 1, 1], 3, -1, True)
+    # client.simPlotTransforms(view_poses, 200, 3, -1, True)
+
+    for i, pose in enumerate(view_poses):
+        tl, tr, bl, br = airsimy.viewport_vectors(pose, hfov_degrees=90, aspect_ratio=(16 / 9))
+        viewport_points = airsimy.frustum_plot_list_from_viewport_vectors(pose, tl, tr, bl, br)
+        client.simPlotLineList(viewport_points, [1, 1, 1, 1], 3, 30, False)
+        client.simPlotTransformsWithNames(
+            [pose], [f"pose #{i}"], 200, 3, 1, [0, 0, 0, 1], 30
+        )
 
     # ref.: https://stackoverflow.com/a/60291167
     visibility_matrix = np.array(
@@ -176,11 +185,17 @@ if __name__ == "__main__":
 
     view_positions = np.array([view.position.to_numpy_array() for view in view_poses])
 
-    reconstructibility, redundancy_degree = heuristic(pcd_points, np.asarray(pcd.normals), view_positions, visibility_matrix)
+    camera_indices_mask = [i for i in range(len(view_positions))]
+    # camera_indices_mask = [0, 1]
+
+    reconstructibility, redundancy_degree = heuristic(
+        pcd_points,
+        np.asarray(pcd.normals),
+        view_positions[camera_indices_mask],
+        visibility_matrix[camera_indices_mask, :]
+    )
 
     print("total reconstructibility:", reconstructibility.sum())
     print("sum of redundancy degree:", redundancy_degree.sum())
-
-    # TODO ...
 
     del sys, argparse, airsim, o3d, ff, airsimy, o3dy
