@@ -60,19 +60,21 @@ AIRSPACE_MIN_D = 3.5
 
 # minimum/maximum distance to surface
 OPTIMIZE_MIN_D = 2.5
-OPTIMIZE_MAX_D = 50.0
+OPTIMIZE_MAX_D = 75.0
+
+OPTIMIZE_MAX_ITERS = 3000  # maximum iterations
 
 # waypoints per meter for the interpolated trajectory
-RESOLUTION = 0.5
+RESOLUTION = 0.25
 
 # XXX camera focal length and sensor aspect ratio
-FOCAL_LENGTH = 0.86
+FOCAL_LENGTH = 0.867
 ASPECT_RATIO = 0.66
 
 PLANAR_F = 80  # forward overlap in percent
 PLANAR_S = 80  # side overlap in percent
-PLANAR_ALT = 45  # XXX flying altitude
-PLANAR_ELEV = 0  # elevation for overlap planning
+PLANAR_ALT = 40 + 45  # XXX flying altitude
+PLANAR_ELEV = 40  # elevation for overlap planning
 
 SPATIAL_RES = 4  # XXX guidance volume resolution
 SPATIAL_MIN_D = 60  # maximum distance to surface
@@ -112,8 +114,72 @@ def print_params(args: argparse.Namespace) -> None:
 ###############################################################################
 
 
+def set_makeTraj_params():
+    global PROXY_CLOUD_SAMPLES; global PROXY_MESH_MIN_D; global AIRSPACE_MIN_D
+    global OPTIMIZE_MIN_D; global OPTIMIZE_MAX_D; global OPTIMIZE_MAX_ITERS
+    global RESOLUTION; global FOCAL_LENGTH; global ASPECT_RATIO
+    global PLANAR_F; global PLANAR_S; global PLANAR_ALT; global PLANAR_ELEV
+    print(f"# set_makeTraj_params()\n")
+
+    PROXY_CLOUD_SAMPLES = 25
+
+    PROXY_MESH_MIN_D = 0.0  # default
+    AIRSPACE_MIN_D = 5.0
+
+    OPTIMIZE_MIN_D = 5
+    OPTIMIZE_MAX_D = 30
+
+    OPTIMIZE_MAX_ITERS = 10000
+
+    RESOLUTION = 0.1  # default
+
+    FOCAL_LENGTH = 0.867  # 15 / 17.3
+    ASPECT_RATIO = 0.66  # 4000 / 6000
+
+    PLANAR_F = 80
+    PLANAR_S = 80
+    PLANAR_ALT = 15
+    PLANAR_ELEV = -15
+
+
+def set_allDefault_params():
+    global PROXY_CLOUD_SAMPLES; global PROXY_MESH_MIN_D; global AIRSPACE_MIN_D
+    global OPTIMIZE_MIN_D; global OPTIMIZE_MAX_D; global OPTIMIZE_MAX_ITERS
+    global RESOLUTION; global FOCAL_LENGTH; global ASPECT_RATIO
+    global PLANAR_F; global PLANAR_S; global PLANAR_ALT; global PLANAR_ELEV
+    print(f"# set_allDefault_params()\n")
+
+    PROXY_CLOUD_SAMPLES = 100
+
+    PROXY_MESH_MIN_D = 0.0
+    AIRSPACE_MIN_D = 0.0
+
+    OPTIMIZE_MIN_D = 2.5
+    OPTIMIZE_MAX_D = 50.0
+
+    OPTIMIZE_MAX_ITERS = 100
+
+    RESOLUTION = 0.1
+
+    FOCAL_LENGTH = 0.86
+    ASPECT_RATIO = 0.66
+
+    PLANAR_F = 80.0
+    PLANAR_S = 60.0
+    PLANAR_ALT = 60.0
+    PLANAR_ELEV = 0.0
+
+
+###############################################################################
+###############################################################################
+
+
 def main(args: argparse.Namespace) -> None:
     setup_args(args)
+
+    # set_makeTraj_params()
+    # set_allDefault_params()
+
     if args.verbose:
         print_params(args)
 
@@ -149,7 +215,8 @@ def main(args: argparse.Namespace) -> None:
                 out_trajectory  = fn_out("optimized"),
                 min_distance    = OPTIMIZE_MIN_D,
                 max_distance    = OPTIMIZE_MAX_D,
-                max_iters       = 3000,
+                max_iters       = OPTIMIZE_MAX_ITERS,
+                focal_length    = FOCAL_LENGTH,
             )
             if args.verbose:
                 # i oindices.size() avg_wrecon volume

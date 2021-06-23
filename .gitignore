@@ -32,5 +32,9 @@
 **/v1/reconstruction/models/**/cloud_and_poses.json
 **/v1/reconstruction/models/**/outputViewsAndPoses.json
 
+# compressed files
+*.zip
+*.7z
+
 # virtual envs
 airenv/
