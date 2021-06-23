@@ -61,20 +61,20 @@ AIRSPACE_MIN_D = 3.5
 
 # minimum/maximum distance to surface
 OPTIMIZE_MIN_D = 2.5
-OPTIMIZE_MAX_D = 50.0
+OPTIMIZE_MAX_D = 100.0  # XXX
 
 OPTIMIZE_MAX_ITERS = 3000  # maximum iterations
 
 # waypoints per meter for the interpolated trajectory
-RESOLUTION = 0.5
+RESOLUTION = 0.33
 
 # XXX camera focal length and sensor aspect ratio
 FOCAL_LENGTH = 0.867
-ASPECT_RATIO = 0.66
+ASPECT_RATIO = 0.5625  # 9 / 16
 
 PLANAR_F = 80  # forward overlap in percent
 PLANAR_S = 80  # side overlap in percent
-PLANAR_ALT = 45  # XXX flying altitude
+PLANAR_ALT = 50  # XXX flying altitude
 PLANAR_ELEV = 0  # elevation for overlap planning
 
 SPATIAL_RES = 4  # XXX guidance volume resolution
@@ -117,6 +117,7 @@ def print_params(args: argparse.Namespace) -> None:
 
 def set_makeTraj_params():
     global PROXY_CLOUD_SAMPLES, PROXY_MESH_MIN_D, AIRSPACE_MIN_D, OPTIMIZE_MIN_D, OPTIMIZE_MAX_D, OPTIMIZE_MAX_ITERS, RESOLUTION, FOCAL_LENGTH, ASPECT_RATIO, PLANAR_F, PLANAR_S, PLANAR_ALT, PLANAR_ELEV
+    print(f"# set_makeTraj_params()\n")
 
     PROXY_CLOUD_SAMPLES = 25
 
@@ -141,6 +142,7 @@ def set_makeTraj_params():
 
 def set_allDefault_params():
     global PROXY_CLOUD_SAMPLES, PROXY_MESH_MIN_D, AIRSPACE_MIN_D, OPTIMIZE_MIN_D, OPTIMIZE_MAX_D, OPTIMIZE_MAX_ITERS, RESOLUTION, FOCAL_LENGTH, ASPECT_RATIO, PLANAR_F, PLANAR_S, PLANAR_ALT, PLANAR_ELEV
+    print(f"# set_allDefault_params()\n")
 
     PROXY_CLOUD_SAMPLES = 100
 
@@ -209,6 +211,7 @@ def main(args: argparse.Namespace) -> None:
                 min_distance    = OPTIMIZE_MIN_D,
                 max_distance    = OPTIMIZE_MAX_D,
                 max_iters       = OPTIMIZE_MAX_ITERS,
+                focal_length    = FOCAL_LENGTH,
             )
             if args.verbose:
                 # i oindices.size() avg_wrecon volume

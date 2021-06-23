@@ -8,7 +8,9 @@ ALPHA1 = np.pi / 16.0
 K3 = 8.0
 ALPHA3 = np.pi / 4.0
 
-D_GSD = 1.0  # FIXME the GSD value changes based on the reconstruction
+# NOTE the GSD value changes based on the reconstruction. For the default horizontal FOV = 90
+# using 1280x720 resolution, a height of 50 meters leads to GSD = 50m * 1px / 360px = 0.139m.
+D_GSD = 50.0
 D_MAX = 2.0 * D_GSD
 
 
