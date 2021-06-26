@@ -170,7 +170,7 @@ def main(args: argparse.Namespace) -> None:
         assert os.path.isfile(trajectory_path), trajectory_path
         assert ext in uavmvs.parse_uavmvs.keys(), trajectory_path
 
-        trajectory = uavmvs.parse_uavmvs[ext](trajectory_path)
+        trajectory = uavmvs.parse_uavmvs[ext](trajectory_path)[:-5]  # XXX :SkipLastFive:
         if args.verbose:
             print(f"({len(trajectory)} cameras in trajectory '{os.path.basename(root)}{ext}')")
 

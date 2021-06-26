@@ -157,8 +157,23 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush:
         client.simFlushPersistentMarkers()
 
+    # NOTE we have to use (-y, -x, -z), and not (x, -y, -z), because these
+    # files were exported from Unreal Engine as FBX with Force Front XAxis
+    BUILDING = False
+    STATUE = True
+
+    def convert_position(p, t, s):
+        if BUILDING or STATUE:
+            if t is not None: p += t
+            if s is not None: p *= s
+            x, y, z = map(float, p)
+            return Vector3r(-y, -x, -z)
+        else:
+            return convert_uavmvs_to_airsim_position(p, t, s)
+
     points = [
-        convert_uavmvs_to_airsim_position(_, translation=args.offset, scaling=args.scale)
+        # convert_uavmvs_to_airsim_position(_, translation=args.offset, scaling=args.scale)
+        convert_position(_, args.offset, args.scale)
         for _ in args.points[:: args.every_k]
     ]
     client.simPlotPoints(points, Rgba.Blue, POINT_CLOUD_POINT_SIZE, is_persistent=True)

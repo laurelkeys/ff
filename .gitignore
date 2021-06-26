@@ -32,6 +32,9 @@ venv/*
 *.sfm
 **/MeshroomCache/
 
+# unreal engine
+*.fbx
+
 # point cloud data
 *.ply
 **/*cameras.json
