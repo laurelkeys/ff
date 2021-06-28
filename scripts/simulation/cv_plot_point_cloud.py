@@ -5,7 +5,9 @@ from enum import Enum
 from typing import List
 
 import ff
+import numpy as np
 import airsim
+import open3d as o3d
 
 from ds import Rgba, EditMode
 from airsim import Vector3r
@@ -14,9 +16,6 @@ from ie.airsimy import connect
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
-
-    include(FF_PROJECT_ROOT, "misc", "tools", "io_ply")
-    from io_ply import read_ply
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
     from uavmvs_parse_traj import (
@@ -35,12 +34,9 @@ except:
 def preflight(args: argparse.Namespace) -> None:
     assert os.path.isfile(args.ply_path), f"Invalid file path: '{args.ply_path}'"
 
-    # Parse the point cloud into a pandas dataframe and extract its points
-    ply_df = read_ply(args.ply_path)
-    if args.verbose:
-        ff.log(ply_df)
-
-    args.points = ply_df["points"][["x", "y", "z"]].to_numpy()
+    # Parse the point cloud and extract its points
+    pcd = o3d.io.read_point_cloud(args.ply_path).points
+    args.points = np.asarray(pcd)
     n_of_points, _ = args.points.shape
     print(f"The point cloud has {n_of_points} points.")
 
@@ -159,13 +155,16 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
     # NOTE we have to use (-y, -x, -z), and not (x, -y, -z), because these
     # files were exported from Unreal Engine as FBX with Force Front XAxis
-    BUILDING = False
-    STATUE = True
+    FORCE_FRONT_XAXIS = False
+    if args.verbose:
+        print(f"{FORCE_FRONT_XAXIS = }")
 
     def convert_position(p, t, s):
-        if BUILDING or STATUE:
-            if t is not None: p += t
-            if s is not None: p *= s
+        if FORCE_FRONT_XAXIS:
+            if t is not None:
+                p += t
+            if s is not None:
+                p *= s
             x, y, z = map(float, p)
             return Vector3r(-y, -x, -z)
         else:
