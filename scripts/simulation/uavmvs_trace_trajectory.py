@@ -16,13 +16,17 @@ from ie.airsimy import (
     pose_at_simulation_pause,
     quaternion_orientation_from_eye_to_look_at,
 )
-from airsim.types import Pose, Vector3r, YawMode, DrivetrainType
+from airsim.types import Pose, YawMode, Vector3r, DrivetrainType
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
 
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
-    from uavmvs_parse_traj import parse_uavmvs, convert_uavmvs_to_airsim_position
+    from uavmvs_parse_traj import (
+        parse_uavmvs,
+        convert_uavmvs_to_airsim_pose,
+        convert_uavmvs_to_airsim_position,
+    )
 
     include(FF_PROJECT_ROOT, "scripts", "data_config")
     import data_config
@@ -82,16 +86,17 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush or (args.capture_dir and not args.debug):
         client.simFlushPersistentMarkers()
 
-    args.trajectory = args.trajectory[:-5]
+    # NOTE see cv_plot_point_cloud.py
+    FORCE_FRONT_XAXIS = True  # XXX
+    args.trajectory = args.trajectory[:-5]  # XXX
 
     camera_poses = []
     for camera in args.trajectory:
-        position = convert_uavmvs_to_airsim_position(
-            camera.position, translation=args.offset, scaling=args.scale
-        )
-        position = Vector3r(position.y_val, -position.x_val, position.z_val)  # XXX Force Front XAxis
-        orientation = quaternion_orientation_from_eye_to_look_at(position, LOOK_AT_TARGET)
-        camera_poses.append(Pose(position, orientation))
+        pose = convert_uavmvs_to_airsim_pose(camera, translation=args.offset, scaling=args.scale)
+        if FORCE_FRONT_XAXIS:
+            pose.position = Vector3r(pose.position.y_val, -pose.position.x_val, pose.position.z_val)
+        # pose.orientation = quaternion_orientation_from_eye_to_look_at(pose.position, LOOK_AT_TARGET)
+        camera_poses.append(pose)  # FIXME ...
 
     if args.debug:
         camera_positions = [pose.position for pose in camera_poses]
@@ -203,7 +208,7 @@ def get_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("trajectory_path", type=str, help="Path to a .TRAJ, .CSV or .UTJ file")
     parser.add_argument("--record_path", type=str, help="Path to save the recording .TXT file")
-    parser.add_argument("--norecord_path", type=str, help="Suppress the effect of --record_path (no-op)")
+    parser.add_argument("--norecord_path", type=str, help="Suppress a use of --record_path (no-op)")
 
     parser.add_argument("--flush", action="store_true", help="Flush old plots")
     parser.add_argument("--debug", action="store_true", help="Skip capturing images but plot poses")

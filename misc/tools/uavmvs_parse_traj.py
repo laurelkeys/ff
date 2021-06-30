@@ -194,6 +194,8 @@ def parse_uavmvs_traj(filepath: str) -> List[TrajectoryCamera]:
                     [float(_) for _ in f.readline().split()],
                 ]
             )
+            # NOTE uavmvs uses row-major notation! So, we "fix" it by transposing the matrix.
+            rotation = rotation.T  # XXX
             focal_length = float(f.readline())
             assert position.shape == (3,)
             assert rotation.shape == (3, 3)
@@ -215,7 +217,9 @@ def parse_uavmvs_csv(filepath: str) -> List[TrajectoryCamera]:
         for line in f.readlines():
             x, y, z, qw, qx, qy, qz, key = line.split(",")
             position = np.array([float(_) for _ in [x, y, z]])
+            # NOTE negating 'w' has the same effect as: rot_to_quat(quat_to_rot(rotation).T).
             rotation = np.array([float(_) for _ in [qw, qx, qy, qz]])
+            rotation[0] = -rotation[0]  # XXX
             trajectory.append(
                 TrajectoryCamera(
                     position,
@@ -235,6 +239,7 @@ def parse_uavmvs_utj(filepath: str) -> List[TrajectoryCamera]:
             # NOTE angles are in euler degrees (standard for UE4),
             # x, y and z are in centimeters and x sign is inverted.
             position = np.array([float(_) for _ in [x, y, z]])
+            print("!!!!!!!!!!!")  # XXX not tested (see commit history)
             rotation = np.array([float(_) for _ in [pitch, roll, yaw]])
             trajectory.append(
                 TrajectoryCamera(

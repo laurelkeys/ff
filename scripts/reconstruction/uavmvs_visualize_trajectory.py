@@ -112,7 +112,9 @@ def draw_trajectory(args: argparse.Namespace, trajectory: List[uavmvs.Trajectory
             size=args.size,
             # colors=[RGB if not _.spline_interpolated else BLACK for _ in trajectory],  # XXX
             frustum=True,
-            row_major=False,  # NOTE uavmvs stores matrices in column major notation, so we need to use its rows!
+            # NOTE uavmvs stores matrices in column major notation, so we would need to use its rows
+            # but, since we transpose it in parse_uavmvs_traj(), it is ok to assume row major order!
+            row_major=True,
         )
     ]
 
