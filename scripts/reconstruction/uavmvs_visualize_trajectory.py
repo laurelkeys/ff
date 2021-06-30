@@ -27,7 +27,7 @@ WHITE = [[1, 1, 1], [1, 1, 1], [1, 1, 1]]
 
 
 def coordinate_axes_line_set(
-    axes_origins, axes_rotations=None, size=1.0, colors=None, frustum=False
+    axes_origins, axes_rotations=None, size=1.0, colors=None, frustum=False, row_major=True
 ):
     points, lines = [], []
 
@@ -35,50 +35,41 @@ def coordinate_axes_line_set(
     #      multiple coordinate axes into a single LineSet for it to run smoothly.
 
     def update_points_and_lines(origin, x_axis, y_axis, z_axis):
-        def scale_and_translate(xyz):
-            return np.asarray(origin, dtype=np.float32) + size * np.asarray(xyz, dtype=np.float32)
+        scale_and_translate = lambda _: np.asarray(_, dtype=np.float32) * size + np.asarray(origin)
 
         o = len(points)
         lines.extend([[o, o + 1], [o, o + 2], [o, o + 3]])  # o-x o-y o-z
         points.extend([scale_and_translate(_) for _ in [[0, 0, 0], x_axis, y_axis, z_axis]])
+
         if frustum:
             br, tr, tl, bl = o + 4, o + 5, o + 6, o + 7
             lines.extend([[o, br], [o, tr], [o, tl], [o, bl]])  # o-br o-tr o-tl o-bl
             lines.extend([[br, tr], [tr, tl], [tl, bl], [bl, br]])  # br-tr tr-tl tl-bl bl-br
-            sx = 2  # scale z_axis by some small constant factor so that the frustum looks nicer
-            points.extend(
-                [
-                    scale_and_translate(_)
-                    for _ in [
-                        sx * z_axis + x_axis - y_axis,  # bottom right
-                        sx * z_axis + x_axis + y_axis,  # top right
-                        sx * z_axis - x_axis + y_axis,  # top left
-                        sx * z_axis - x_axis - y_axis,  # bottom left
-                    ]
-                ]
-            )
+            # NOTE scale z_axis by some small constant factor so that the frustum looks nicer
+            points.append(scale_and_translate(2 * z_axis + x_axis - y_axis))  # bottom right (br)
+            points.append(scale_and_translate(2 * z_axis + x_axis + y_axis))  # top right    (tr)
+            points.append(scale_and_translate(2 * z_axis - x_axis + y_axis))  # top left     (tl)
+            points.append(scale_and_translate(2 * z_axis - x_axis - y_axis))  # bottom left  (bl)
 
-    if axes_rotations is None:
-        for origin in axes_origins:
-            update_points_and_lines(origin, [1, 0, 0], [0, 1, 0], [0, 0, 1])
-    else:
+    if axes_rotations is not None:
         assert len(axes_origins) == len(axes_rotations)
         for origin, rotation in zip(axes_origins, axes_rotations):
-            update_points_and_lines(origin, rotation[:, 0], rotation[:, 1], rotation[:, 2])
+            if row_major:
+                update_points_and_lines(origin, rotation[:, 0], rotation[:, 1], rotation[:, 2])
+            else:
+                update_points_and_lines(origin, rotation[0, :], rotation[1, :], rotation[2, :])
+    else:
+        for origin in axes_origins:
+            x_axis, y_axis, z_axis = np.array([1, 0, 0]), np.array([0, 1, 0]), np.array([0, 0, 1])
+            update_points_and_lines(origin, x_axis, y_axis, z_axis)
 
     if colors is None:
-        colors = (
-            [RGB for _ in range(len(axes_origins))]
-            if not frustum
-            else [RGB + ([[0, 0, 0]] * 8) for _ in range(len(axes_origins))]
-        )
+        colors = [RGB if not frustum else RGB + ([[0, 0, 0]] * 8) for _ in range(len(axes_origins))]
 
     colors = np.asarray(colors).reshape((-1, 3))
     colors_shape = colors.shape  # (num_lines, 3)
     lines_shape = np.asarray(lines).shape  # (num_lines, 2)
-    assert (
-        colors_shape[0] == lines_shape[0]
-    ), f"colors.shape = {colors_shape}, lines.shape = {lines_shape}"
+    assert colors_shape[0] == lines_shape[0]
 
     line_set = o3d.geometry.LineSet(
         points=o3d.utility.Vector3dVector(points),
@@ -86,8 +77,7 @@ def coordinate_axes_line_set(
     )
     line_set.colors = o3d.utility.Vector3dVector(np.asarray(colors).reshape((-1, 3)))
 
-    return line_set  # TODO rotate this based on the camera's rotation
-    # http://www.open3d.org/docs/latest/tutorial/Basic/transformation.html
+    return line_set
 
 
 ###############################################################################
@@ -122,6 +112,7 @@ def draw_trajectory(args: argparse.Namespace, trajectory: List[uavmvs.Trajectory
             size=args.size,
             # colors=[RGB if not _.spline_interpolated else BLACK for _ in trajectory],  # XXX
             frustum=True,
+            row_major=False,  # NOTE uavmvs stores matrices in column major notation, so we need to use its rows!
         )
     ]
 

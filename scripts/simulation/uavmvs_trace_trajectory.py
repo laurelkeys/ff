@@ -16,7 +16,7 @@ from ie.airsimy import (
     pose_at_simulation_pause,
     quaternion_orientation_from_eye_to_look_at,
 )
-from airsim.types import Pose, YawMode, DrivetrainType
+from airsim.types import Pose, Vector3r, YawMode, DrivetrainType
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
@@ -41,7 +41,7 @@ CAPTURE_CAMERA = ff.CameraName.front_center
 # CAPTURE_CAMERA = ff.CameraName.bottom_center
 
 IS_CV_MODE = SIM_MODE == ff.SimMode.ComputerVision
-CV_SLEEP_SEC = 0.5
+CV_SLEEP_SEC = 0.1
 
 ###############################################################################
 ## preflight (called before connecting) #######################################
@@ -82,11 +82,14 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     if args.flush or (args.capture_dir and not args.debug):
         client.simFlushPersistentMarkers()
 
+    args.trajectory = args.trajectory[:-5]
+
     camera_poses = []
     for camera in args.trajectory:
         position = convert_uavmvs_to_airsim_position(
             camera.position, translation=args.offset, scaling=args.scale
         )
+        position = Vector3r(position.y_val, -position.x_val, position.z_val)  # XXX Force Front XAxis
         orientation = quaternion_orientation_from_eye_to_look_at(position, LOOK_AT_TARGET)
         camera_poses.append(Pose(position, orientation))
 

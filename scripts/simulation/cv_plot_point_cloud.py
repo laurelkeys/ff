@@ -161,16 +161,16 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         ff.log_warning(f"{FORCE_FRONT_XAXIS = }")
 
     def convert_position(p, t, s):
-        if args.convert_uavmvs_position:
-            v = convert_uavmvs_to_airsim_position(p, t, s)  # (x, y, z) -> (x, -y, -z)
-            return v if not FORCE_FRONT_XAXIS else Vector3r(v.y_val, -v.x_val, v.z_val)
-        else:
+        if args.skip_position_conversion:
             if t is not None:
                 p += t
             if s is not None:
                 p *= s
             x, y, z = map(float, p)
             return Vector3r(x, y, z) if not FORCE_FRONT_XAXIS else Vector3r(-y, -x, -z)
+        else:
+            v = convert_uavmvs_to_airsim_position(p, t, s)  # (x, y, z) -> (x, -y, -z)
+            return v if not FORCE_FRONT_XAXIS else Vector3r(v.y_val, -v.x_val, v.z_val)
 
     points = [
         # convert_uavmvs_to_airsim_position(_, translation=args.offset, scaling=args.scale)
@@ -235,7 +235,7 @@ def get_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("--trajectory_path", type=str, help="Path to a .TRAJ, .CSV or .UTJ file")
 
-    parser.add_argument("--convert_uavmvs_position", action="store_true", help="Negate the Y and Z axes")
+    parser.add_argument("--skip_position_conversion", action="store_true", help="Do not negate the Y and Z axes")
 
     parser.add_argument(
         "--offset",
