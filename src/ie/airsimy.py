@@ -361,7 +361,7 @@ def quaternion_that_rotates_axes_frame(
     return rotation / length  # normalize
 
 
-def quaternion_that_rotates_orientation(
+def quaternion_that_rotates_orientation_on_multiplication(
     from_orientation: Quaternionr,
     to_orientation: Quaternionr,
 ) -> Quaternionr:

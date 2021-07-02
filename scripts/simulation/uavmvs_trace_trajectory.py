@@ -13,10 +13,12 @@ from ie.airsimy import (
     AirSimImage,
     AirSimRecord,
     connect,
+    viewport_vectors,
     pose_at_simulation_pause,
+    frustum_plot_list_from_viewport_vectors,
     quaternion_orientation_from_eye_to_look_at,
 )
-from airsim.types import Pose, YawMode, Vector3r, DrivetrainType
+from airsim.types import Pose, Quaternionr, YawMode, Vector3r, DrivetrainType
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
@@ -45,7 +47,7 @@ CAPTURE_CAMERA = ff.CameraName.front_center
 # CAPTURE_CAMERA = ff.CameraName.bottom_center
 
 IS_CV_MODE = SIM_MODE == ff.SimMode.ComputerVision
-CV_SLEEP_SEC = 0.1
+CV_SLEEP_SEC = 0.0
 
 ###############################################################################
 ## preflight (called before connecting) #######################################
@@ -94,8 +96,10 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     for camera in args.trajectory:
         pose = convert_uavmvs_to_airsim_pose(camera, translation=args.offset, scaling=args.scale)
         if FORCE_FRONT_XAXIS:
-            pose.position = Vector3r(pose.position.y_val, -pose.position.x_val, pose.position.z_val)
-        # pose.orientation = quaternion_orientation_from_eye_to_look_at(pose.position, LOOK_AT_TARGET)
+            pose.position.x_val, pose.position.y_val = pose.position.y_val, -pose.position.x_val
+            x, y, z, w = pose.orientation.x_val, pose.orientation.y_val, pose.orientation.z_val, pose.orientation.w_val
+            pose.orientation = Quaternionr(x, y, z, w)
+        pose.orientation = quaternion_orientation_from_eye_to_look_at(pose.position, LOOK_AT_TARGET)
         camera_poses.append(pose)  # FIXME ...
 
     if args.debug:
@@ -112,6 +116,9 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         if args.debug:
             log_string += f" position = {to_xyz_str(p)}"
             client.simPlotTransforms([pose], scale=100, is_persistent=True)
+            tl, tr, bl, br = viewport_vectors(pose, hfov_degrees=90, aspect_ratio=(16 / 9))
+            viewport_points = frustum_plot_list_from_viewport_vectors(pose, tl, tr, bl, br)
+            client.simPlotLineList(viewport_points, Rgba.White, thickness=3, is_persistent=True)
             # client.simPlotArrows([p], [LOOK_AT_TARGET], Rgba.White, thickness=3.0, duration=10)
         elif args.capture_dir:
             path = f"{args.prefix}pose{args.suffix}_{i:0{len(str(len(camera_poses)))}}.png"

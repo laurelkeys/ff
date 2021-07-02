@@ -6,6 +6,101 @@ import numpy as np
 ###############################################################################
 ###############################################################################
 
+# ref.: uavmvs/apps/trajectory_tools/interpolate.cpp
+def rot_to_quat(R):
+    assert R.shape == (3, 3)
+    v0 = 1.0 + R[0, 0] + R[1, 1] + R[2, 2]
+    v1 = 1.0 + R[0, 0] - R[1, 1] - R[2, 2]
+    v2 = 1.0 - R[0, 0] + R[1, 1] - R[2, 2]
+    v3 = 1.0 - R[0, 0] - R[1, 1] + R[2, 2]
+    if v0 >= v1 and v0 >= v2 and v0 >= v3:
+        tmp = 0.5 * np.sqrt(v0)
+        return np.array(
+            [
+                tmp,
+                (R[2, 1] - R[1, 2]) / (4 * tmp),
+                (R[0, 2] - R[2, 0]) / (4 * tmp),
+                (R[1, 0] - R[0, 1]) / (4 * tmp),
+            ]
+        )
+    elif v1 >= v0 and v1 >= v2 and v1 >= v3:
+        tmp = 0.5 * np.sqrt(v1)
+        return np.array(
+            [
+                (R[2, 1] - R[1, 2]) / (4 * tmp),
+                tmp,
+                (R[0, 1] + R[1, 0]) / (4 * tmp),
+                (R[0, 2] + R[2, 0]) / (4 * tmp),
+            ]
+        )
+    elif v2 >= v0 and v2 >= v1 and v2 >= v3:
+        tmp = 0.5 * np.sqrt(v2)
+        return np.array(
+            [
+                (R[0, 2] - R[2, 0]) / (4 * tmp),
+                (R[0, 1] + R[1, 0]) / (4 * tmp),
+                tmp,
+                (R[1, 2] + R[2, 1]) / (4 * tmp),
+            ]
+        )
+    else:
+        assert v3 >= v0 and v3 >= v1 and v3 >= v2
+        tmp = 0.5 * np.sqrt(v3)
+        return np.array(
+            [
+                (R[1, 0] - R[0, 1]) / (4 * tmp),
+                (R[0, 2] + R[2, 0]) / (4 * tmp),
+                (R[1, 2] + R[2, 1]) / (4 * tmp),
+                tmp,
+            ]
+        )
+
+def rot_to_euler(R):
+    assert R.shape == (3, 3)
+    return quat_to_euler(rot_to_quat(R))
+
+# ref.: https://github.com/nmoehrle/mve/blob/master/libs/math/quaternion.h
+def quat_to_rot(q):
+    assert q.shape == (4,)
+    xxzz = q[1] ** 2 - q[3] ** 2
+    rryy = q[0] ** 2 - q[2] ** 2
+    yyrrxxzz = q[2] ** 2 + q[0] ** 2 - q[1] ** 2 - q[3] ** 2
+
+    xr2 = q[1] * q[0] * 2
+    xy2 = q[1] * q[2] * 2
+    xz2 = q[1] * q[3] * 2
+    yr2 = q[2] * q[0] * 2
+    yz2 = q[2] * q[3] * 2
+    zr2 = q[3] * q[0] * 2
+
+    return np.array(
+        [
+            [(xxzz + rryy), (xy2 - zr2), ( xz2 + yr2 )],
+            [( xy2 + zr2 ), (yyrrxxzz ), ( yz2 - xr2 )],
+            [( xz2 - yr2 ), (yz2 + xr2), (rryy - xxzz)],
+        ]
+    )
+
+# ref.: uavmvs/apps/trajectory_tools/interpolate.cpp
+def quat_to_euler(q):
+    assert q.shape == (4,)
+    phi = np.arctan2(2 * (q[0] * q[1] + q[2] * q[3]), 1 - 2 * (q[1] ** 2 + q[2] ** 2))
+    theta = np.arcsin(np.clip(2 * (q[0] * q[2] - q[3] * q[1]), -1.0, 1.0))
+    psi = np.arctan2(2 * (q[0] * q[3] + q[1] * q[2]), 1 - 2 * (q[2] ** 2 + q[3] ** 2))
+    return np.array([phi, theta, psi])  # roll, pitch, yaw  (in radians)
+
+def euler_to_rot(e):
+    assert e.shape == (3,)
+    raise NotImplementedError
+
+def euler_to_quat(e):
+    assert e.shape == (3,)
+    raise NotImplementedError
+
+
+###############################################################################
+###############################################################################
+
 
 class TrajectoryCameraKind(Enum):
     Traj = 0
@@ -45,97 +140,6 @@ class TrajectoryCamera(NamedTuple):
     def _rotation_into(self, other_kind: TrajectoryCameraKind):
         if self.kind == other_kind:
             return self.rotation
-
-        # ref.: uavmvs/apps/trajectory_tools/interpolate.cpp
-        def rot_to_quat(R):
-            assert R.shape == (3, 3)
-            v0 = 1.0 + R[0, 0] + R[1, 1] + R[2, 2]
-            v1 = 1.0 + R[0, 0] - R[1, 1] - R[2, 2]
-            v2 = 1.0 - R[0, 0] + R[1, 1] - R[2, 2]
-            v3 = 1.0 - R[0, 0] - R[1, 1] + R[2, 2]
-            if v0 >= v1 and v0 >= v2 and v0 >= v3:
-                tmp = 0.5 * np.sqrt(v0)
-                return np.array(
-                    [
-                        tmp,
-                        (R[2, 1] - R[1, 2]) / (4 * tmp),
-                        (R[0, 2] - R[2, 0]) / (4 * tmp),
-                        (R[1, 0] - R[0, 1]) / (4 * tmp),
-                    ]
-                )
-            elif v1 >= v0 and v1 >= v2 and v1 >= v3:
-                tmp = 0.5 * np.sqrt(v1)
-                return np.array(
-                    [
-                        (R[2, 1] - R[1, 2]) / (4 * tmp),
-                        tmp,
-                        (R[0, 1] + R[1, 0]) / (4 * tmp),
-                        (R[0, 2] + R[2, 0]) / (4 * tmp),
-                    ]
-                )
-            elif v2 >= v0 and v2 >= v1 and v2 >= v3:
-                tmp = 0.5 * np.sqrt(v2)
-                return np.array(
-                    [
-                        (R[0, 2] - R[2, 0]) / (4 * tmp),
-                        (R[0, 1] + R[1, 0]) / (4 * tmp),
-                        tmp,
-                        (R[1, 2] + R[2, 1]) / (4 * tmp),
-                    ]
-                )
-            else:
-                assert v3 >= v0 and v3 >= v1 and v3 >= v2
-                tmp = 0.5 * np.sqrt(v3)
-                return np.array(
-                    [
-                        (R[1, 0] - R[0, 1]) / (4 * tmp),
-                        (R[0, 2] + R[2, 0]) / (4 * tmp),
-                        (R[1, 2] + R[2, 1]) / (4 * tmp),
-                        tmp,
-                    ]
-                )
-
-        def rot_to_euler(R):
-            assert R.shape == (3, 3)
-            return quat_to_euler(rot_to_quat(R))
-
-        # ref.: https://github.com/nmoehrle/mve/blob/master/libs/math/quaternion.h
-        def quat_to_rot(q):
-            assert q.shape == (4,)
-            xxzz = q[1] ** 2 - q[3] ** 2
-            rryy = q[0] ** 2 - q[2] ** 2
-            yyrrxxzz = q[2] ** 2 + q[0] ** 2 - q[1] ** 2 - q[3] ** 2
-
-            xr2 = q[1] * q[0] * 2
-            xy2 = q[1] * q[2] * 2
-            xz2 = q[1] * q[3] * 2
-            yr2 = q[2] * q[0] * 2
-            yz2 = q[2] * q[3] * 2
-            zr2 = q[3] * q[0] * 2
-
-            return np.array(
-                [
-                    [(xxzz + rryy), (xy2 - zr2), ( xz2 + yr2 )],
-                    [( xy2 + zr2 ), (yyrrxxzz ), ( yz2 - xr2 )],
-                    [( xz2 - yr2 ), (yz2 + xr2), (rryy - xxzz)],
-                ]
-            )
-
-        # ref.: uavmvs/apps/trajectory_tools/interpolate.cpp
-        def quat_to_euler(q):
-            assert q.shape == (4,)
-            phi = np.arctan2(2 * (q[0] * q[1] + q[2] * q[3]), 1 - 2 * (q[1] ** 2 + q[2] ** 2))
-            theta = np.arcsin(np.clip(2 * (q[0] * q[2] - q[3] * q[1]), -1.0, 1.0))
-            psi = np.arctan2(2 * (q[0] * q[3] + q[1] * q[2]), 1 - 2 * (q[2] ** 2 + q[3] ** 2))
-            return np.array([phi, theta, psi])  # roll, pitch, yaw  (in radians)
-
-        def euler_to_rot(e):
-            assert e.shape == (3,)
-            raise NotImplementedError
-
-        def euler_to_quat(e):
-            assert e.shape == (3,)
-            raise NotImplementedError
 
         return cast(
             Dict[
