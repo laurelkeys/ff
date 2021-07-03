@@ -40,7 +40,7 @@ try:
 except:
     raise
 
-VELOCITY = 5
+VELOCITY = 2
 
 SIM_MODE = ff.SimMode.Multirotor
 # SIM_MODE = ff.SimMode.ComputerVision
@@ -174,7 +174,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             do_stuff_at_uavmvs_viewpoint(i, camera_pose)
             time.sleep(CV_SLEEP_SEC)
     else:
-        client.moveToZAsync(z=-10, velocity=VELOCITY).join()  # XXX avoid colliding on take off
+        client.moveToZAsync(z=-10, velocity=max(5, VELOCITY)).join()  # XXX avoid colliding on take off
         client.hoverAsync().join()
         mean_position_error = 0.0
 
@@ -193,13 +193,20 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
                 # quaternion_orientation_from_eye_to_look_at(real_pose.position, LOOK_AT_TARGET)
                 fake_pose = Pose(real_pose.position, camera_pose.orientation)
 
-                if CAPTURE_CAMERA == ff.CameraName.bottom_center:
-                    fake_pose = Pose(real_pose.position, Quaternionr())  # XXX
+                # if CAPTURE_CAMERA == ff.CameraName.bottom_center:
+                #     fake_pose = Pose(real_pose.position, Quaternionr())  # XXX XXX XXX
+                # client.simSetVehiclePose(fake_pose, ignore_collision=True)
+                # client.simContinueForFrames(1)  # NOTE ensures pose change
+                # do_stuff_at_uavmvs_viewpoint(i, fake_pose)
+                # client.simSetVehiclePose(real_pose, ignore_collision=True)
 
-                client.simSetVehiclePose(fake_pose, ignore_collision=True)
-                client.simContinueForFrames(1)  # NOTE ensures pose change
-                do_stuff_at_uavmvs_viewpoint(i, fake_pose)
-                client.simSetVehiclePose(real_pose, ignore_collision=True)
+                if CAPTURE_CAMERA == ff.CameraName.bottom_center:
+                    do_stuff_at_uavmvs_viewpoint(i, fake_pose)  # XXX XXX XXX
+                else:
+                    client.simSetVehiclePose(fake_pose, ignore_collision=True)
+                    client.simContinueForFrames(1)  # NOTE ensures pose change
+                    do_stuff_at_uavmvs_viewpoint(i, fake_pose)
+                    client.simSetVehiclePose(real_pose, ignore_collision=True)
 
                 position_error = real_pose.position.distance_to(camera_pose.position)
                 mean_position_error += position_error
