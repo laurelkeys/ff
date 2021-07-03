@@ -225,6 +225,14 @@ NED_AXES_FRAME = (FRONT, RIGHT, DOWN)
 ###############################################################################
 
 
+def q2v(quaternion):
+    return Vector3r(quaternion.x_val, quaternion.y_val, quaternion.z_val)
+
+
+def v2q(vector):
+    return Quaternionr(vector.x_val, vector.y_val, vector.z_val, w_val=0)
+
+
 def matrix_from_eularian_angles(roll: float, pitch: float, yaw: float, is_degrees: bool = False) -> np.ndarray:
     # ref.: https://github.com/microsoft/AirSim/blob/master/PythonClient/computer_vision/capture_ir_segmentation.py
     if is_degrees:

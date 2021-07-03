@@ -89,13 +89,13 @@ def draw_trajectory(args: argparse.Namespace, trajectory: List[uavmvs.Trajectory
     camera_positions = []
     camera_rotation_matrices = []
     for camera in trajectory:
-        if not camera.spline_interpolated:  # XXX skips some TrajectoryCameraKind.Csv cameras
-            camera = camera.into(
-                uavmvs.TrajectoryCameraKind.Traj
-            )  # represents rotation as a 3x3 matrix
+        if not camera.spline_interpolated:
+            # NOTE *.traj files represent rotations as 3x3 matrices
+            camera = camera.into(uavmvs.TrajectoryCameraKind.Traj)
             camera_positions.append(camera.position)
             camera_rotation_matrices.append(camera.rotation)
         else:
+            # NOTE this skips some TrajectoryCameraKind.Csv cameras
             skipped_any = True
 
     if skipped_any:
@@ -105,12 +105,12 @@ def draw_trajectory(args: argparse.Namespace, trajectory: List[uavmvs.Trajectory
         pcd = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(camera_positions))
         o3d.io.write_point_cloud(filename=args.export, pointcloud=pcd, print_progress=args.verbose)
 
-    geometry_list = [
+    draw_list = [
         coordinate_axes_line_set(
             axes_origins=camera_positions,
             axes_rotations=camera_rotation_matrices,
             size=args.size,
-            # colors=[RGB if not _.spline_interpolated else BLACK for _ in trajectory],  # XXX
+            # colors=[RGB if not _.spline_interpolated else BLACK for _ in trajectory],
             frustum=True,
             # NOTE uavmvs stores matrices in column major notation, so we would need to use its rows
             # but, since we transpose it in parse_uavmvs_traj(), it is ok to assume row major order!
@@ -121,7 +121,7 @@ def draw_trajectory(args: argparse.Namespace, trajectory: List[uavmvs.Trajectory
     if args.trace:
         points = [np.asarray(p, dtype=np.float32) for p in camera_positions]
         lines = [[i - 1, i] for i, _ in enumerate(camera_positions)]
-        geometry_list.append(
+        draw_list.append(
             o3d.geometry.LineSet(
                 points=o3d.utility.Vector3dVector(points),
                 lines=o3d.utility.Vector2iVector(lines),
@@ -130,7 +130,7 @@ def draw_trajectory(args: argparse.Namespace, trajectory: List[uavmvs.Trajectory
 
     if args.mesh:
         mesh = o3d.io.read_triangle_mesh(args.mesh)
-        geometry_list.append(mesh)
+        draw_list.append(mesh)
         if args.verbose:
             print(mesh)
             # print(np.asarray(mesh.vertices))
@@ -139,13 +139,13 @@ def draw_trajectory(args: argparse.Namespace, trajectory: List[uavmvs.Trajectory
 
     if args.cloud:
         cloud = o3d.io.read_point_cloud(args.cloud)
-        geometry_list.append(cloud)
+        draw_list.append(cloud)
         if args.verbose:
             print(cloud)
             # print(np.asarray(cloud.points))
             print()
 
-    o3d.visualization.draw_geometries(geometry_list)
+    o3d.visualization.draw_geometries(draw_list)
 
 
 def main(args: argparse.Namespace) -> None:

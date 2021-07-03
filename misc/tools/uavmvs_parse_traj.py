@@ -267,6 +267,7 @@ parse_uavmvs: Dict[str, Callable[[str], List[TrajectoryCamera]]] = {
 ###############################################################################
 
 
+# ref.: https://stackoverflow.com/questions/32438252/efficient-way-to-apply-mirror-effect-on-quaternion-rotation/40334755#40334755
 def convert_uavmvs_to_airsim_position(camera_position, translation=None, scaling=None):
     import airsim
 
@@ -285,6 +286,7 @@ def convert_uavmvs_to_airsim_position(camera_position, translation=None, scaling
     return position
 
 
+# ref.: https://stackoverflow.com/questions/32438252/efficient-way-to-apply-mirror-effect-on-quaternion-rotation/40334755#40334755
 def convert_uavmvs_to_airsim_pose(camera: TrajectoryCamera, translation=None, scaling=None):
     import airsim
 

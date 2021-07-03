@@ -155,7 +155,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
     # NOTE we have to use (-y, -x, -z), and not (x, -y, -z), because these
     # files were exported from Unreal Engine as FBX with Force Front XAxis
-    FORCE_FRONT_XAXIS = False
+    FORCE_FRONT_XAXIS = False  # XXX :ForceFrontXAxis:
 
     if FORCE_FRONT_XAXIS:
         ff.log_warning(f"{FORCE_FRONT_XAXIS = }")
