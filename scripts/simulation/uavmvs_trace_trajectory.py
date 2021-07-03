@@ -42,15 +42,15 @@ except:
 
 VELOCITY = 5
 
-# SIM_MODE = ff.SimMode.Multirotor
-SIM_MODE = ff.SimMode.ComputerVision
+SIM_MODE = ff.SimMode.Multirotor
+# SIM_MODE = ff.SimMode.ComputerVision
 
 LOOK_AT_TARGET = None
 # LOOK_AT_TARGET = data_config.Ned.Cidadela_Statue
 # LOOK_AT_TARGET = data_config.Ned.Urban_Building
 
-CAPTURE_CAMERA = ff.CameraName.front_center
-# CAPTURE_CAMERA = ff.CameraName.bottom_center
+# CAPTURE_CAMERA = ff.CameraName.front_center
+CAPTURE_CAMERA = ff.CameraName.bottom_center
 
 IS_CV_MODE = SIM_MODE == ff.SimMode.ComputerVision
 CV_SLEEP_SEC = 0.1
@@ -98,6 +98,10 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     FORCE_FRONT_XAXIS = True  # XXX :ForceFrontXAxis:
     args.trajectory = args.trajectory[:-5]  # XXX :SkipLastFive:
 
+    half_90 = np.deg2rad(90 / 2)
+    positive_90_around_z = Quaternionr(0, 0, np.sin(half_90), w_val=np.cos(half_90))
+    negative_90_around_z = Quaternionr(0, 0, -np.sin(half_90), w_val=np.cos(half_90))
+
     camera_poses = []
     for camera in args.trajectory:
         ## pose = convert_uavmvs_to_airsim_pose(camera, translation=args.offset, scaling=args.scale)
@@ -109,10 +113,6 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             ),
             Quaternionr(x, -y, -z, w),
         )
-
-        half_90 = np.deg2rad(90 / 2)
-        positive_90_around_z = Quaternionr(0, 0, np.sin(half_90), w_val=np.cos(half_90))
-        negative_90_around_z = Quaternionr(0, 0, -np.sin(half_90), w_val=np.cos(half_90))
 
         if FORCE_FRONT_XAXIS:  # XXX fix position
             pose.position.x_val, pose.position.y_val = pose.position.y_val, -pose.position.x_val
@@ -137,7 +137,7 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
                 positive_180_around_x = quaternion_from_rotation_axis_angle(x_axis, np.deg2rad(180))
                 pose.orientation = positive_180_around_x * pose.orientation
             else:
-                assert(False)  # XXX orientation might be wrong if not FORCE_FRONT_XAXIS
+                assert False  # XXX orientation might be wrong if not FORCE_FRONT_XAXIS
 
         camera_poses.append(pose)
 
@@ -192,6 +192,9 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
                 # drone position. Hence, we could experiment with using fake orientation:
                 # quaternion_orientation_from_eye_to_look_at(real_pose.position, LOOK_AT_TARGET)
                 fake_pose = Pose(real_pose.position, camera_pose.orientation)
+
+                if CAPTURE_CAMERA == ff.CameraName.bottom_center:
+                    fake_pose = Pose(real_pose.position, Quaternionr())  # XXX
 
                 client.simSetVehiclePose(fake_pose, ignore_collision=True)
                 client.simContinueForFrames(1)  # NOTE ensures pose change
