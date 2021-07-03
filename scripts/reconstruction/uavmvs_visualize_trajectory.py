@@ -51,6 +51,9 @@ def coordinate_axes_line_set(
             points.append(scale_and_translate(2 * z_axis - x_axis + y_axis))  # top left     (tl)
             points.append(scale_and_translate(2 * z_axis - x_axis - y_axis))  # bottom left  (bl)
 
+    # axes_origins = [np.zeros(3)] + axes_origins
+    # axes_rotations = [np.eye(3)] + axes_rotations
+
     if axes_rotations is not None:
         assert len(axes_origins) == len(axes_rotations)
         for origin, rotation in zip(axes_origins, axes_rotations):

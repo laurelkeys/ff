@@ -182,7 +182,7 @@ class AirSimNedTransform:
         return Quaternionr(-q.x_val, -q.y_val, q.z_val, w_val=q.w_val)
 
     @staticmethod
-    def local_axes_frame(pose: Pose, normalized: bool = True, flip_z_axis: bool = False):
+    def local_axes_frame(pose: Pose, normalize: bool = True, flip_z_axis: bool = False):
         """ Returns AirSim's coordinate system axes rotated by the pose's orientation. """
         # NOTE if flip_z_axis=True, then client.simPlotTransforms([pose]) is equivalent to:
         # client.simPlotArrows([pose.position], [pose.position + x_axis])
@@ -190,7 +190,7 @@ class AirSimNedTransform:
         # client.simPlotArrows([pose.position], [pose.position + z_axis])
 
         q = pose.orientation
-        if normalized:
+        if normalize:
             q /= q.get_length()
 
         x_axis = vector_rotated_by_quaternion(FRONT, q)

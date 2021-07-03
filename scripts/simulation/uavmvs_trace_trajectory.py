@@ -9,19 +9,20 @@ import airsim
 
 from ds.rgba import Rgba
 from ff.types import to_xyz_str, to_xyz_tuple
-from ie import airsimy
 from ie.airsimy import (
-    AirSimNedTransform,
     YAW_N,
     AirSimImage,
     AirSimRecord,
+    AirSimNedTransform,
     connect,
     viewport_vectors,
     pose_at_simulation_pause,
+    quaternion_from_two_vectors,
+    quaternion_from_rotation_axis_angle,
     frustum_plot_list_from_viewport_vectors,
     quaternion_orientation_from_eye_to_look_at,
 )
-from airsim.types import Pose, YawMode, Vector3r, Quaternionr, DrivetrainType
+from airsim.types import Pose, YawMode, Quaternionr, DrivetrainType
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
@@ -29,10 +30,8 @@ try:
     include(FF_PROJECT_ROOT, "misc", "tools", "uavmvs_parse_traj")
     from uavmvs_parse_traj import (
         TrajectoryCameraKind,
-        quat_to_rot,
         rot_to_quat,
         parse_uavmvs,
-        convert_uavmvs_to_airsim_pose,
         convert_uavmvs_to_airsim_position,
     )
 
@@ -104,10 +103,11 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
         ## pose = convert_uavmvs_to_airsim_pose(camera, translation=args.offset, scaling=args.scale)
         orientation_matrix = camera._rotation_into(TrajectoryCameraKind.Traj)
         w, x, y, z = rot_to_quat(orientation_matrix)
-
         pose = Pose(
-            convert_uavmvs_to_airsim_position(camera.position, translation=args.offset, scaling=args.scale),
-            Quaternionr(x, -y, -z, w),  # FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+            convert_uavmvs_to_airsim_position(
+                camera.position, translation=args.offset, scaling=args.scale
+            ),
+            Quaternionr(x, -y, -z, w),
         )
 
         half_90 = np.deg2rad(90 / 2)
@@ -126,14 +126,20 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             )
         else:
             if FORCE_FRONT_XAXIS:  # XXX fix orientation
-                pose.orientation /= pose.orientation.get_length()
+                assert np.isclose(pose.orientation.get_length(), 1.0)
+
                 pose.orientation = negative_90_around_z * pose.orientation * positive_90_around_z
                 x_axis, _, z_axis = AirSimNedTransform.local_axes_frame(pose, flip_z_axis=True)
-                pose.orientation = airsimy.quaternion_from_two_vectors(x_axis, z_axis) * pose.orientation
-                x_axis, _, _ = AirSimNedTransform.local_axes_frame(pose, flip_z_axis=True)
-                pose.orientation = airsimy.quaternion_from_rotation_axis_angle(x_axis, np.deg2rad(180)) * pose.orientation
 
-        camera_poses.append(pose)  # NOTE orientation might be wrong if not FORCE_FRONT_XAXIS
+                pose.orientation = quaternion_from_two_vectors(x_axis, z_axis) * pose.orientation
+                x_axis, _, _ = AirSimNedTransform.local_axes_frame(pose, flip_z_axis=True)
+
+                positive_180_around_x = quaternion_from_rotation_axis_angle(x_axis, np.deg2rad(180))
+                pose.orientation = positive_180_around_x * pose.orientation
+            else:
+                assert(False)  # XXX orientation might be wrong if not FORCE_FRONT_XAXIS
+
+        camera_poses.append(pose)
 
     if args.debug:
         camera_positions = [pose.position for pose in camera_poses]
@@ -230,7 +236,9 @@ def main(args: argparse.Namespace) -> None:
         ff.log_info(f"Used scale = {args.scale} and offset = {args.offset}")
         ff.log_info(f"Used VELOCITY = {VELOCITY}")
         ff.log_info(f"Used SIM_MODE = {SIM_MODE}")
-        ff.log_info(f"Used LOOK_AT_TARGET = {'None' if LOOK_AT_TARGET is None else to_xyz_str(LOOK_AT_TARGET)}")
+        ff.log_info(
+            f"Used LOOK_AT_TARGET = {'None' if LOOK_AT_TARGET is None else to_xyz_str(LOOK_AT_TARGET)}"
+        )
         ff.log_info(f"Used CAPTURE_CAMERA = {CAPTURE_CAMERA}")
 
 
