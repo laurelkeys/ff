@@ -4,12 +4,14 @@ import time
 import argparse
 
 import ff
+import numpy as np
 import airsim
 
-from ie import airsimy
 from ds.rgba import Rgba
 from ff.types import to_xyz_str, to_xyz_tuple
+from ie import airsimy
 from ie.airsimy import (
+    AirSimNedTransform,
     YAW_N,
     AirSimImage,
     AirSimRecord,
@@ -101,9 +103,6 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
     for camera in args.trajectory:
         ## pose = convert_uavmvs_to_airsim_pose(camera, translation=args.offset, scaling=args.scale)
         orientation_matrix = camera._rotation_into(TrajectoryCameraKind.Traj)
-        x_axis = Vector3r(*orientation_matrix[:, 0])
-        y_axis = Vector3r(*orientation_matrix[:, 1])
-        z_axis = Vector3r(*orientation_matrix[:, 2])
         w, x, y, z = rot_to_quat(orientation_matrix)
 
         pose = Pose(
@@ -111,20 +110,15 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             Quaternionr(x, -y, -z, w),  # FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
         )
 
+        half_90 = np.deg2rad(90 / 2)
+        positive_90_around_z = Quaternionr(0, 0, np.sin(half_90), w_val=np.cos(half_90))
+        negative_90_around_z = Quaternionr(0, 0, -np.sin(half_90), w_val=np.cos(half_90))
+
         if FORCE_FRONT_XAXIS:  # XXX fix position
             pose.position.x_val, pose.position.y_val = pose.position.y_val, -pose.position.x_val
             # NOTE equivalent to rotating 90 degrees (centered at the origin) around the Z axis:
             # qposition = airsimy.v2q(pose.position)
-            # pose.position = airsimy.q2v(
-            #     qposition.rotate(
-            #         Quaternionr(
-            #             x_val=0,
-            #             y_val=0,
-            #             z_val=-np.sin(np.deg2rad(90 / 2)),
-            #             w_val=np.cos(np.deg2rad(90 / 2)),
-            #         )
-            #     )
-            # )
+            # pose.position = airsimy.q2v(qposition.rotate(negative_90_around_z))
 
         if LOOK_AT_TARGET is not None:
             pose.orientation = quaternion_orientation_from_eye_to_look_at(
@@ -132,21 +126,14 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             )
         else:
             if FORCE_FRONT_XAXIS:  # XXX fix orientation
-                pose.orientation = pose.orientation.rotate(
-                    airsimy.quaternion_from_rotation_axis_angle(
-                        Vector3r(0, 1, 0), -45, is_degrees=True
-                    )
-                )
+                pose.orientation /= pose.orientation.get_length()
+                pose.orientation = negative_90_around_z * pose.orientation * positive_90_around_z
+                x_axis, _, z_axis = AirSimNedTransform.local_axes_frame(pose, flip_z_axis=True)
+                pose.orientation = airsimy.quaternion_from_two_vectors(x_axis, z_axis) * pose.orientation
+                x_axis, _, _ = AirSimNedTransform.local_axes_frame(pose, flip_z_axis=True)
+                pose.orientation = airsimy.quaternion_from_rotation_axis_angle(x_axis, np.deg2rad(180)) * pose.orientation
 
-            # fmt: off
-            # rotation_axis, _ = airsimy.quaternion_to_rotation_axis_angle(pose.orientation)
-            # client.simPlotLineList([pose.position, pose.position + rotation_axis * 2.5], Rgba.Black, is_persistent=True)
-            client.simPlotLineList([pose.position, pose.position + x_axis], Rgba.Cyan, is_persistent=True)
-            client.simPlotLineList([pose.position, pose.position + y_axis], Rgba.Yellow, is_persistent=True)
-            client.simPlotLineList([pose.position, pose.position + z_axis], Rgba.Magenta, is_persistent=True)
-            # fmt: on
-
-        camera_poses.append(pose)  # FIXME orientation ...
+        camera_poses.append(pose)  # NOTE orientation might be wrong if not FORCE_FRONT_XAXIS
 
     if args.debug:
         camera_positions = [pose.position for pose in camera_poses]
