@@ -149,10 +149,6 @@ def main(args: argparse.Namespace) -> None:
         client.reset()  # avoid UE4 'fatal error' when exiting with Ctrl+C
     finally:
         ff.log("Done\n")
-        ff.log_info(f"Used scale = {args.scale} and offset = {args.offset}")
-        ff.log_info(
-            f"Used LOOK_AT_TARGET = {'None' if LOOK_AT_TARGET is None else to_xyz_str(LOOK_AT_TARGET)}"
-        )
 
 
 ###############################################################################
@@ -175,21 +171,6 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--capture_dir", type=str, help="Folder where image captures will be saved")
     parser.add_argument("--prefix", type=str, help="Prefix added to output image names", default="")
     parser.add_argument("--suffix", type=str, help="Suffix added to output image names", default="")
-
-    parser.add_argument(
-        "--offset",
-        type=float,
-        nargs=3,
-        metavar=("X", "Y", "Z"),
-        help="Offset added to all points "
-        " (e.g. --offset 1.2375 -6.15 7.75)",  # data_config.Uavmvs.Cidadela_Statue_Offset
-    )
-    parser.add_argument(
-        "--scale",
-        type=float,
-        help="Scale added to all points "
-        " (e.g. --scale 0.168)",  # data_config.Uavmvs.Cidadela_Statue_Scale
-    )
 
     ff.add_arguments_to(parser)
     return parser

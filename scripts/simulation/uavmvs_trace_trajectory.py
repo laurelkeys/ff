@@ -141,8 +141,8 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
         camera_poses.append(pose)
 
-    xxx_position = Vector3r(camera_poses[28].position.x_val, camera_poses[28].position.y_val, camera_poses[29].position.z_val)
-    camera_poses.insert(29, Pose(xxx_position, Quaternionr()))  # XXX XXX XXX avoid collision on Building_07_A XXX XXX XXX
+    # xxx_position = Vector3r(camera_poses[28].position.x_val, camera_poses[28].position.y_val, camera_poses[29].position.z_val)
+    # camera_poses.insert(29, Pose(xxx_position, Quaternionr()))  # XXX XXX XXX avoid collision on Building_07_A XXX XXX XXX
 
     if args.debug:
         camera_positions = [pose.position for pose in camera_poses]
