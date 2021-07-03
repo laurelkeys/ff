@@ -22,7 +22,7 @@ from ie.airsimy import (
     frustum_plot_list_from_viewport_vectors,
     quaternion_orientation_from_eye_to_look_at,
 )
-from airsim.types import Pose, YawMode, Quaternionr, DrivetrainType
+from airsim.types import Pose, YawMode, Vector3r, Quaternionr, DrivetrainType
 
 try:
     from include_in_path import FF_PROJECT_ROOT, include
@@ -49,11 +49,11 @@ LOOK_AT_TARGET = None
 # LOOK_AT_TARGET = data_config.Ned.Cidadela_Statue
 # LOOK_AT_TARGET = data_config.Ned.Urban_Building
 
-# CAPTURE_CAMERA = ff.CameraName.front_center
-CAPTURE_CAMERA = ff.CameraName.bottom_center
+CAPTURE_CAMERA = ff.CameraName.front_center
+# CAPTURE_CAMERA = ff.CameraName.bottom_center
 
 IS_CV_MODE = SIM_MODE == ff.SimMode.ComputerVision
-CV_SLEEP_SEC = 0.1
+CV_SLEEP_SEC = 0.0
 
 ###############################################################################
 ## preflight (called before connecting) #######################################
@@ -141,6 +141,9 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
 
         camera_poses.append(pose)
 
+    xxx_position = Vector3r(camera_poses[28].position.x_val, camera_poses[28].position.y_val, camera_poses[29].position.z_val)
+    camera_poses.insert(29, Pose(xxx_position, Quaternionr()))  # XXX XXX XXX avoid collision on Building_07_A XXX XXX XXX
+
     if args.debug:
         camera_positions = [pose.position for pose in camera_poses]
         client.simPlotPoints(camera_positions, Rgba.Blue, is_persistent=True)
@@ -174,7 +177,9 @@ def fly(client: airsim.MultirotorClient, args: argparse.Namespace) -> None:
             do_stuff_at_uavmvs_viewpoint(i, camera_pose)
             time.sleep(CV_SLEEP_SEC)
     else:
-        client.moveToZAsync(z=-10, velocity=max(5, VELOCITY)).join()  # XXX avoid colliding on take off
+        # hover_z = -50
+        hover_z = -10
+        client.moveToZAsync(z=hover_z, velocity=max(10, VELOCITY)).join()  # XXX avoid colliding on take off
         client.hoverAsync().join()
         mean_position_error = 0.0
 
