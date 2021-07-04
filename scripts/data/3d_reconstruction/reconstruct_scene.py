@@ -10,19 +10,31 @@ DEBUG = False
 
 ALICEVISION = '/'.join(["D:", "dev", "Meshroom", "Meshroom-2021.1.0", "aliceVision"])
 
-SCENE_NAME = "angel"
+####
+
+# SCENE_NAME = "angel"
 
 # RECONSTRUCTION = "v1_initial"
-RECONSTRUCTION = "v1_shortened"
+# RECONSTRUCTION = "v1_shortened"
 
 # SIM_MODE = "cv"
 # SIM_MODE = "drone"
 # SIM_MODE = "drone2"
-SIM_MODE = "cv0"
+# SIM_MODE = "cv0"
 
-IMAGES_FOLDER = '/'.join([HERE, SCENE_NAME, RECONSTRUCTION, SIM_MODE, "images"])
-OUTPUT_FOLDER = '/'.join([HERE, SCENE_NAME, RECONSTRUCTION, SIM_MODE, "meshroom"])
-MESHROOM_CACHE = '/'.join([HERE, SCENE_NAME, RECONSTRUCTION, SIM_MODE, "meshroom", "cache"])
+# IMAGES_FOLDER = '/'.join([HERE, SCENE_NAME, RECONSTRUCTION, SIM_MODE, "images"])
+# OUTPUT_FOLDER = '/'.join([HERE, SCENE_NAME, RECONSTRUCTION, SIM_MODE, "meshroom"])
+# MESHROOM_CACHE = '/'.join([HERE, SCENE_NAME, RECONSTRUCTION, SIM_MODE, "meshroom", "cache"])
+
+####
+
+import sys
+
+IMAGES_FOLDER = sys.argv[1]
+OUTPUT_FOLDER = sys.argv[2]
+MESHROOM_CACHE = '/'.join([OUTPUT_FOLDER, "cache"])
+
+####
 
 CameraInit = '/'.join([MESHROOM_CACHE, "CameraInit"])
 FeatureExtraction = '/'.join([MESHROOM_CACHE, "FeatureExtraction"])
@@ -43,10 +55,10 @@ def run_00_cameraInit():
         '--output "' + CameraInit + '/cameraInit.sfm" ',
         # '--sensorDatabase "' + '/'.join([ALICEVISION, "share", "aliceVision", "cameraSensors.db"]) + '" ',
         # "--defaultFieldOfView 45.0 ",
-        # "--groupCameraFallback folder ",
-        # "--allowedCameraModels pinhole,radial1,radial3,brown,fisheye4,fisheye1 ",
-        # "--useInternalWhiteBalance True ",
-        # "--viewIdMethod metadata ",
+        "--groupCameraFallback folder ",
+        "--allowedCameraModels pinhole,radial1,radial3,brown,fisheye4,fisheye1 ",
+        "--useInternalWhiteBalance True ",
+        "--viewIdMethod metadata ",
         # "--verboseLevel info ",
         # '--output "' + CameraInit + '/cameraInit.sfm" ',
         # "--allowSingleView 1 ",
@@ -62,13 +74,36 @@ def run_01_featureExtraction():
         "--describerTypes sift ",
         "--describerPreset normal ",
         "--describerQuality normal ",
-        "--contrastFiltering GridSort ",
+        # "--contrastFiltering GridSort ",  # XXX
+        "--contrastFiltering AdaptiveToMedianVariance ",  # XXX
         "--gridFiltering True ",
-        "--forceCpuExtraction True ",
+        # "--forceCpuExtraction True ",  # XXX
+        "--forceCpuExtraction False ",  # XXX
         "--maxThreads 0 ",
         "--verboseLevel info ",
         '--output "' + FeatureExtraction + '" ',
         "--rangeStart 0 ",
+        "--rangeSize 40",
+    ]
+    return prog + "  " + ''.join(opts)
+
+
+def run_01xx02_featureExtraction():
+    prog = '/'.join([ALICEVISION, "bin", "aliceVision_featureExtraction"])
+    opts = [
+        '--input "' + CameraInit + '/cameraInit.sfm" ',
+        "--describerTypes sift ",
+        "--describerPreset normal ",
+        "--describerQuality normal ",
+        # "--contrastFiltering GridSort ",  # XXX
+        "--contrastFiltering AdaptiveToMedianVariance ",  # XXX
+        "--gridFiltering True ",
+        # "--forceCpuExtraction True ",  # XXX
+        "--forceCpuExtraction False ",  # XXX
+        "--maxThreads 0 ",
+        "--verboseLevel info ",
+        '--output "' + FeatureExtraction + '" ',
+        "--rangeStart 40 ",
         "--rangeSize 40",
     ]
     return prog + "  " + ''.join(opts)
@@ -142,6 +177,34 @@ def run_04_featureMatching():
         "--verboseLevel info ",
         '--output "' + FeatureMatching + '" ',
         "--rangeStart 20 ",
+        "--rangeSize 20",
+    ]
+    return prog + "  " + ''.join(opts)
+
+
+def run_04xx05_featureMatching():
+    prog = '/'.join([ALICEVISION, "bin", "aliceVision_featureMatching"])
+    opts = [
+        '--input "' + CameraInit + '/cameraInit.sfm" ',
+        '--featuresFolders "' + FeatureExtraction + '" ',
+        '--imagePairsList "' + ImageMatching + '/imageMatches.txt" ',
+        "--describerTypes sift ",
+        "--photometricMatchingMethod ANN_L2 ",
+        "--geometricEstimator acransac ",
+        "--geometricFilterType fundamental_matrix ",
+        "--distanceRatio 0.8 ",
+        "--maxIteration 2048 ",
+        "--geometricError 0.0 ",
+        "--knownPosesGeometricErrorMax 5.0 ",
+        "--maxMatches 0 ",
+        "--savePutativeMatches False ",
+        "--crossMatching False ",
+        "--guidedMatching False ",
+        "--matchFromKnownCameraPoses False ",
+        "--exportDebugFiles False ",
+        "--verboseLevel info ",
+        '--output "' + FeatureMatching + '" ',
+        "--rangeStart 40 ",
         "--rangeSize 20",
     ]
     return prog + "  " + ''.join(opts)
@@ -225,19 +288,21 @@ def main():
         if not DEBUG:
             os.system(cmd)
 
+    # XXX without 01xx02 and 04xx05 Meshroom failed to reconstruct Building_07_A
+
     cmd_00 = run_00_cameraInit()
-    cmd_01 = run_01_featureExtraction()
+    cmd_01 = run_01_featureExtraction(); cmd_01xx02 = run_01xx02_featureExtraction()
     cmd_02 = run_02_imageMatching()
     cmd_03 = run_03_featureMatching()
-    cmd_04 = run_04_featureMatching()
+    cmd_04 = run_04_featureMatching(); cmd_04xx05 = run_04xx05_featureMatching()
     cmd_05 = run_05_incrementalSfM()
     cmd_xx = run_xx_convertSfMFormat()
 
     run(cmd_00)
-    run(cmd_01)
+    run(cmd_01); run(cmd_01xx02)
     run(cmd_02)
     run(cmd_03)
-    run(cmd_04)
+    run(cmd_04); run(cmd_04xx05)
     run(cmd_05)
     run(cmd_xx)
 
