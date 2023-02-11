@@ -15,7 +15,7 @@ defusedxml==0.7.1
 entrypoints==0.3
 -e git+https://github.com/laurelkeys/ff.git@8d1535606bdd38cd5799bf8fee5f8cc72269f7d1#egg=facade
 ipykernel==5.5.5
-ipython==7.31.1
+ipython==8.10.0
 ipython-genutils==0.2.0
 ipywidgets==7.6.3
 isort==5.8.0
